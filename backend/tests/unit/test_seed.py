@@ -24,9 +24,7 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
         anomalies = session.scalars(select(Anomaly).where(Anomaly.anomaly_no.like("DEMO-ANOM-%"))).all()
         tasks = session.scalars(select(DispatchTask).where(DispatchTask.idempotency_key.like("demo-seed-%"))).all()
         dispatches = session.scalars(select(Dispatch).where(Dispatch.dispatch_no.like("DEMO-DISPATCH-%"))).all()
-        audits = session.scalars(
-            select(AuditRecord).join(DispatchTask).where(DispatchTask.idempotency_key.like("demo-seed-%"))
-        ).all()
+        audits = session.scalars(select(AuditRecord).join(DispatchTask).where(DispatchTask.idempotency_key.like("demo-seed-%"))).all()
         threads = session.scalars(select(RuntimeThread).where(RuntimeThread.thread_id.like("demo-thread-%"))).all()
 
     assert len(orders) == 12
@@ -57,7 +55,7 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
     repository = SqlAlchemyWorkspaceReadRepository(sqlite_factory)
     assert repository.list_reviews(limit=20, before_id=None).provenance == "DEMO"
     assert repository.list_runtime_threads(limit=20, before_id=None, status=None).provenance == "DEMO"
-    assert repository.count_domains().provenance == "DEMO"
+    assert repository.count_domains().provenance == "MIXED"
 
 
 def test_development_seed_backfills_assignment_without_resetting_existing_status(sqlite_factory):
@@ -82,9 +80,7 @@ def test_development_seed_backfills_assignment_without_resetting_existing_status
 
     with sqlite_factory() as session:
         task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "DEMO-TASK-004"))
-        non_demo_task = session.scalar(
-            select(DispatchTask).where(DispatchTask.task_id == "NON-DEMO-TASK-001")
-        )
+        non_demo_task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "NON-DEMO-TASK-001"))
         assert task is not None
         assert non_demo_task is not None
         assert task.status == "REJECTED"

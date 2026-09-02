@@ -23,6 +23,7 @@ from app.models.order import Order
 from app.models.runtime_thread import RuntimeThread
 from app.models.task import DispatchTask
 from app.providers.embedding.fake import FakeEmbeddingProvider
+from app.sandtable.seed_data import ORDERS, STATIONS
 from app.sandtable.sqlalchemy_repository import seed_new_county_sandtable
 
 DEVELOPMENT_RUNTIME_PROFILES = frozenset({"local", "test", "docker-dev"})
@@ -42,7 +43,8 @@ DEMO_EMPLOYEE_ACCOUNTS = (
 DEMO_BUSINESS_CASES = (
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-001",
+            "order_no": "LEGACY-DEMO-ORDER-001",
+            "legacy_order_no": "DEMO-ORDER-001",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-li",
             "vehicle_id": "demo-vehicle-001",
@@ -57,7 +59,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-002",
+            "order_no": "LEGACY-DEMO-ORDER-002",
+            "legacy_order_no": "DEMO-ORDER-002",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-zhang",
             "vehicle_id": "demo-vehicle-002",
@@ -72,7 +75,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-003",
+            "order_no": "LEGACY-DEMO-ORDER-003",
+            "legacy_order_no": "DEMO-ORDER-003",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-chen",
             "vehicle_id": "demo-vehicle-003",
@@ -87,7 +91,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-004",
+            "order_no": "LEGACY-DEMO-ORDER-004",
+            "legacy_order_no": "DEMO-ORDER-004",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-wang",
             "vehicle_id": "demo-vehicle-004",
@@ -102,7 +107,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-005",
+            "order_no": "LEGACY-DEMO-ORDER-005",
+            "legacy_order_no": "DEMO-ORDER-005",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-lin",
             "vehicle_id": "demo-vehicle-005",
@@ -117,7 +123,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-006",
+            "order_no": "LEGACY-DEMO-ORDER-006",
+            "legacy_order_no": "DEMO-ORDER-006",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-huang",
             "vehicle_id": "demo-vehicle-006",
@@ -132,7 +139,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-007",
+            "order_no": "LEGACY-DEMO-ORDER-007",
+            "legacy_order_no": "DEMO-ORDER-007",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-zhou",
             "vehicle_id": "demo-vehicle-007",
@@ -147,7 +155,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-008",
+            "order_no": "LEGACY-DEMO-ORDER-008",
+            "legacy_order_no": "DEMO-ORDER-008",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-xu",
             "vehicle_id": "demo-vehicle-008",
@@ -162,7 +171,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-009",
+            "order_no": "LEGACY-DEMO-ORDER-009",
+            "legacy_order_no": "DEMO-ORDER-009",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-guo",
             "vehicle_id": "demo-vehicle-009",
@@ -177,7 +187,8 @@ DEMO_BUSINESS_CASES = (
     ),
     MappingProxyType(
         {
-            "order_no": "DEMO-ORDER-010",
+            "order_no": "LEGACY-DEMO-ORDER-010",
+            "legacy_order_no": "DEMO-ORDER-010",
             "status": "IN_TRANSIT",
             "driver_id": "demo-driver-yang",
             "vehicle_id": "demo-vehicle-010",
@@ -191,6 +202,82 @@ DEMO_BUSINESS_CASES = (
         }
     ),
 )
+
+
+class LegacyDemoOrderConflictError(ValueError):
+    pass
+
+
+def _legacy_order_matches(order: Order, case: MappingProxyType) -> bool:
+    return (
+        order.status,
+        order.driver_id,
+        order.vehicle_id,
+        order.route_id,
+        order.origin,
+        order.destination,
+        order.cargo_weight_kg,
+        order.cargo_type,
+        order.origin_station_id,
+        order.destination_station_id,
+    ) == (
+        case["status"],
+        case["driver_id"],
+        case["vehicle_id"],
+        case["route_id"],
+        case["origin"],
+        case["destination"],
+        None,
+        None,
+        None,
+        None,
+    )
+
+
+def _sandtable_order_matches(order: Order, order_no: str) -> bool:
+    row = next((item for item in ORDERS if item["order_no"] == order_no), None)
+    if row is None:
+        return False
+    station_names = {item["station_id"]: item["name"] for item in STATIONS}
+    return (
+        order.status,
+        order.driver_id,
+        order.vehicle_id,
+        order.route_id,
+        order.origin,
+        order.destination,
+        str(order.cargo_weight_kg),
+        order.cargo_type,
+        order.origin_station_id,
+        order.destination_station_id,
+    ) == (
+        row["status"],
+        None,
+        row["vehicle_id"],
+        None,
+        station_names[row["origin_station_id"]],
+        station_names[row["destination_station_id"]],
+        row["cargo_weight_kg"],
+        row["cargo_type"],
+        row["origin_station_id"],
+        row["destination_station_id"],
+    )
+
+
+def migrate_legacy_demo_business_case_orders(session: Session) -> None:
+    pending: list[tuple[Order, MappingProxyType]] = []
+    for case in DEMO_BUSINESS_CASES:
+        legacy = session.scalar(select(Order).where(Order.order_no == case["order_no"]))
+        if legacy is not None:
+            continue
+        old_order = session.scalar(select(Order).where(Order.order_no == case["legacy_order_no"]))
+        if old_order is None or _sandtable_order_matches(old_order, case["legacy_order_no"]):
+            continue
+        if not _legacy_order_matches(old_order, case):
+            raise LegacyDemoOrderConflictError(f"旧演示订单键冲突且指纹不匹配: {case['legacy_order_no']}")
+        pending.append((old_order, case))
+    for old_order, case in pending:
+        old_order.order_no = case["order_no"]
 
 
 def seed_demo_employee_accounts(session: Session) -> None:
@@ -263,9 +350,7 @@ def seed_demo_execution_case(
         )
         session.add(task)
         session.flush()
-    expected_assignee = DEMO_DELIVERY_EMPLOYEE_SUBJECT_IDS[
-        (position - 1) % len(DEMO_DELIVERY_EMPLOYEE_SUBJECT_IDS)
-    ]
+    expected_assignee = DEMO_DELIVERY_EMPLOYEE_SUBJECT_IDS[(position - 1) % len(DEMO_DELIVERY_EMPLOYEE_SUBJECT_IDS)]
     if task.idempotency_key == task_key:
         task.assignee_subject_id = expected_assignee
 
@@ -299,11 +384,7 @@ def seed_demo_execution_case(
                 task_id=task.id,
                 dispatch_id=dispatch.id,
                 result="REVIEW_REQUIRED" if requires_review else "APPROVED",
-                reason=(
-                    "高风险异常需要调度主管复核后执行。"
-                    if requires_review
-                    else "风险与绕行方案已通过自动安全审计。"
-                ),
+                reason=("高风险异常需要调度主管复核后执行。" if requires_review else "风险与绕行方案已通过自动安全审计。"),
                 evidence_json='{"data_provenance":"DEMO","source":"development_seed"}',
             )
         )
@@ -339,6 +420,7 @@ def seed_database(session_factory=None, runtime_profile: str | None = None) -> N
     factory = session_factory or build_session_factory()
     with factory() as session:
         seed_demo_employee_accounts(session)
+        migrate_legacy_demo_business_case_orders(session)
         seed_new_county_sandtable(session)
         seed_demo_business_cases(session)
         session.commit()

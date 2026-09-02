@@ -20,9 +20,41 @@ def _row_with_decimals(row: dict[str, Any], *fields: str) -> dict[str, Any]:
     return converted
 
 
-def _add_if_missing(session: Session, model: type[Any], business_key: str, row: dict[str, Any]) -> None:
+def _add_if_missing(session: Session, model: type[Any], business_key: str, row: dict[str, Any]) -> bool:
     if session.scalar(select(model).where(getattr(model, business_key) == row[business_key])) is None:
         session.add(model(**row))
+        return True
+    return False
+
+
+class SandtableOrderConflictError(ValueError):
+    pass
+
+
+def _matches_sandtable_order(order: Order, row: dict[str, Any], station_names: dict[str, str]) -> bool:
+    return (
+        order.status,
+        order.driver_id,
+        order.vehicle_id,
+        order.route_id,
+        order.origin,
+        order.destination,
+        str(order.cargo_weight_kg),
+        order.cargo_type,
+        order.origin_station_id,
+        order.destination_station_id,
+    ) == (
+        row["status"],
+        None,
+        row["vehicle_id"],
+        None,
+        station_names[row["origin_station_id"]],
+        station_names[row["destination_station_id"]],
+        row["cargo_weight_kg"],
+        row["cargo_type"],
+        row["origin_station_id"],
+        row["destination_station_id"],
+    )
 
 
 def seed_new_county_sandtable(session: Session) -> None:
@@ -37,10 +69,12 @@ def seed_new_county_sandtable(session: Session) -> None:
             "station_id",
             _row_with_decimals(row, "handling_capacity_kg"),
         )
+    new_driver_ids: set[str] = set()
     for row in DRIVERS:
         driver = dict(row)
         driver["current_vehicle_id"] = None
-        _add_if_missing(session, FleetDriver, "driver_id", driver)
+        if _add_if_missing(session, FleetDriver, "driver_id", driver):
+            new_driver_ids.add(row["driver_id"])
     session.flush()
 
     for row in VEHICLES:
@@ -53,11 +87,17 @@ def seed_new_county_sandtable(session: Session) -> None:
     session.flush()
 
     for row in DRIVERS:
+        if row["driver_id"] not in new_driver_ids:
+            continue
         driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == row["driver_id"]))
-        if driver is not None and driver.current_vehicle_id is None:
+        if driver is not None:
             driver.current_vehicle_id = row["current_vehicle_id"]
 
     station_names = {row["station_id"]: row["name"] for row in STATIONS}
+    for row in ORDERS:
+        existing = session.scalar(select(Order).where(Order.order_no == row["order_no"]))
+        if existing is not None and not _matches_sandtable_order(existing, row, station_names):
+            raise SandtableOrderConflictError(f"沙盘订单键冲突且指纹不匹配: {row['order_no']}")
     for row in ORDERS:
         order = _row_with_decimals(row, "cargo_weight_kg")
         order["origin"] = station_names[order["origin_station_id"]]

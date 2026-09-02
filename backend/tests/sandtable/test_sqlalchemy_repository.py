@@ -1,13 +1,20 @@
+import os
 from decimal import Decimal
+from pathlib import Path
+from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import URL, create_engine, func, select, text
+from sqlalchemy.orm import sessionmaker
 
+from app.models.base import Base
+from app.models.fleet_driver import FleetDriver
 from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.road import RoadEdge
 from app.sandtable.service import RoadLocationUnresolved, SandtableContextService
 from app.sandtable.sqlalchemy_repository import SqlAlchemySandtableRepository, seed_new_county_sandtable
+from app.seed import DEMO_BUSINESS_CASES, LegacyDemoOrderConflictError, seed_database
 
 
 def test_seed_is_idempotent_preserves_user_rows_and_loads_demo_context(sqlite_factory) -> None:
@@ -70,3 +77,106 @@ def test_service_resolves_only_approved_aliases_and_blocks_e04(sqlite_factory) -
         assert session.scalar(select(RoadEdge.status).where(RoadEdge.edge_id == "E04")) == "BLOCKED"
         with pytest.raises(RoadLocationUnresolved):
             service.resolve(order_id, "ROAD_BLOCKED", "新平路有道路问题", None)
+
+
+def test_database_seed_keeps_sandtable_and_legacy_orders(sqlite_factory) -> None:
+    seed_database(session_factory=sqlite_factory, runtime_profile="test")
+    with sqlite_factory() as session:
+        sandtable = session.scalars(select(Order).where(Order.order_no.like("DEMO-ORDER-%"))).all()
+        legacy = session.scalars(select(Order).where(Order.order_no.like("LEGACY-DEMO-ORDER-%"))).all()
+        assert len(sandtable) == 12
+        assert len(legacy) == 10
+        assert session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-001")).vehicle_id == "V-001"
+        assert session.scalar(select(Order).where(Order.order_no == "LEGACY-DEMO-ORDER-001")).vehicle_id == "demo-vehicle-001"
+
+
+def test_seed_never_backfills_existing_driver_or_changes_its_version(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        session.add(FleetDriver(driver_id="D-001", name="用户司机", license_class="C1", status="OFF_DUTY", current_vehicle_id=None, current_node_id="N01"))
+        session.commit()
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        session.commit()
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-001"))
+        assert (driver.name, driver.current_vehicle_id, driver.version) == ("用户司机", None, 1)
+
+
+def _insert_pre_upgrade_order(session, case, *, vehicle_id: str | None = None) -> None:
+    session.add(
+        Order(
+            order_no=case["legacy_order_no"],
+            status=case["status"],
+            driver_id=case["driver_id"],
+            vehicle_id=case["vehicle_id"] if vehicle_id is None else vehicle_id,
+            route_id=case["route_id"],
+            origin=case["origin"],
+            destination=case["destination"],
+        )
+    )
+    session.commit()
+
+
+def test_database_seed_upgrades_matching_legacy_order_without_losing_sandtable(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        _insert_pre_upgrade_order(session, DEMO_BUSINESS_CASES[0])
+    seed_database(session_factory=sqlite_factory, runtime_profile="test")
+    with sqlite_factory() as session:
+        assert session.scalar(select(Order).where(Order.order_no == "LEGACY-DEMO-ORDER-001")).vehicle_id == "demo-vehicle-001"
+        assert session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-001")).vehicle_id == "V-001"
+
+
+def test_database_seed_rejects_nonmatching_legacy_key_without_overwriting_user_order(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        _insert_pre_upgrade_order(session, DEMO_BUSINESS_CASES[0], vehicle_id="用户车辆")
+    with pytest.raises(LegacyDemoOrderConflictError, match="指纹不匹配"):
+        seed_database(session_factory=sqlite_factory, runtime_profile="test")
+    with sqlite_factory() as session:
+        order = session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-001"))
+        assert (order.vehicle_id, order.origin_station_id) == ("用户车辆", None)
+
+
+def _mysql_test_urls() -> tuple[str, str, str]:
+    env_path = os.getenv("COUNTYFLOW_MYSQL_INTEGRATION_DOCKER_ENV")
+    if not env_path or not Path(env_path).is_file():
+        pytest.skip("未设置可用的 opt-in MySQL 环境文件")
+    values = {}
+    for line in Path(env_path).read_text(encoding="utf-8").splitlines():
+        if "=" in line and not line.lstrip().startswith("#"):
+            key, value = line.split("=", 1)
+            values[key.strip()] = value.strip().strip('"').strip("'")
+    if not values.get("MYSQL_ROOT_PASSWORD"):
+        pytest.skip("opt-in MySQL 环境文件缺少所需配置")
+    database = f"countyflow_task2_{uuid4().hex}"
+    host, port = os.getenv("COUNTYFLOW_MYSQL_INTEGRATION_HOST", "127.0.0.1"), int(os.getenv("COUNTYFLOW_MYSQL_INTEGRATION_PORT", "3306"))
+    admin = URL.create("mysql+pymysql", username="root", password=values["MYSQL_ROOT_PASSWORD"], host=host, port=port)
+    target = URL.create("mysql+pymysql", username="root", password=values["MYSQL_ROOT_PASSWORD"], host=host, port=port, database=database)
+    return admin.render_as_string(hide_password=False), target.render_as_string(hide_password=False), database
+
+
+def test_mysql_opt_in_seed_upgrade_foreign_keys_and_versions() -> None:
+    admin_url, database_url, database = _mysql_test_urls()
+    admin = create_engine(admin_url, future=True)
+    engine = None
+    try:
+        with admin.begin() as connection:
+            connection.execute(text(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4"))
+        engine = create_engine(database_url, future=True)
+        Base.metadata.create_all(engine)
+        factory = sessionmaker(bind=engine, expire_on_commit=False)
+        seed_database(session_factory=factory, runtime_profile="test")
+        seed_database(session_factory=factory, runtime_profile="test")
+        with factory() as session:
+            assert session.scalar(select(func.count()).select_from(Order)) == 22
+            driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-001"))
+            vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-001"))
+            assert (driver.current_vehicle_id, vehicle.assigned_driver_id) == ("V-001", "D-001")
+            repository = SqlAlchemySandtableRepository(session)
+            version = session.scalar(select(RoadEdge.version).where(RoadEdge.edge_id == "E04"))
+            assert repository.set_edge_status("E04", "OPEN") == version
+            assert repository.set_edge_status("E04", "BLOCKED") == version + 1
+    finally:
+        if engine is not None:
+            engine.dispose()
+        with admin.begin() as connection:
+            connection.execute(text(f"DROP DATABASE IF EXISTS `{database}`"))
+        admin.dispose()
