@@ -13,7 +13,11 @@ from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.road import RoadEdge
 from app.sandtable.service import RoadLocationUnresolved, SandtableContextService
-from app.sandtable.sqlalchemy_repository import SqlAlchemySandtableRepository, seed_new_county_sandtable
+from app.sandtable.sqlalchemy_repository import (
+    SandtableOrderConflictError,
+    SqlAlchemySandtableRepository,
+    seed_new_county_sandtable,
+)
 from app.seed import DEMO_BUSINESS_CASES, LegacyDemoOrderConflictError, seed_database
 
 
@@ -135,7 +139,7 @@ def test_database_seed_rejects_nonmatching_legacy_key_without_overwriting_user_o
         assert (order.vehicle_id, order.origin_station_id) == ("用户车辆", None)
 
 
-def _mysql_test_urls() -> tuple[str, str, str]:
+def _mysql_test_urls() -> tuple[URL, URL, str]:
     env_path = os.getenv("COUNTYFLOW_MYSQL_INTEGRATION_DOCKER_ENV")
     if not env_path or not Path(env_path).is_file():
         pytest.skip("未设置可用的 opt-in MySQL 环境文件")
@@ -150,11 +154,15 @@ def _mysql_test_urls() -> tuple[str, str, str]:
     host, port = os.getenv("COUNTYFLOW_MYSQL_INTEGRATION_HOST", "127.0.0.1"), int(os.getenv("COUNTYFLOW_MYSQL_INTEGRATION_PORT", "3306"))
     admin = URL.create("mysql+pymysql", username="root", password=values["MYSQL_ROOT_PASSWORD"], host=host, port=port)
     target = URL.create("mysql+pymysql", username="root", password=values["MYSQL_ROOT_PASSWORD"], host=host, port=port, database=database)
-    return admin.render_as_string(hide_password=False), target.render_as_string(hide_password=False), database
+    return admin, target, database
 
 
 def test_mysql_opt_in_seed_upgrade_foreign_keys_and_versions() -> None:
     admin_url, database_url, database = _mysql_test_urls()
+    if isinstance(admin_url, str) or "***" not in str(admin_url) or "***" not in repr(admin_url):
+        raise AssertionError("<REDACTED_DATABASE_URL> 未脱敏")
+    if isinstance(database_url, str) or "***" not in str(database_url) or "***" not in repr(database_url):
+        raise AssertionError("<REDACTED_DATABASE_URL> 未脱敏")
     admin = create_engine(admin_url, future=True)
     engine = None
     try:
@@ -180,3 +188,29 @@ def test_mysql_opt_in_seed_upgrade_foreign_keys_and_versions() -> None:
         with admin.begin() as connection:
             connection.execute(text(f"DROP DATABASE IF EXISTS `{database}`"))
         admin.dispose()
+
+
+def test_seed_conflict_rolls_back_all_new_sandtable_rows_after_caller_commit(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        session.add(
+            Order(
+                order_no="DEMO-ORDER-001",
+                status="USER",
+                driver_id="user-driver",
+                vehicle_id="user-vehicle",
+                route_id="user-route",
+                origin="用户起点",
+                destination="用户终点",
+            )
+        )
+        session.commit()
+        with pytest.raises(SandtableOrderConflictError, match="指纹不匹配"):
+            seed_new_county_sandtable(session)
+        session.commit()
+    with sqlite_factory() as session:
+        user_order = session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-001"))
+        assert (user_order.status, user_order.vehicle_id, user_order.origin) == ("USER", "user-vehicle", "用户起点")
+        assert session.scalar(select(func.count()).select_from(RoadEdge)) == 0
+        assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 0
+        assert session.scalar(select(func.count()).select_from(FleetDriver)) == 0
+        assert session.scalar(select(func.count()).select_from(Order)) == 1

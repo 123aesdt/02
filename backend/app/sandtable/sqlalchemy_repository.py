@@ -58,60 +58,46 @@ def _matches_sandtable_order(order: Order, row: dict[str, Any], station_names: d
 
 
 def seed_new_county_sandtable(session: Session) -> None:
-    for row in ROAD_NODES:
-        _add_if_missing(session, RoadNode, "node_id", _row_with_decimals(row, "x_km", "y_km"))
-    session.flush()
-
-    for row in STATIONS:
-        _add_if_missing(
-            session,
-            LogisticsStation,
-            "station_id",
-            _row_with_decimals(row, "handling_capacity_kg"),
-        )
-    new_driver_ids: set[str] = set()
-    for row in DRIVERS:
-        driver = dict(row)
-        driver["current_vehicle_id"] = None
-        if _add_if_missing(session, FleetDriver, "driver_id", driver):
-            new_driver_ids.add(row["driver_id"])
-    session.flush()
-
-    for row in VEHICLES:
-        _add_if_missing(
-            session,
-            FleetVehicle,
-            "vehicle_id",
-            _row_with_decimals(row, "max_load_kg", "current_load_kg", "gross_weight_tons"),
-        )
-    session.flush()
-
-    for row in DRIVERS:
-        if row["driver_id"] not in new_driver_ids:
-            continue
-        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == row["driver_id"]))
-        if driver is not None:
-            driver.current_vehicle_id = row["current_vehicle_id"]
-
     station_names = {row["station_id"]: row["name"] for row in STATIONS}
     for row in ORDERS:
         existing = session.scalar(select(Order).where(Order.order_no == row["order_no"]))
         if existing is not None and not _matches_sandtable_order(existing, row, station_names):
             raise SandtableOrderConflictError(f"沙盘订单键冲突且指纹不匹配: {row['order_no']}")
-    for row in ORDERS:
-        order = _row_with_decimals(row, "cargo_weight_kg")
-        order["origin"] = station_names[order["origin_station_id"]]
-        order["destination"] = station_names[order["destination_station_id"]]
-        order["driver_id"] = None
-        order["route_id"] = None
-        _add_if_missing(session, Order, "order_no", order)
 
-    for row in ROAD_EDGES:
-        edge = _row_with_decimals(row, "distance_km", "weight_limit_tons")
-        edge["status"] = "OPEN"
-        edge["congestion_factor"] = Decimal("1.00")
-        edge["bidirectional"] = True
-        _add_if_missing(session, RoadEdge, "edge_id", edge)
+    with session.begin_nested():
+        for row in ROAD_NODES:
+            _add_if_missing(session, RoadNode, "node_id", _row_with_decimals(row, "x_km", "y_km"))
+        session.flush()
+        for row in STATIONS:
+            _add_if_missing(session, LogisticsStation, "station_id", _row_with_decimals(row, "handling_capacity_kg"))
+        new_driver_ids: set[str] = set()
+        for row in DRIVERS:
+            driver = dict(row)
+            driver["current_vehicle_id"] = None
+            if _add_if_missing(session, FleetDriver, "driver_id", driver):
+                new_driver_ids.add(row["driver_id"])
+        session.flush()
+        for row in VEHICLES:
+            _add_if_missing(session, FleetVehicle, "vehicle_id", _row_with_decimals(row, "max_load_kg", "current_load_kg", "gross_weight_tons"))
+        session.flush()
+        for row in DRIVERS:
+            if row["driver_id"] in new_driver_ids:
+                driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == row["driver_id"]))
+                if driver is not None:
+                    driver.current_vehicle_id = row["current_vehicle_id"]
+        for row in ORDERS:
+            order = _row_with_decimals(row, "cargo_weight_kg")
+            order["origin"] = station_names[order["origin_station_id"]]
+            order["destination"] = station_names[order["destination_station_id"]]
+            order["driver_id"] = None
+            order["route_id"] = None
+            _add_if_missing(session, Order, "order_no", order)
+        for row in ROAD_EDGES:
+            edge = _row_with_decimals(row, "distance_km", "weight_limit_tons")
+            edge["status"] = "OPEN"
+            edge["congestion_factor"] = Decimal("1.00")
+            edge["bidirectional"] = True
+            _add_if_missing(session, RoadEdge, "edge_id", edge)
 
 
 class SqlAlchemySandtableRepository:
