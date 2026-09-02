@@ -226,18 +226,22 @@ def test_seed_savepoint_rolls_back_partial_flush_and_keeps_outer_transaction(sql
         )
         session.flush()
         original_flush = session.flush
-        calls = 0
+        observed_nodes_before_failure = 0
 
         def fail_after_nodes(*args, **kwargs):
-            nonlocal calls
-            calls += 1
-            if calls == 2:
-                raise RuntimeError("测试注入的第二次 flush 失败")
-            return original_flush(*args, **kwargs)
+            nonlocal observed_nodes_before_failure
+            result = original_flush(*args, **kwargs)
+            with session.no_autoflush:
+                node_count = session.scalar(select(func.count()).select_from(RoadNode))
+            if node_count == 18:
+                observed_nodes_before_failure = node_count
+                raise RuntimeError("测试注入的节点 flush 后失败")
+            return result
 
         monkeypatch.setattr(session, "flush", fail_after_nodes)
-        with pytest.raises(RuntimeError, match="第二次 flush"):
+        with pytest.raises(RuntimeError, match="节点 flush 后"):
             seed_new_county_sandtable(session)
+        assert observed_nodes_before_failure == 18
         monkeypatch.setattr(session, "flush", original_flush)
         session.commit()
     with sqlite_factory() as session:
