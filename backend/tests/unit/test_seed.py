@@ -29,7 +29,7 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
         ).all()
         threads = session.scalars(select(RuntimeThread).where(RuntimeThread.thread_id.like("demo-thread-%"))).all()
 
-    assert len(orders) == 10
+    assert len(orders) == 12
     assert len(anomalies) == 10
     assert {row.severity for row in anomalies} == {"HIGH", "MEDIUM", "LOW"}
     assert len(tasks) == 10

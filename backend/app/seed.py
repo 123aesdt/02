@@ -23,6 +23,7 @@ from app.models.order import Order
 from app.models.runtime_thread import RuntimeThread
 from app.models.task import DispatchTask
 from app.providers.embedding.fake import FakeEmbeddingProvider
+from app.sandtable.sqlalchemy_repository import seed_new_county_sandtable
 
 DEVELOPMENT_RUNTIME_PROFILES = frozenset({"local", "test", "docker-dev"})
 DEMO_RUNTIME_STATUSES = ("RUNNING", "STABLE", "OVERRIDING", "TERMINAL")
@@ -338,6 +339,7 @@ def seed_database(session_factory=None, runtime_profile: str | None = None) -> N
     factory = session_factory or build_session_factory()
     with factory() as session:
         seed_demo_employee_accounts(session)
+        seed_new_county_sandtable(session)
         seed_demo_business_cases(session)
         session.commit()
 
