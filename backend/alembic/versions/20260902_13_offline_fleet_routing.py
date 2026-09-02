@@ -240,7 +240,6 @@ def downgrade() -> None:
         batch.drop_column("cargo_type")
         batch.drop_column("cargo_weight_kg")
 
-    op.drop_index("ix_dispatch_evidence_dispatch_type", table_name="dispatch_evidence")
     op.drop_table("dispatch_evidence")
     op.drop_index("ix_road_edges_status_nodes", table_name="road_edges")
     op.drop_table("road_edges")
