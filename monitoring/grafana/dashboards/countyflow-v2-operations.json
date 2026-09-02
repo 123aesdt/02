@@ -1,0 +1,22 @@
+{
+  "uid": "countyflow-v2-operations",
+  "title": "CountyFlow V2 Operations Overview",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-15m", "to": "now"},
+  "panels": [
+    {"id": 1, "type": "row", "title": "SLO Overview", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}},
+    {"id": 2, "type": "row", "title": "API", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 1}},
+    {"id": 3, "type": "row", "title": "Eight-Agent Pipeline", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 2}},
+    {"id": 4, "type": "row", "title": "Worker / Redis", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 3}},
+    {"id": 5, "type": "row", "title": "Vector / Graph Memory", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 4}},
+    {"id": 6, "type": "row", "title": "Shared Memory", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5}},
+    {"id": 7, "type": "row", "title": "Runtime Thread / Checkpoint", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 6}},
+    {"id": 8, "type": "row", "title": "Runtime Override", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7}},
+    {"id": 9, "type": "row", "title": "Dependencies", "gridPos": {"h": 1, "w": 24, "x": 0, "y": 8}},
+    {"id": 10, "type": "timeseries", "title": "API P95", "datasource": {"uid": "countyflow-prometheus"}, "targets": [{"expr": "countyflow:slo:http_p95_5m", "refId": "A"}], "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9}},
+    {"id": 11, "type": "timeseries", "title": "Agent P95", "datasource": {"uid": "countyflow-prometheus"}, "targets": [{"expr": "countyflow:slo:agent_p95_5m", "refId": "A"}], "gridPos": {"h": 8, "w": 12, "x": 12, "y": 9}},
+    {"id": 12, "type": "stat", "title": "Dependencies Up", "datasource": {"uid": "countyflow-prometheus"}, "targets": [{"expr": "countyflow_dependency_up", "refId": "A"}], "gridPos": {"h": 6, "w": 24, "x": 0, "y": 17}}
+  ]
+}

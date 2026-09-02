@@ -1,0 +1,22 @@
+groups:
+  - name: countyflow-recording
+    interval: 15s
+    rules:
+      - record: countyflow:slo:http_qps_5m
+        expr: sum(rate(countyflow_http_requests_total[5m]))
+      - record: countyflow:slo:http_p95_5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(countyflow_http_request_duration_seconds_bucket[5m])))
+      - record: countyflow:slo:http_error_ratio_5m
+        expr: sum(rate(countyflow_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(countyflow_http_requests_total[5m])), 0.000001)
+      - record: countyflow:slo:agent_p95_5m
+        expr: histogram_quantile(0.95, sum by (le, agent) (rate(countyflow_agent_duration_seconds_bucket[5m])))
+      - record: countyflow:slo:graph_p95_5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(countyflow_graph_query_duration_seconds_bucket[5m])))
+      - record: countyflow:slo:checkpoint_p95_5m
+        expr: histogram_quantile(0.95, sum by (le, operation) (rate(countyflow_checkpoint_duration_seconds_bucket[5m])))
+      - record: countyflow:slo:override_success_ratio_15m
+        expr: sum(rate(countyflow_runtime_overrides_total{result="APPLIED"}[15m])) / clamp_min(sum(rate(countyflow_runtime_overrides_total[15m])), 0.000001)
+      - record: countyflow:slo:worker_pending
+        expr: sum(countyflow_worker_pending_messages)
+      - record: countyflow:slo:worker_stream_lag
+        expr: max(countyflow_worker_stream_lag)

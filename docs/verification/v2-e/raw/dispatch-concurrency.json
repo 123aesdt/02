@@ -1,0 +1,212 @@
+{
+  "metric_definition": "two real MySQL sessions read one SQLAlchemy version_id_col row; stale second commit must fail",
+  "runs": [
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 1,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 2,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 3,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 4,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 5,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 6,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 7,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 8,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 9,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 10,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 11,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 12,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 13,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 14,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 15,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 16,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 17,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 18,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 19,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    },
+    {
+      "committed_version": 2,
+      "database": "mysql",
+      "initial_version": 1,
+      "passed": true,
+      "probe_row_cleaned": true,
+      "run": 20,
+      "second_commit": "StaleDataError",
+      "winner": "lock-session-a"
+    }
+  ],
+  "summary": {
+    "conflicts_intercepted": 20,
+    "interception_rate": 1.0,
+    "passed": true,
+    "runs": 20,
+    "silent_overwrites": 0
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "components": {
+    "dlq": true,
+    "duplicate_delivery": true,
+    "redis_restart_aof": true,
+    "retry": true,
+    "same_idempotency_key_concurrency": true,
+    "worker_kill_pending_xautoclaim": true
+  },
+  "duplicate_audit": 0,
+  "duplicate_delivery": {
+    "audit_count_after": 1,
+    "audit_count_before": 1,
+    "delivered_and_acked": true,
+    "dispatch_count_after": 1,
+    "dispatch_count_before": 1,
+    "duplicate_message_id": "1787799480795-0",
+    "passed": true
+  },
+  "duplicate_dispatch": 0,
+  "message_loss": 0,
+  "passed": true,
+  "restart_and_aof": {
+    "appendonly_config": "yes",
+    "marker_id": "1787799481153-0",
+    "marker_persisted": true,
+    "passed": true,
+    "redis_restart": true
+  },
+  "retry_and_dlq": {
+    "delivery_count": 3,
+    "dlq_message_id": "1787799481149-0",
+    "identity_preserved": true,
+    "original_acked": true,
+    "original_message_id": "1787799481139-0",
+    "pending_after_dlq": 0,
+    "redis": "server",
+    "task_id": "TASK-DLQ-27697212c33148f6"
+  },
+  "same_idempotency_key_concurrency": {
+    "audit_count": 1,
+    "dispatch_count": 1,
+    "duplicate_flags": [
+      true,
+      false
+    ],
+    "http_statuses": [
+      202,
+      202
+    ],
+    "passed": true,
+    "task_ids": [
+      "TASK-8f7800ebcf074e4abd4c93bbcaa92b2",
+      "TASK-8f7800ebcf074e4abd4c93bbcaa92b2"
+    ],
+    "unique_task_count": 1
+  },
+  "task_stream_pending_after": 0,
+  "worker_recovery_evidence": "docs\\verification\\raw\\worker-recovery-results.json"
+}

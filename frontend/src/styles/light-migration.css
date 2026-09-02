@@ -1,0 +1,634 @@
+/* V2-F2 final light migration layer.
+ * These rules are grouped by product surface so legacy components keep their
+ * behavior while all rendered surfaces consume the approved semantic tokens.
+ */
+
+/* Foundation and application frame */
+:root {
+  color: var(--text-primary);
+  background: var(--background);
+}
+
+html,
+body,
+#root {
+  min-width: 0;
+  min-height: 100%;
+  color: var(--text-primary);
+  background: var(--background);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
+
+.app-shell,
+.main-area,
+.page-content {
+  color: var(--text-primary);
+  background: var(--background);
+}
+
+.sidebar,
+.topbar {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.brand {
+  border-color: var(--border);
+}
+
+.brand-mark {
+  color: #ffffff;
+  background: var(--brand);
+}
+
+.brand span,
+.topbar-path,
+.eyebrow,
+.panel-note,
+.release {
+  color: var(--text-tertiary);
+}
+
+.nav-item {
+  color: var(--text-secondary);
+}
+
+.nav-item:hover {
+  color: var(--text-primary);
+  background: var(--surface-secondary);
+}
+
+.nav-item.active {
+  color: var(--brand-hover);
+  border-color: var(--border);
+  background: var(--brand-subtle);
+}
+
+.collapse-button,
+.icon-button,
+.avatar {
+  color: var(--text-secondary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.collapse-button:hover,
+.icon-button:hover {
+  color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+/* Shared enterprise surfaces */
+.metric,
+.workspace-panel,
+.situation-panel,
+.system-metrics,
+.anomaly-table-panel,
+.pipeline-panel,
+.context-panel,
+.environment-panel,
+.capacity-panel,
+.route-decision,
+.decision-reason,
+.memory-evidence,
+.audit-panel,
+.dispatch-result,
+.runtime-thread-panel,
+.runtime-intervention-panel,
+.runtime-override-history,
+.runtime-event-timeline,
+.capacity-evidence-panel,
+.routing-evidence-panel,
+.audit-evidence-panel,
+.checkpoint-timeline,
+.agent-layout,
+.flow-strip,
+.authorization-state {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+  box-shadow: none;
+}
+
+.metric p,
+.metric span,
+.panel-heading > span,
+.description,
+.agent-description,
+.candidate-name small,
+.candidate-score small,
+.detail-list span,
+.event-row,
+.stream-list small,
+.worker-list small,
+.health-list small {
+  color: var(--text-secondary);
+}
+
+.metric strong,
+.panel-heading h2,
+.agent-stat-grid strong,
+.reliability-grid strong,
+.detail-list strong,
+.stream-list b,
+.worker-list b,
+.health-list > div {
+  color: var(--text-primary);
+}
+
+.metric.teal strong,
+.metric.violet strong,
+.metric.amber strong {
+  color: var(--brand);
+}
+
+.workspace-section,
+.operational-summary__items,
+.ui-data-table {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.workspace-section__header,
+.workspace-section__body,
+.workspace-section__header + .workspace-section__body {
+  border-color: var(--border);
+}
+
+/* Data tables and filtering */
+.table-wrap,
+.ui-data-table {
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table,
+thead,
+tbody,
+tr,
+th,
+td {
+  border-color: var(--border);
+}
+
+th {
+  color: var(--text-secondary);
+  background: var(--surface-secondary);
+}
+
+td {
+  color: var(--text-primary);
+  background: var(--surface-primary);
+}
+
+tr:hover td,
+.featured-row td {
+  background: var(--brand-subtle);
+}
+
+.table-link,
+.text-action,
+.inline-link,
+.row-action {
+  color: var(--brand);
+}
+
+.filters label,
+.filters select,
+.task-event-query input,
+.graph-task-query input,
+.memory-control-toolbar label,
+.auth-session-banner input {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--surface-primary);
+}
+
+.filters input,
+.filters select,
+.filters option,
+.task-event-query input,
+.graph-task-query input,
+.memory-control-toolbar input,
+.auth-session-banner input {
+  color: var(--text-primary);
+  background: var(--surface-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Buttons, badges and focus */
+.button-primary {
+  color: #ffffff;
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+}
+
+.button-secondary,
+.observability-toolbar button,
+.runtime-actions button:disabled {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+  background: var(--surface-primary);
+}
+
+.button-secondary:hover:not(:disabled),
+.observability-toolbar button:hover,
+.observability-toolbar button.active {
+  color: var(--brand-hover);
+  border-color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.status-pill,
+.projection-status,
+.source-label,
+.table-status {
+  border-color: var(--border);
+}
+
+.status-success,
+.status-approved,
+.projection-active,
+.source-label.live {
+  color: var(--success);
+  background: var(--success-subtle);
+}
+
+.status-fallback,
+.projection-staged,
+.projection-finalizing,
+.projection-pending,
+.source-label.demo {
+  color: var(--warning);
+  background: var(--warning-subtle);
+}
+
+.status-failed,
+.projection-failed,
+.projection-retired {
+  color: var(--danger);
+  background: var(--danger-subtle);
+}
+
+/* Drawers, dialogs and task governance */
+.drawer-backdrop,
+.runtime-dialog-backdrop,
+.review-dialog-backdrop {
+  background: var(--overlay);
+}
+
+.drawer,
+.runtime-override-dialog,
+.review-decision-dialog {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+  box-shadow: var(--shadow-raised);
+}
+
+.drawer-heading,
+.detail-list span,
+.checkpoint-timeline-list article,
+.runtime-event-timeline article,
+.runtime-override-history article {
+  border-color: var(--border);
+}
+
+.runtime-reason textarea,
+.candidate,
+.execution-line {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-secondary);
+}
+
+.candidate:hover,
+.candidate.selected {
+  border-color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+.runtime-warning,
+.runtime-stale,
+.runtime-intervention-panel {
+  color: var(--danger);
+  background: var(--danger-subtle);
+}
+
+/* Agents and operational modules */
+.agent-rail {
+  border-color: var(--border);
+  background: var(--surface-secondary);
+}
+
+.agent-rail-item {
+  color: var(--text-secondary);
+}
+
+.agent-rail-item:hover,
+.agent-rail-item.selected {
+  color: var(--brand-hover);
+  border-color: var(--border);
+  background: var(--brand-subtle);
+}
+
+.agent-stat-grid,
+.reliability-grid,
+.agent-stat-grid span,
+.reliability-grid span,
+.events-list,
+.event-row {
+  border-color: var(--border);
+}
+
+.execution-line {
+  border-left-color: var(--brand);
+}
+
+.monitor-disclaimer,
+.drawer-callout {
+  color: var(--info);
+  border-color: var(--border);
+  background: var(--info-subtle);
+}
+
+/* Memory control plane */
+.memory-tab-shell,
+.memory-control-summary,
+.memory-control-summary span {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.memory-tabs button {
+  color: var(--text-secondary);
+}
+
+.memory-tabs button:hover,
+.memory-tabs button:focus-visible,
+.memory-tabs button.selected {
+  color: var(--brand-hover);
+  border-color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+.memory-layer-copy,
+.memory-layer-copy strong,
+.memory-control-summary small,
+.memory-control-summary strong,
+.graph-task-query p,
+.mutation-heading > span,
+.table-subline {
+  color: var(--text-secondary);
+}
+
+.memory-current-value {
+  color: var(--info);
+  border-color: var(--info);
+  background: var(--info-subtle);
+}
+
+.memory-control-empty {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+  background: var(--surface-secondary);
+}
+
+/* Graph canvas, nodes, paths and inspector */
+.graph-canvas {
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+}
+
+.graph-canvas line {
+  stroke: var(--border-strong);
+}
+
+.graph-canvas marker path {
+  fill: var(--text-tertiary);
+}
+
+.graph-canvas text {
+  fill: var(--text-secondary);
+}
+
+.graph-node {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--surface-primary);
+  box-shadow: 0 4px 12px rgba(23, 33, 43, 0.08);
+}
+
+.graph-node small {
+  color: var(--text-tertiary);
+}
+
+.graph-node:hover,
+.graph-node:focus-visible,
+.graph-node.selected {
+  color: var(--brand-hover);
+  border-color: var(--brand);
+  background: var(--brand-subtle);
+}
+
+.graph-node-route { border-color: var(--info); }
+.graph-node-weather { border-color: var(--brand); }
+.graph-node-anomaly { border-color: var(--danger); }
+.graph-node-resolution { border-color: var(--warning); }
+
+.graph-property-inspector {
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  background: var(--surface-primary);
+}
+
+.graph-property-inspector > span,
+.graph-property-inspector small {
+  color: var(--text-secondary);
+}
+
+.graph-property-inspector > div {
+  border-color: var(--border);
+}
+
+.graph-property-inspector strong {
+  color: var(--text-primary);
+}
+
+.graph-path-panel {
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  background: var(--surface-primary);
+}
+
+.graph-path-list article {
+  border-color: var(--border);
+  background: var(--surface-secondary);
+}
+
+.graph-path-title strong,
+.graph-path-list li b {
+  color: var(--brand-hover);
+}
+
+.graph-path-title > span,
+.graph-path-list li {
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+/* Live observability and charts */
+.live-observability-panel {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.observability-toolbar a {
+  color: var(--brand);
+  border-color: var(--border-strong);
+  background: var(--surface-primary);
+}
+
+.live-metric-grid,
+.dependency-state-strip {
+  border-color: var(--border);
+  background: var(--surface-primary);
+}
+
+.live-metric-grid article {
+  color: var(--text-primary);
+  border-color: var(--border);
+  background: var(--surface-secondary);
+}
+
+.live-metric-grid article span {
+  color: var(--text-secondary);
+}
+
+.live-metric-grid strong {
+  color: var(--text-primary);
+}
+
+.observability-trend {
+  color: var(--brand);
+}
+
+.dependency-state-strip span {
+  border-color: var(--border);
+  background: var(--surface-secondary);
+}
+
+.dependency-state-strip .up {
+  color: var(--success);
+}
+
+.dependency-state-strip .down {
+  color: var(--danger);
+  background: var(--danger-subtle);
+}
+
+.monitor-state-message {
+  color: var(--warning);
+  border-color: var(--warning);
+  background: var(--warning-subtle);
+}
+
+/* Role landing workspaces */
+.audit-projection-grid,
+.admin-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.admin-capability-card {
+  min-height: 132px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-primary);
+}
+
+.admin-capability-card a {
+  color: var(--brand-hover);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.admin-capability-card p {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* Responsive enterprise density */
+@media (max-width: 1366px) {
+  .page-content { padding: 20px; }
+  .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .workspace-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .monitor-grid,
+  .audit-projection-grid,
+  .admin-capability-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .graph-layout { grid-template-columns: minmax(0, 1fr) 220px; }
+}
+
+@media (max-width: 960px) {
+  .metrics-grid,
+  .workspace-metrics,
+  .monitor-grid,
+  .audit-projection-grid,
+  .admin-capability-grid { grid-template-columns: 1fr; }
+  .graph-layout { grid-template-columns: 1fr; }
+  .filters { align-items: stretch; flex-direction: column; }
+  .filters label,
+  .filters select { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

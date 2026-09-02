@@ -1,0 +1,73 @@
+{
+  "expected_outcomes": [
+    "REVIEW_REQUIRED without automatic dispatch",
+    "StaleDataError conflict"
+  ],
+  "manual_review_task": {
+    "result": {
+      "audit": null,
+      "dispatch": null,
+      "order_id": 1,
+      "ready": true,
+      "status": "REVIEW_REQUIRED",
+      "task_id": "TASK-d7b22a9e9fb64c6c925216864159f0c"
+    },
+    "status": {
+      "completed_at": "2026-08-27T03:01:42",
+      "created_at": "2026-08-27T03:01:41",
+      "order_id": 1,
+      "ready": true,
+      "requires_manual_review": true,
+      "started_at": null,
+      "status": "REVIEW_REQUIRED",
+      "task_id": "TASK-d7b22a9e9fb64c6c925216864159f0c"
+    }
+  },
+  "normal_task": {
+    "result": {
+      "audit": {
+        "created_at": "2026-08-27T03:01:41",
+        "dispatch_id": 1386,
+        "reason": "Audit checks passed.",
+        "result": "APPROVED"
+      },
+      "dispatch": {
+        "decision_reason": "Road condition is slippery with high environmental risk; capacity status is AVAILABLE. Recalled historical memory memory-rain-li at similarity 0.78; 建议改走102国道. Recommended 102国道.",
+        "dispatch_id": 1386,
+        "dispatch_no": "DSP-cd592d31617e4dd198f1542e0b2df955",
+        "executed": true,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "original_route_id": "xinping-road",
+        "status": "REROUTED",
+        "target_route_id": "national-102",
+        "version": 1
+      },
+      "order_id": 1,
+      "ready": true,
+      "status": "COMPLETED",
+      "task_id": "TASK-54f1ea2784314eba93837bf526c666f"
+    },
+    "status": {
+      "completed_at": "2026-08-27T03:01:41",
+      "created_at": "2026-08-27T03:01:41",
+      "order_id": 1,
+      "ready": true,
+      "requires_manual_review": false,
+      "started_at": null,
+      "status": "COMPLETED",
+      "task_id": "TASK-54f1ea2784314eba93837bf526c666f"
+    }
+  },
+  "passed": true,
+  "scenarios": {
+    "concurrent_conflict": true,
+    "duplicate": true,
+    "fallback": true,
+    "manual_review": true,
+    "normal": true,
+    "worker_recovery": true
+  },
+  "unexpected_business_errors": 0,
+  "unexpected_scenarios": []
+}

@@ -1,0 +1,80 @@
+{
+  "configuration": {
+    "duration_seconds_per_formal_run": 60,
+    "graph_terminal_latency_in_http_metric": false,
+    "post_strategy": "unique idempotency key per request",
+    "spawn_rate_per_second": 25,
+    "task_weights": {
+      "GET health": 50,
+      "GET result": 19,
+      "GET status": 30,
+      "POST submission": 1
+    },
+    "users": 50,
+    "wait_time_seconds": "0.01-0.05"
+  },
+  "locust_version": "2.46.4",
+  "resource_sample": "docs\\verification\\raw\\locust-resource-sample.json",
+  "runs": [
+    {
+      "duration_seconds": 60,
+      "error_rate_percent": 0.0,
+      "failures": 0,
+      "html": "docs\\verification\\raw\\locust-run-1.html",
+      "p50_ms": 110.0,
+      "p95_ms": 240.0,
+      "p99_ms": 290.0,
+      "passed": true,
+      "qps": 314.121,
+      "requests": 18661,
+      "run": 1,
+      "stats_csv": "docs\\verification\\raw\\locust-run-1_stats.csv",
+      "users": 50
+    },
+    {
+      "duration_seconds": 60,
+      "error_rate_percent": 0.0,
+      "failures": 0,
+      "html": "docs\\verification\\raw\\locust-run-2.html",
+      "p50_ms": 110.0,
+      "p95_ms": 230.0,
+      "p99_ms": 300.0,
+      "passed": true,
+      "qps": 318.94,
+      "requests": 18898,
+      "run": 2,
+      "stats_csv": "docs\\verification\\raw\\locust-run-2_stats.csv",
+      "users": 50
+    },
+    {
+      "duration_seconds": 60,
+      "error_rate_percent": 0.0,
+      "failures": 0,
+      "html": "docs\\verification\\raw\\locust-run-3.html",
+      "p50_ms": 110.0,
+      "p95_ms": 240.0,
+      "p99_ms": 310.0,
+      "passed": true,
+      "qps": 320.935,
+      "requests": 19025,
+      "run": 3,
+      "stats_csv": "docs\\verification\\raw\\locust-run-3_stats.csv",
+      "users": 50
+    }
+  ],
+  "runtime": [
+    "Docker Backend",
+    "MySQL 8.4",
+    "Redis 8 AOF",
+    "Qdrant Server",
+    "Neo4j Community",
+    "two Docker Workers"
+  ],
+  "summary": {
+    "average_qps": 317.999,
+    "maximum_error_rate_percent": 0.0,
+    "maximum_p95_ms": 240.0,
+    "minimum_qps": 314.121,
+    "passed": true
+  }
+}

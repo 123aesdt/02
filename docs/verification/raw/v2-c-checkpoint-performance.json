@@ -1,0 +1,24 @@
+{
+  "errors": 0,
+  "exact_read_latency_ms": {
+    "average": 2.119,
+    "maximum": 3.02,
+    "minimum": 1.803,
+    "p95": 2.481
+  },
+  "passed": true,
+  "payload_bytes": {
+    "average": 600.45,
+    "maximum": 604,
+    "minimum": 595,
+    "p95": 603
+  },
+  "samples": 20,
+  "server": "Redis 8",
+  "write_latency_ms": {
+    "average": 8.175,
+    "maximum": 19.371,
+    "minimum": 6.909,
+    "p95": 9.049
+  }
+}

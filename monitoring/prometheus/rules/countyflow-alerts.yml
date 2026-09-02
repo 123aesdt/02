@@ -1,0 +1,78 @@
+groups:
+  - name: countyflow-alerts
+    rules:
+      - alert: CountyFlowBackendDown
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels: {severity: critical}
+      - alert: CountyFlowWorkerDown
+        expr: up{job=~"worker-1|worker-2"} == 0
+        for: 2m
+        labels: {severity: warning}
+      - alert: CountyFlowDependencyDown
+        expr: countyflow_dependency_up == 0
+        for: 2m
+        labels: {severity: warning}
+      - alert: CountyFlowApiLatencyHigh
+        expr: countyflow:slo:http_p95_5m >= 0.3 and sum(increase(countyflow_http_requests_total[5m])) >= 100
+        for: 10m
+        labels: {severity: warning}
+      - alert: CountyFlowApiErrorRateHigh
+        expr: countyflow:slo:http_error_ratio_5m >= 0.001 and sum(increase(countyflow_http_requests_total[5m])) >= 100
+        for: 10m
+        labels: {severity: critical}
+      - alert: CountyFlowGraphLatencyHigh
+        expr: countyflow:slo:graph_p95_5m >= 0.15 and sum(increase(countyflow_graph_queries_total[5m])) >= 20
+        for: 10m
+        labels: {severity: warning}
+      - alert: CountyFlowWorkerRecoverySloBreach
+        expr: sum(increase(countyflow_worker_recovery_slo_breaches_total[15m])) > 0
+        labels: {severity: critical}
+      - alert: CountyFlowInvariantViolation
+        expr: sum(increase(countyflow_memory_projection_leaks_total[5m])) + increase(countyflow_runtime_override_downstream_stale_total[5m]) > 0
+        labels: {severity: critical}
+      - alert: CountyFlowWorkerPendingBacklog
+        expr: countyflow:slo:worker_pending > 10
+        for: 10m
+        labels: {severity: warning}
+      - alert: CountyFlowWorkerStreamLagHigh
+        expr: countyflow:slo:worker_stream_lag > 100
+        for: 10m
+        labels: {severity: warning}
+      - alert: CountyFlowCheckpointLatencyHigh
+        expr: max(countyflow:slo:checkpoint_p95_5m) > 0.5 and sum(increase(countyflow_checkpoint_operations_total[5m])) >= 20
+        for: 10m
+        labels: {severity: warning}
+      - alert: CountyFlowMemoryPartialStuck
+        expr: countyflow_memory_partial_mutations > 0
+        for: 10m
+        labels: {severity: warning}
+      - alert: CountyFlowOverrideConflictSpike
+        expr: sum(increase(countyflow_runtime_overrides_total{result="CONFLICT"}[15m])) / clamp_min(sum(increase(countyflow_runtime_overrides_total[15m])), 1) > 0.2 and sum(increase(countyflow_runtime_overrides_total[15m])) >= 10
+        for: 5m
+        labels: {severity: warning}
+      - alert: AuthenticationFailureSpike
+        expr: sum(increase(countyflow_authentication_failures_total[5m])) > 20 and sum(increase(countyflow_http_requests_total[5m])) >= 50
+        for: 5m
+        labels: {severity: warning}
+        annotations: {runbook_url: "docs/runbooks/security.md#authentication-failure-spike"}
+      - alert: AuthorizationDeniedSpike
+        expr: sum(increase(countyflow_authorization_denied_total[5m])) > 10 and sum(increase(countyflow_http_requests_total[5m])) >= 50
+        for: 5m
+        labels: {severity: warning}
+        annotations: {runbook_url: "docs/runbooks/security.md#authorization-denied-spike"}
+      - alert: RuntimeOverrideDeniedSpike
+        expr: sum(increase(countyflow_authorization_denied_total{route_class="runtime"}[5m])) > 5 and sum(increase(countyflow_http_requests_total{route_template=~"/api/v1/runtime/.*"}[5m])) >= 20
+        for: 5m
+        labels: {severity: warning}
+        annotations: {runbook_url: "docs/runbooks/security.md#runtime-override-denied-spike"}
+      - alert: RateLimitSpike
+        expr: sum(increase(countyflow_rate_limit_exceeded_total[5m])) > 20 and sum(increase(countyflow_http_requests_total[5m])) >= 100
+        for: 5m
+        labels: {severity: warning}
+        annotations: {runbook_url: "docs/runbooks/security.md#rate-limit-spike"}
+      - alert: WsTicketRejectionSpike
+        expr: sum(increase(countyflow_ws_ticket_rejected_total[5m])) > 10 and sum(increase(countyflow_http_requests_total{route_template="/api/v1/ws-tickets"}[5m])) >= 20
+        for: 5m
+        labels: {severity: warning}
+        annotations: {runbook_url: "docs/runbooks/security.md#websocket-ticket-rejection-spike"}

@@ -1,0 +1,282 @@
+{
+  "decision_matrix": {
+    "CONFLICT_REVIEW": {
+      "after_version": 3,
+      "before_version": 3,
+      "decision": "CONFLICT_REVIEW",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_d7f0a5fca08ee8b41e557eeae423549905e7958d334ff7f201be0e4acff602c8",
+      "graph_status": "NOT_REQUIRED",
+      "metadata": {},
+      "mutation_id": "c6d1cde2-9fbf-4f4d-99ab-742b691e9888",
+      "projection_incomplete": false,
+      "status": "CONFLICT",
+      "vector_status": "NOT_REQUIRED"
+    },
+    "CREATE": {
+      "after_version": 1,
+      "before_version": null,
+      "decision": "CREATE",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_d7f0a5fca08ee8b41e557eeae423549905e7958d334ff7f201be0e4acff602c8",
+      "graph_status": "ACTIVE",
+      "metadata": {},
+      "mutation_id": "dbbaf55c-ef32-4f90-b2f8-f11ffbe09aab",
+      "projection_incomplete": false,
+      "status": "APPLIED",
+      "vector_status": "ACTIVE"
+    },
+    "MERGE": {
+      "after_version": 2,
+      "before_version": 1,
+      "decision": "MERGE",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_d7f0a5fca08ee8b41e557eeae423549905e7958d334ff7f201be0e4acff602c8",
+      "graph_status": "ACTIVE",
+      "metadata": {},
+      "mutation_id": "b7c80678-328f-4a96-93c7-1b0caabf0187",
+      "projection_incomplete": false,
+      "status": "APPLIED",
+      "vector_status": "ACTIVE"
+    },
+    "NOOP": {
+      "after_version": 2,
+      "before_version": 2,
+      "decision": "NOOP",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_d7f0a5fca08ee8b41e557eeae423549905e7958d334ff7f201be0e4acff602c8",
+      "graph_status": "NOT_REQUIRED",
+      "metadata": {},
+      "mutation_id": "ac28fe48-2686-43ab-8d2e-f1fcbab6ff53",
+      "projection_incomplete": false,
+      "status": "APPLIED",
+      "vector_status": "NOT_REQUIRED"
+    },
+    "REJECT": {
+      "after_version": 3,
+      "before_version": 3,
+      "decision": "REJECT",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_d7f0a5fca08ee8b41e557eeae423549905e7958d334ff7f201be0e4acff602c8",
+      "graph_status": "NOT_REQUIRED",
+      "metadata": {},
+      "mutation_id": "5cbda978-0ce7-454e-b09b-86edfd49fafe",
+      "projection_incomplete": false,
+      "status": "REJECTED",
+      "vector_status": "NOT_REQUIRED"
+    },
+    "REPLACE": {
+      "after_version": 3,
+      "before_version": 2,
+      "decision": "REPLACE",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_d7f0a5fca08ee8b41e557eeae423549905e7958d334ff7f201be0e4acff602c8",
+      "graph_status": "ACTIVE",
+      "metadata": {},
+      "mutation_id": "9d737316-7ea8-472b-8169-4b2c3769c027",
+      "projection_incomplete": false,
+      "status": "APPLIED",
+      "vector_status": "ACTIVE"
+    }
+  },
+  "expiry": {
+    "create": {
+      "after_version": 1,
+      "before_version": null,
+      "decision": "CREATE",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_28275dd12cd64fad108352d2c4dade0ed42ddcb211859ca0091493b50dbd7604",
+      "graph_status": "ACTIVE",
+      "metadata": {},
+      "mutation_id": "0c5b6447-1a15-469d-be58-c074b33795a8",
+      "projection_incomplete": false,
+      "status": "APPLIED",
+      "vector_status": "ACTIVE"
+    },
+    "replacement": {
+      "after_version": 2,
+      "before_version": 1,
+      "decision": "REPLACE",
+      "error_code": null,
+      "error_summary": null,
+      "fact_key": "smf_28275dd12cd64fad108352d2c4dade0ed42ddcb211859ca0091493b50dbd7604",
+      "graph_status": "ACTIVE",
+      "metadata": {},
+      "mutation_id": "1895283f-f0db-4818-8f89-d8399d0dad11",
+      "projection_incomplete": false,
+      "status": "APPLIED",
+      "vector_status": "ACTIVE"
+    }
+  },
+  "low_confidence": {
+    "after_version": null,
+    "before_version": null,
+    "decision": "CONFLICT_REVIEW",
+    "error_code": null,
+    "error_summary": null,
+    "fact_key": "smf_7f1308e3e19779fecd7101dbcf5b52016229f9f5bf1af5da96b3c9765aad5893",
+    "graph_status": "NOT_REQUIRED",
+    "metadata": {},
+    "mutation_id": "7364fb4d-ce17-41dd-96b9-0c9066ab2582",
+    "projection_incomplete": false,
+    "status": "CONFLICT",
+    "vector_status": "NOT_REQUIRED"
+  },
+  "partial_failure": {
+    "duplicate_points": 0,
+    "duplicate_relations": 0,
+    "finalizing_resume_mutation_id": "77a6c46a-6b3f-49bf-a2f8-b16f6bd527d0",
+    "mutation_ids": [
+      "5a3d50d3-1f66-4e22-9aed-fe40ee755a82",
+      "89922bc3-fc5e-46d9-92c6-18300a9d4fff"
+    ],
+    "neo4j_success_qdrant_failure": "PARTIAL_TO_APPLIED",
+    "qdrant_success_neo4j_failure": "PARTIAL_TO_APPLIED"
+  },
+  "passed": true,
+  "projection_visibility": {
+    "active_only_visible": true,
+    "retired_visible": false,
+    "staged_neo4j_leaks": 0,
+    "staged_qdrant_leaks": 0
+  },
+  "race": {
+    "lost_updates": 0,
+    "results": [
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 1
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 2
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 3
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 4
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 5
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 6
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 7
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 8
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 9
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 10
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 11
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 12
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 13
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 14
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 15
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 16
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 17
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 18
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 19
+      },
+      {
+        "lost_update": false,
+        "mysql_cas_winners": 1,
+        "redis_lock_winners": 1,
+        "round": 20
+      }
+    ],
+    "rounds": 20
+  },
+  "real_services": [
+    "mysql",
+    "redis",
+    "qdrant",
+    "neo4j"
+  ]
+}

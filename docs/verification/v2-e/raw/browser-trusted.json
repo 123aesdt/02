@@ -1,0 +1,545 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "v2e-normal-routing.spec.ts",
+      "v2e-memory-reconcile.spec.ts",
+      "runtime-override-success.spec.ts",
+      "runtime-override-stale.spec.ts",
+      "runtime-override-concurrent.spec.ts",
+      "runtime-override-terminal.spec.ts"
+    ],
+    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\docs\\verification\\v2-e\\raw\\browser-trusted.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "runtime-override-concurrent.spec.ts",
+      "file": "runtime-override-concurrent.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_concurrent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 12773,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RvcHBpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RvcHBlZCAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0xLTEgUGF1c2VkIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0xLTEgVW5wYXVzZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW15c3FsLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1uZW80ai0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW5lbzRqLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW15c3FsLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0ZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1yZWRpcy0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1xZHJhbnQtMSBXYWl0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIEV4aXRlZCAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RhcnRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RhcnRlZCAK"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:31:04.440Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7ca9d60ba6518969dbd-19464c075bb1c57da1dc",
+          "file": "runtime-override-concurrent.spec.ts",
+          "line": 7,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-stale.spec.ts",
+      "file": "runtime-override-stale.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_stale",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 8463,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RvcHBpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RvcHBlZCAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0xLTEgUGF1c2VkIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0xLTEgVW5wYXVzZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW5lbzRqLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLW15c3FsLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW5lbzRqLTEgSGVhbHRoeSAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW15c3FsLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0ZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1yZWRpcy0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1xZHJhbnQtMSBXYWl0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIEV4aXRlZCAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RhcnRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RhcnRlZCAK"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:31:17.532Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eac03db4a630752cd944-5c14798d0482e522783a",
+          "file": "runtime-override-stale.spec.ts",
+          "line": 7,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-success.spec.ts",
+      "file": "runtime-override-success.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "runtime-request-count",
+                  "description": "{\"stable_window\":[5,5],\"total\":40,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-3b01d7fad86045b2ab389f095007c99\":13,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-3b01d7fad86045b2ab389f095007c99/history\":10,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-3b01d7fad86045b2ab389f095007c99/intervention\":8,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-3b01d7fad86045b2ab389f095007c99/overrides\":9}}"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15630,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RvcHBpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RvcHBlZCAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0xLTEgUGF1c2VkIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0xLTEgVW5wYXVzZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW5lbzRqLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLW15c3FsLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1teXNxbC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW5lbzRqLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0ZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1taWdyYXRpb24tMSBXYWl0aW5nIAogQ29udGFpbmVyIGNvdW50eWZsb3ctYWktcmVkaXMtMSBXYWl0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIEV4aXRlZCAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RhcnRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXdvcmtlci0yLTEgU3RhcnRlZCAK"
+                    },
+                    {
+                      "buffer": "RXJyb3IgcmVzcG9uc2UgZnJvbSBkYWVtb246IENvbnRhaW5lciAyZDE2OGFhOTQ2MWVkNGU3MzI2YWM2NzExN2U4NjY4NjNjN2FlZDkwZTMzMmYzZjA2NjRiYjczYTliOTI3YjkyIGlzIG5vdCBwYXVzZWQK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1uZW80ai0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1teXNxbC0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1yZWRpcy0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW15c3FsLTEgSGVhbHRoeSAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW5lbzRqLTEgSGVhbHRoeSAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIFN0YXJ0ZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgV2FpdGluZyAKIENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCiBDb250YWluZXIgY291bnR5Zmxvdy1haS1taWdyYXRpb24tMSBXYWl0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXJlZGlzLTEgSGVhbHRoeSAK"
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLW1pZ3JhdGlvbi0xIEV4aXRlZCAK"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:31:26.024Z",
+                  "annotations": [
+                    {
+                      "type": "runtime-request-count",
+                      "description": "{\"stable_window\":[5,5],\"total\":40,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-3b01d7fad86045b2ab389f095007c99\":13,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-3b01d7fad86045b2ab389f095007c99/history\":10,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-3b01d7fad86045b2ab389f095007c99/intervention\":8,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-3b01d7fad86045b2ab389f095007c99/overrides\":9}}"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "45e3fd794aec716dbc71-2f439ca6073621e3a6bf",
+          "file": "runtime-override-success.spec.ts",
+          "line": 9,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-terminal.spec.ts",
+      "file": "runtime-override-terminal.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_terminal",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2386,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:31:41.680Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e4d2c73a241ef2e6137c-9e3e85a404f1698b16fe",
+          "file": "runtime-override-terminal.spec.ts",
+          "line": 5,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "v2e-memory-reconcile.spec.ts",
+      "file": "v2e-memory-reconcile.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_v2e_real_shared_memory_partial_and_reconcile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15663,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "eyJtdXRhdGlvbl9pZCI6ICJjYTljMjI0MS1hMGZlLTRjODgtOTNkYS01ZGY4NjRmNThkZTkiLCAiZmFjdF9rZXkiOiAic21mX2Q2NDYwM2ViOThmY2Q0ZjI0OTZmMjViNzlmYjM5YmVhOGEwM2VjNjFmMWU0NjllMWEyOGM1N2RhYmU4ZDQwNGIiLCAiZGVjaXNpb24iOiAiQ1JFQVRFIiwgInN0YXR1cyI6ICJBUFBMSUVEIiwgImJlZm9yZV92ZXJzaW9uIjogbnVsbCwgImFmdGVyX3ZlcnNpb24iOiAxLCAidmVjdG9yX3N0YXR1cyI6ICJBQ1RJVkUiLCAiZ3JhcGhfc3RhdHVzIjogIkFDVElWRSIsICJwcm9qZWN0aW9uX2luY29tcGxldGUiOiBmYWxzZSwgImVycm9yX2NvZGUiOiBudWxsLCAiZXJyb3Jfc3VtbWFyeSI6IG51bGwsICJtZXRhZGF0YSI6IHt9fQ0K"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0b3BwaW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0b3BwZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0YXJ0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0YXJ0ZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFJ1bm5pbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:31:44.087Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c2b8db482efb3b7c4f9c-6f81131e5c4db9da28ce",
+          "file": "v2e-memory-reconcile.spec.ts",
+          "line": 20,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "v2e-normal-routing.spec.ts",
+      "file": "v2e-normal-routing.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_v2e_real_normal_routing_and_graph_memory",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5617,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:31:59.773Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "df974bbe8a0a45fd479c-006a48a98cec300b4488",
+          "file": "v2e-normal-routing.spec.ts",
+          "line": 8,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-27T12:31:04.015Z",
+    "duration": 61660.234000000004,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

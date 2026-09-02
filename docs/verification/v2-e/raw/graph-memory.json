@@ -1,0 +1,371 @@
+{
+  "coverage": {
+    "entity_types": [
+      "Anomaly",
+      "Driver",
+      "Resolution",
+      "RoadCondition",
+      "Route",
+      "Station",
+      "Vehicle",
+      "Weather"
+    ],
+    "passed": true,
+    "relation_types": [
+      "ALTERNATIVE_TO",
+      "DRIVES",
+      "HAS_RISK_ON",
+      "HIGH_RISK_WHEN",
+      "RESOLVED_BY",
+      "STATUS"
+    ]
+  },
+  "dataset": "benchmarks\\graph\\v2e_cases.json",
+  "extraction": {
+    "cases": 3,
+    "entity_correct": 3,
+    "passed": true,
+    "relation_correct": 3,
+    "results": [
+      {
+        "actual_entities": [
+          "Anomaly:rain-slippery",
+          "Driver:driver-li",
+          "Route:xinping-road",
+          "Vehicle:vehicle-cold-a",
+          "Weather:rain"
+        ],
+        "actual_relations": [
+          "Anomaly:rain-slippery|AFFECTED_BY|Weather:rain",
+          "Driver:driver-li|DRIVES|Vehicle:vehicle-cold-a",
+          "Driver:driver-li|SERVES|Route:xinping-road",
+          "Route:xinping-road|AFFECTED_BY|Weather:rain"
+        ],
+        "case_id": "e01",
+        "entities_correct": true,
+        "expected_entities": [
+          "Anomaly:rain-slippery",
+          "Driver:driver-li",
+          "Route:xinping-road",
+          "Vehicle:vehicle-cold-a",
+          "Weather:rain"
+        ],
+        "expected_relations": [
+          "Anomaly:rain-slippery|AFFECTED_BY|Weather:rain",
+          "Driver:driver-li|DRIVES|Vehicle:vehicle-cold-a",
+          "Driver:driver-li|SERVES|Route:xinping-road",
+          "Route:xinping-road|AFFECTED_BY|Weather:rain"
+        ],
+        "input_text": "李师傅驾驶冷链车A，在雨天经过新平路时报告道路湿滑。",
+        "persisted_to_neo4j": true,
+        "relations_correct": true
+      },
+      {
+        "actual_entities": [
+          "Anomaly:rain-slippery",
+          "Driver:driver-li",
+          "Route:xinping-road",
+          "Weather:rain"
+        ],
+        "actual_relations": [
+          "Anomaly:rain-slippery|AFFECTED_BY|Weather:rain",
+          "Driver:driver-li|SERVES|Route:xinping-road",
+          "Route:xinping-road|AFFECTED_BY|Weather:rain"
+        ],
+        "case_id": "e02",
+        "entities_correct": true,
+        "expected_entities": [
+          "Anomaly:rain-slippery",
+          "Driver:driver-li",
+          "Route:xinping-road",
+          "Weather:rain"
+        ],
+        "expected_relations": [
+          "Anomaly:rain-slippery|AFFECTED_BY|Weather:rain",
+          "Driver:driver-li|SERVES|Route:xinping-road",
+          "Route:xinping-road|AFFECTED_BY|Weather:rain"
+        ],
+        "input_text": "李师傅在新平路报告雨天湿滑。",
+        "persisted_to_neo4j": true,
+        "relations_correct": true
+      },
+      {
+        "actual_entities": [
+          "Anomaly:route-report",
+          "Driver:driver-li",
+          "Route:xinping-road",
+          "Vehicle:vehicle-cold-a"
+        ],
+        "actual_relations": [
+          "Driver:driver-li|DRIVES|Vehicle:vehicle-cold-a",
+          "Driver:driver-li|SERVES|Route:xinping-road"
+        ],
+        "case_id": "e03",
+        "entities_correct": true,
+        "expected_entities": [
+          "Anomaly:route-report",
+          "Driver:driver-li",
+          "Route:xinping-road",
+          "Vehicle:vehicle-cold-a"
+        ],
+        "expected_relations": [
+          "Driver:driver-li|DRIVES|Vehicle:vehicle-cold-a",
+          "Driver:driver-li|SERVES|Route:xinping-road"
+        ],
+        "input_text": "李师傅驾驶冷链车A经过新平路。",
+        "persisted_to_neo4j": true,
+        "relations_correct": true
+      }
+    ]
+  },
+  "passed": true,
+  "real_neo4j": true,
+  "recall": {
+    "fact_correct": 20,
+    "p95_ms": 10.353800000302726,
+    "passed": true,
+    "path_correct": 20,
+    "queries": 20,
+    "results": [
+      {
+        "anchor": "Driver:driver-li",
+        "elapsed_ms": 98.738,
+        "expected_fact": "driver-li|DRIVES|vehicle-cold-a",
+        "expected_path": "driver-li>xinping-road>national-102",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g01"
+      },
+      {
+        "anchor": "Driver:driver-li",
+        "elapsed_ms": 13.799,
+        "expected_fact": "driver-li|HAS_RISK_ON|xinping-road",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g02"
+      },
+      {
+        "anchor": "Vehicle:vehicle-cold-a",
+        "elapsed_ms": 8.323,
+        "expected_fact": "driver-li|DRIVES|vehicle-cold-a",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g03"
+      },
+      {
+        "anchor": "Vehicle:vehicle-cold-a",
+        "elapsed_ms": 6.587,
+        "expected_fact": "vehicle-cold-a|STATUS|vehicle-broken",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g04"
+      },
+      {
+        "anchor": "Route:xinping-road",
+        "elapsed_ms": 11.132,
+        "expected_fact": "xinping-road|HIGH_RISK_WHEN|rain",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g05"
+      },
+      {
+        "anchor": "Route:xinping-road",
+        "elapsed_ms": 10.092,
+        "expected_fact": "national-102|ALTERNATIVE_TO|xinping-road",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g06"
+      },
+      {
+        "anchor": "Route:xinping-road",
+        "elapsed_ms": 9.413,
+        "expected_fact": "xinping-road|STATUS|wet-road",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g07"
+      },
+      {
+        "anchor": "Route:national-102",
+        "elapsed_ms": 9.562,
+        "expected_fact": "national-102|ALTERNATIVE_TO|xinping-road",
+        "expected_path": "national-102>xinping-road>driver-li",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g08"
+      },
+      {
+        "anchor": "Weather:rain",
+        "elapsed_ms": 17.967,
+        "expected_fact": "xinping-road|HIGH_RISK_WHEN|rain",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g09"
+      },
+      {
+        "anchor": "RoadCondition:wet-road",
+        "elapsed_ms": 8.041,
+        "expected_fact": "xinping-road|STATUS|wet-road",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g10"
+      },
+      {
+        "anchor": "RoadCondition:wet-road",
+        "elapsed_ms": 7.267,
+        "expected_fact": "station-xinping|HAS_RISK_ON|wet-road",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g11"
+      },
+      {
+        "anchor": "RoadCondition:vehicle-broken",
+        "elapsed_ms": 5.978,
+        "expected_fact": "vehicle-cold-a|STATUS|vehicle-broken",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g12"
+      },
+      {
+        "anchor": "Station:station-xinping",
+        "elapsed_ms": 5.803,
+        "expected_fact": "station-xinping|HAS_RISK_ON|wet-road",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g13"
+      },
+      {
+        "anchor": "Anomaly:rain-slippery",
+        "elapsed_ms": 5.429,
+        "expected_fact": "rain-slippery|RESOLVED_BY|reroute-national-102",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g14"
+      },
+      {
+        "anchor": "Resolution:reroute-national-102",
+        "elapsed_ms": 6.571,
+        "expected_fact": "rain-slippery|RESOLVED_BY|reroute-national-102",
+        "expected_path": "",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g15"
+      },
+      {
+        "anchor": "Driver:driver-li",
+        "elapsed_ms": 9.397,
+        "expected_fact": "driver-li|DRIVES|vehicle-cold-a",
+        "expected_path": "driver-li>vehicle-cold-a>vehicle-broken",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g16"
+      },
+      {
+        "anchor": "Route:xinping-road",
+        "elapsed_ms": 9.877,
+        "expected_fact": "driver-li|HAS_RISK_ON|xinping-road",
+        "expected_path": "xinping-road>wet-road>station-xinping",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g17"
+      },
+      {
+        "anchor": "Weather:rain",
+        "elapsed_ms": 9.132,
+        "expected_fact": "xinping-road|HIGH_RISK_WHEN|rain",
+        "expected_path": "rain>xinping-road>national-102",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g18"
+      },
+      {
+        "anchor": "Vehicle:vehicle-cold-a",
+        "elapsed_ms": 6.585,
+        "expected_fact": "vehicle-cold-a|STATUS|vehicle-broken",
+        "expected_path": "vehicle-cold-a>driver-li>xinping-road",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g19"
+      },
+      {
+        "anchor": "Station:station-xinping",
+        "elapsed_ms": 17.86,
+        "expected_fact": "station-xinping|HAS_RISK_ON|wet-road",
+        "expected_path": "station-xinping>wet-road>xinping-road",
+        "fact_correct": true,
+        "path_correct": true,
+        "query_id": "g20"
+      }
+    ],
+    "warm_queries": 50
+  },
+  "timing_ms": {
+    "avg": 7.808,
+    "max": 12.632,
+    "min": 5.357,
+    "p95": 10.354,
+    "samples": [
+      8.597,
+      7.852,
+      7.258,
+      7.143,
+      10.354,
+      8.516,
+      9.229,
+      7.529,
+      8.172,
+      6.958,
+      7.437,
+      7.115,
+      6.331,
+      5.958,
+      5.919,
+      9.923,
+      8.717,
+      7.719,
+      7.071,
+      5.357,
+      7.019,
+      9.308,
+      10.501,
+      6.375,
+      7.86,
+      9.221,
+      7.874,
+      6.802,
+      8.653,
+      7.57,
+      8.02,
+      7.194,
+      6.63,
+      6.623,
+      5.882,
+      8.546,
+      8.565,
+      8.698,
+      6.984,
+      5.372,
+      12.632,
+      8.663,
+      5.822,
+      7.181,
+      8.736,
+      9.025,
+      9.378,
+      6.45,
+      7.15,
+      8.519
+    ]
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "v2e-memory-reconcile.spec.ts"
+    ],
+    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\docs\\verification\\v2-e\\raw\\browser-memory-reconcile.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "v2e-memory-reconcile.spec.ts",
+      "file": "v2e-memory-reconcile.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_v2e_real_shared_memory_partial_and_reconcile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15885,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "eyJtdXRhdGlvbl9pZCI6ICI5NDBkYTBjOC03YjYwLTQ3NTEtOWRhMS0zNTE2MTk5NzlkYTYiLCAiZmFjdF9rZXkiOiAic21mXzRiYmNmN2VhYTkzOGNkMmUyMjdlZDNlOTQ2OWJhNTk4ZmNkOWE0ODA4NmIwN2ZjZTQwNGFjZDdlNzhmMGE2ZjUiLCAiZGVjaXNpb24iOiAiQ1JFQVRFIiwgInN0YXR1cyI6ICJBUFBMSUVEIiwgImJlZm9yZV92ZXJzaW9uIjogbnVsbCwgImFmdGVyX3ZlcnNpb24iOiAxLCAidmVjdG9yX3N0YXR1cyI6ICJBQ1RJVkUiLCAiZ3JhcGhfc3RhdHVzIjogIkFDVElWRSIsICJwcm9qZWN0aW9uX2luY29tcGxldGUiOiBmYWxzZSwgImVycm9yX2NvZGUiOiBudWxsLCAiZXJyb3Jfc3VtbWFyeSI6IG51bGwsICJtZXRhZGF0YSI6IHt9fQ0K"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0b3BwaW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0b3BwZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0YXJ0aW5nIAo="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFN0YXJ0ZWQgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFJ1bm5pbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIFdhaXRpbmcgCg=="
+                    },
+                    {
+                      "buffer": "IENvbnRhaW5lciBjb3VudHlmbG93LWFpLXFkcmFudC0xIEhlYWx0aHkgCg=="
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-27T12:30:11.617Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c2b8db482efb3b7c4f9c-6f81131e5c4db9da28ce",
+          "file": "v2e-memory-reconcile.spec.ts",
+          "line": 20,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-27T12:30:11.245Z",
+    "duration": 16998.195,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

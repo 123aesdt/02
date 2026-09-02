@@ -1,0 +1,51 @@
+{
+  "entities": [
+    {"type": "Driver", "id": "driver-li", "name": "李师傅"},
+    {"type": "Vehicle", "id": "vehicle-cold-a", "name": "冷链车A"},
+    {"type": "Route", "id": "xinping-road", "name": "新平路"},
+    {"type": "Route", "id": "national-102", "name": "国道102"},
+    {"type": "Weather", "id": "rain", "name": "雨天"},
+    {"type": "RoadCondition", "id": "wet-road", "name": "道路湿滑"},
+    {"type": "RoadCondition", "id": "vehicle-broken", "name": "车辆故障"},
+    {"type": "Station", "id": "station-xinping", "name": "新平站"},
+    {"type": "Anomaly", "id": "rain-slippery", "name": "雨天湿滑异常"},
+    {"type": "Resolution", "id": "reroute-national-102", "name": "改道国道102"}
+  ],
+  "relations": [
+    {"source": "Driver:driver-li", "type": "DRIVES", "target": "Vehicle:vehicle-cold-a", "source_type": "development_seed"},
+    {"source": "Driver:driver-li", "type": "HAS_RISK_ON", "target": "Route:xinping-road", "source_type": "development_seed"},
+    {"source": "Route:xinping-road", "type": "HIGH_RISK_WHEN", "target": "Weather:rain", "source_type": "development_seed"},
+    {"source": "Route:national-102", "type": "ALTERNATIVE_TO", "target": "Route:xinping-road", "source_type": "development_seed"},
+    {"source": "Anomaly:rain-slippery", "type": "RESOLVED_BY", "target": "Resolution:reroute-national-102", "source_type": "development_seed"},
+    {"source": "Route:xinping-road", "type": "STATUS", "target": "RoadCondition:wet-road", "source_type": "v2e_acceptance"},
+    {"source": "Vehicle:vehicle-cold-a", "type": "STATUS", "target": "RoadCondition:vehicle-broken", "source_type": "v2e_acceptance"},
+    {"source": "Station:station-xinping", "type": "HAS_RISK_ON", "target": "RoadCondition:wet-road", "source_type": "v2e_acceptance"}
+  ],
+  "queries": [
+    {"id": "g01", "anchor": "Driver:driver-li", "fact": ["driver-li", "DRIVES", "vehicle-cold-a"], "path": ["driver-li", "xinping-road", "national-102"]},
+    {"id": "g02", "anchor": "Driver:driver-li", "fact": ["driver-li", "HAS_RISK_ON", "xinping-road"]},
+    {"id": "g03", "anchor": "Vehicle:vehicle-cold-a", "fact": ["driver-li", "DRIVES", "vehicle-cold-a"]},
+    {"id": "g04", "anchor": "Vehicle:vehicle-cold-a", "fact": ["vehicle-cold-a", "STATUS", "vehicle-broken"]},
+    {"id": "g05", "anchor": "Route:xinping-road", "fact": ["xinping-road", "HIGH_RISK_WHEN", "rain"]},
+    {"id": "g06", "anchor": "Route:xinping-road", "fact": ["national-102", "ALTERNATIVE_TO", "xinping-road"]},
+    {"id": "g07", "anchor": "Route:xinping-road", "fact": ["xinping-road", "STATUS", "wet-road"]},
+    {"id": "g08", "anchor": "Route:national-102", "fact": ["national-102", "ALTERNATIVE_TO", "xinping-road"], "path": ["national-102", "xinping-road", "driver-li"]},
+    {"id": "g09", "anchor": "Weather:rain", "fact": ["xinping-road", "HIGH_RISK_WHEN", "rain"]},
+    {"id": "g10", "anchor": "RoadCondition:wet-road", "fact": ["xinping-road", "STATUS", "wet-road"]},
+    {"id": "g11", "anchor": "RoadCondition:wet-road", "fact": ["station-xinping", "HAS_RISK_ON", "wet-road"]},
+    {"id": "g12", "anchor": "RoadCondition:vehicle-broken", "fact": ["vehicle-cold-a", "STATUS", "vehicle-broken"]},
+    {"id": "g13", "anchor": "Station:station-xinping", "fact": ["station-xinping", "HAS_RISK_ON", "wet-road"]},
+    {"id": "g14", "anchor": "Anomaly:rain-slippery", "fact": ["rain-slippery", "RESOLVED_BY", "reroute-national-102"]},
+    {"id": "g15", "anchor": "Resolution:reroute-national-102", "fact": ["rain-slippery", "RESOLVED_BY", "reroute-national-102"]},
+    {"id": "g16", "anchor": "Driver:driver-li", "fact": ["driver-li", "DRIVES", "vehicle-cold-a"], "path": ["driver-li", "vehicle-cold-a", "vehicle-broken"]},
+    {"id": "g17", "anchor": "Route:xinping-road", "fact": ["driver-li", "HAS_RISK_ON", "xinping-road"], "path": ["xinping-road", "wet-road", "station-xinping"]},
+    {"id": "g18", "anchor": "Weather:rain", "fact": ["xinping-road", "HIGH_RISK_WHEN", "rain"], "path": ["rain", "xinping-road", "national-102"]},
+    {"id": "g19", "anchor": "Vehicle:vehicle-cold-a", "fact": ["vehicle-cold-a", "STATUS", "vehicle-broken"], "path": ["vehicle-cold-a", "driver-li", "xinping-road"]},
+    {"id": "g20", "anchor": "Station:station-xinping", "fact": ["station-xinping", "HAS_RISK_ON", "wet-road"], "path": ["station-xinping", "wet-road", "xinping-road"]}
+  ],
+  "extraction_cases": [
+    {"id": "e01", "text": "李师傅驾驶冷链车A，在雨天经过新平路时报告道路湿滑。", "driver_id": "driver-li", "vehicle_id": "vehicle-cold-a", "route_id": "xinping-road", "anomaly_type": "rain_slippery", "weather": "rain", "entities": ["Driver:driver-li", "Route:xinping-road", "Anomaly:rain-slippery", "Vehicle:vehicle-cold-a", "Weather:rain"], "relations": ["Driver:driver-li|SERVES|Route:xinping-road", "Driver:driver-li|DRIVES|Vehicle:vehicle-cold-a", "Route:xinping-road|AFFECTED_BY|Weather:rain", "Anomaly:rain-slippery|AFFECTED_BY|Weather:rain"]},
+    {"id": "e02", "text": "李师傅在新平路报告雨天湿滑。", "driver_id": "driver-li", "route_id": "xinping-road", "anomaly_type": "rain_slippery", "weather": "rain", "entities": ["Driver:driver-li", "Route:xinping-road", "Anomaly:rain-slippery", "Weather:rain"], "relations": ["Driver:driver-li|SERVES|Route:xinping-road", "Route:xinping-road|AFFECTED_BY|Weather:rain", "Anomaly:rain-slippery|AFFECTED_BY|Weather:rain"]},
+    {"id": "e03", "text": "李师傅驾驶冷链车A经过新平路。", "driver_id": "driver-li", "vehicle_id": "vehicle-cold-a", "route_id": "xinping-road", "anomaly_type": "route_report", "entities": ["Driver:driver-li", "Route:xinping-road", "Anomaly:route-report", "Vehicle:vehicle-cold-a"], "relations": ["Driver:driver-li|SERVES|Route:xinping-road", "Driver:driver-li|DRIVES|Vehicle:vehicle-cold-a"]}
+  ]
+}

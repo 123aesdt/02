@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "benchmark": "v2-g2-authenticated-http",
+  "timestamp": "2026-08-29T00:38:50.992038+00:00",
+  "security_on": {
+    "profile": {
+      "authentication": "development_jwt",
+      "authorization": "bearer",
+      "role": "DISPATCHER",
+      "rate_limiting": "enabled",
+      "principal_strategy": "unique_per_virtual_user",
+      "users": 50,
+      "duration_seconds": 60,
+      "spawn_rate_per_second": 25
+    },
+    "requests": 16575,
+    "failures": 0,
+    "qps": 278.998,
+    "p95_ms": 270.0,
+    "unexpected_error_rate_percent": 0.0,
+    "stats_file": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/docs/verification/v2-g2/raw/security-on_stats.csv"
+  },
+  "security_off_baseline": {
+    "evidence_kind": "historical_verified_pre_v2_g2",
+    "source": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/docs/verification/raw/locust-results.json",
+    "security_was_disabled_for_current_run": false,
+    "average_qps": 317.999,
+    "maximum_p95_ms": 240.0,
+    "maximum_error_rate_percent": 0.0,
+    "passed": true
+  },
+  "comparison": {
+    "qps_delta_percent": -12.265,
+    "p95_delta_ms": 30.0,
+    "note": "OFF is the verified pre-V2-G2 historical baseline; the current runtime was never switched to anonymous mode."
+  },
+  "gates": {
+    "qps_gte_200": true,
+    "p95_lt_300_ms": true,
+    "unexpected_error_rate_lt_0_1_percent": true
+  },
+  "passed": true
+}

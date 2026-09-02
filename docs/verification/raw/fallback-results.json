@@ -1,0 +1,133 @@
+{
+  "metric_definition": "real Docker Worker primary HTTP timeout to static-route fallback",
+  "primary_timeout_seconds": 0.8,
+  "runs": [
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 801.564,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 1,
+      "task_id": "TASK-e40c5e7ee12047f2abf66c3ae60b288",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 801.775,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 2,
+      "task_id": "TASK-0a137630493843b3bafcb0ce5d30c38",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 802.161,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 3,
+      "task_id": "TASK-af48904500584ab1ab3c1939f9e8817",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 801.693,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 4,
+      "task_id": "TASK-8132c2db7e4042c595e0ccaecea878b",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 801.308,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 5,
+      "task_id": "TASK-cd5873abfc3841d0b8fbf20a6d34e39",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 801.673,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 6,
+      "task_id": "TASK-166ae527a1334c7f80ecee4e8a81b7c",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 802.252,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 7,
+      "task_id": "TASK-f123aa7279454564b0a967f80a6da56",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 801.683,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 8,
+      "task_id": "TASK-daa3e63a232a4269be4cb16e666a478",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 802.206,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 9,
+      "task_id": "TASK-92bd15f0f8114d869967b0835142455",
+      "terminal_status": "COMPLETED"
+    },
+    {
+      "audit_count": 1,
+      "audit_result": "APPROVED",
+      "dispatch_count": 1,
+      "fallback_elapsed_ms": 802.105,
+      "fallback_reason": "Primary environment provider timed out.",
+      "fallback_used": true,
+      "passed": true,
+      "run": 10,
+      "task_id": "TASK-36b476421d9945e29b73a3b765a22fe",
+      "terminal_status": "COMPLETED"
+    }
+  ],
+  "summary": {
+    "average_ms": 801.842,
+    "maximum_ms": 802.252,
+    "minimum_ms": 801.308,
+    "p95_ms": 802.252,
+    "passed": true
+  }
+}

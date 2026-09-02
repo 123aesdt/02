@@ -1,0 +1,44 @@
+import { BrainCircuit, Check, ChevronDown, CircleAlert, Play, Route as RouteIcon, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+
+import { AgentPipeline } from "../components/agent-pipeline";
+import { RouteVisual } from "../components/route-visual";
+import { StatusPill } from "../components/status-pill";
+import { RuntimeWorkbench } from "../components/runtime-workbench";
+import { useDispatchData } from "../hooks/use-dispatch-data";
+import type { AgentRun } from "../types/dispatch";
+import { getPlaybackStatus } from "../features/dispatch/agent-playback";
+import { runtimeConfig } from "../config/runtime";
+import { localizeRelationText, localizeStatus } from "../utils/presentation-labels";
+import { ApiDispatchDetailPage } from "./api-dispatch-detail-page";
+
+function DetailRow({ label, value }: { label: string; value: string }) { return <div className="detail-row"><span>{label}</span><strong>{value}</strong></div>; }
+function LoadBar({ label, value }: { label: string; value: number }) { return <div className="load-bar"><div><span>{label}</span><strong>{value}%</strong></div><i><b style={{ width: `${value}%` }}/></i></div>; }
+
+export function DispatchDetailPage() {
+  const { taskId = "TASK-20260821-0042" } = useParams();
+  if (runtimeConfig.dataMode === "api") return <ApiDispatchDetailPage taskId={taskId}/>;
+  return <MockDispatchDetailPage taskId={taskId}/>;
+}
+
+function MockDispatchDetailPage({ taskId }: { taskId: string }) {
+  const data = useDispatchData(taskId); const [tab, setTab] = useState("总览"); const [activeRoute, setActiveRoute] = useState("national-102"); const [memoryOpen, setMemoryOpen] = useState(true); const [auditOpen, setAuditOpen] = useState(true); const [playbackStep, setPlaybackStep] = useState<number | null>(null);
+  useEffect(() => {
+    if (playbackStep === null) return undefined;
+    const timeout = window.setTimeout(() => setPlaybackStep((step) => step === null || step >= 8 ? null : step + 1), 360);
+    return () => window.clearTimeout(timeout);
+  }, [playbackStep]);
+  const agents = useMemo<AgentRun[]>(() => !data ? [] : data.agents.map((agent, index) => playbackStep === null ? agent : { ...agent, status: getPlaybackStatus(playbackStep, index) }), [data, playbackStep]);
+  if (!data) return <div className="loading-state">正在载入调度任务…</div>;
+  const replay = () => setPlaybackStep(1);
+  return <div className="dispatch-page"><div className="dispatch-command"><div><p className="eyebrow">任务 / {data.taskId}</p><h2>暴雨道路湿滑 · 智能调度</h2></div><div className="command-actions"><StatusPill status="APPROVED"/><button className="button-primary" onClick={replay}><Play size={15}/>{playbackStep !== null ? "决策回放中" : "重新播放智能体决策"}</button></div></div><div className="detail-tabs">{["总览", "决策", "证据", "审计"].map((item) => <button key={item} onClick={() => setTab(item)} className={tab === item ? "selected" : ""}>{item}</button>)}</div>
+    <div className="dispatch-layout"><aside className="context-column"><section className="context-panel"><div className="panel-heading"><div><p className="eyebrow">异常上下文</p><h2>异常上下文</h2></div><CircleAlert size={18}/></div><DetailRow label="任务 ID" value={data.taskId}/><DetailRow label="运单" value={data.orderId}/><DetailRow label="司机" value={data.driver}/><DetailRow label="车辆" value={data.vehicle}/><DetailRow label="原路线" value={data.originalRoute}/><DetailRow label="异常" value={data.anomaly}/><div className="context-status"><span>严重程度</span><b className="risk risk-high">{localizeStatus(data.severity)}</b></div><div className="context-status"><span>状态</span><StatusPill status="SUCCESS"/></div><p className="description">{data.description}</p></section><section className="environment-panel"><div className="panel-heading"><div><p className="eyebrow">环境</p><h2>环境与降级</h2></div><span className="fallback-icon"><CircleAlert size={16}/></span></div><div className="environment-grid"><span>天气<strong>{data.environment.weather}</strong></span><span>道路<strong>{data.environment.road}</strong></span><span>风险<strong className="text-danger">{localizeStatus(data.environment.risk)}</strong></span><span>主要服务<strong className="text-amber">{data.environment.provider}</strong></span></div><div className="fallback-note"><span>已自动降级并继续完成调度</span><strong>{data.environment.fallback}</strong><small>超时 {data.environment.timeout} · 耗时 {data.environment.elapsed} · 熔断器 {data.environment.circuit}</small></div></section><section className="capacity-panel"><div className="panel-heading"><div><p className="eyebrow">运力</p><h2>运力状态</h2></div><StatusPill status="SUCCESS"/></div><div className="availability"><span>司机 <b>{data.capacity.driver}</b></span><span>车辆 <b>{data.capacity.vehicle}</b></span></div><LoadBar label="车辆载荷" value={data.capacity.vehicleLoad}/><LoadBar label="站点载荷" value={data.capacity.stationLoad}/></section></aside>
+      <main className="decision-column"><section className="route-decision"><div className="panel-heading"><div><p className="eyebrow">路线决策</p><h2>推荐路线：<span>102国道</span></h2></div><div className="decision-score"><small>AI 评分</small><strong>92</strong></div></div><RouteVisual/><div className="candidate-list">{data.candidates.map((route, index) => <button onClick={() => setActiveRoute(route.id)} className={`candidate ${activeRoute === route.id ? "selected" : ""} ${route.state?.toLowerCase() ?? ""}`} key={route.id}><span className="candidate-number">0{index + 1}</span><span className="candidate-name"><strong>{route.label}</strong><small>{route.distance} · {route.eta}</small></span><span className={`risk risk-${route.risk.toLowerCase()}`}>{localizeStatus(route.risk)}</span><span className="candidate-score"><b>{route.score}</b><small>评分</small></span>{route.state && <span className="candidate-state">{localizeStatus(route.state)}</span>}{route.reason && <small className="candidate-reason">{route.reason}</small>}</button>)}</div></section>
+        <section className="decision-reason"><div className="panel-heading"><div><p className="eyebrow">决策说明</p><h2>调度决策理由</h2></div><Sparkles size={18}/></div><p>{data.decisionReason}</p></section>
+        <section className={`memory-evidence ${memoryOpen ? "open" : ""}`}><button className="section-toggle" onClick={() => setMemoryOpen(!memoryOpen)}><span><BrainCircuit size={18}/><div><p className="eyebrow">实体记忆证据</p><h2>历史经验召回</h2></div></span><ChevronDown size={18}/></button>{memoryOpen && <div className="memory-body"><div className="memory-head"><div><strong>{data.memory.memoryId}</strong><span>相似度 {data.memory.similarity}</span></div><StatusPill status="SUCCESS"/></div><div className="memory-facts"><span>司机 <b>{data.memory.driver}</b></span><span>路线 <b>{data.memory.route}</b></span><span>异常 <b>{data.memory.anomaly}</b></span></div><div className="resolution"><small>历史解决方案</small><strong>{data.memory.resolution}</strong></div><div className="adopted-line"><Check size={15}/>已采纳记忆：<b>是</b></div></div>}</section>
+        <section className="memory-evidence open"><div className="section-toggle"><span><BrainCircuit size={18}/><div><p className="eyebrow">图记忆证据</p><h2>图记忆</h2></div></span><StatusPill status={data.graphMemory.used ? "SUCCESS" : "WAITING"}/></div><div className="memory-body"><DetailRow label="实体" value={data.graphMemory.entities.join(" · ") || "—"}/><DetailRow label="关系" value={data.graphMemory.facts.map(localizeRelationText).join("；") || "—"}/><DetailRow label="路径" value={data.graphMemory.paths.join("；") || "—"}/></div></section>
+        <section className={`audit-panel ${auditOpen ? "open" : ""}`}><button className="section-toggle" onClick={() => setAuditOpen(!auditOpen)}><span><ShieldCheck size={18}/><div><p className="eyebrow">最终审核</p><h2>审核结果</h2></div></span><ChevronDown size={18}/></button>{auditOpen && <div className="audit-body"><div className="audit-approved"><ShieldCheck size={21}/><div><strong>{localizeStatus(data.audit.status)}</strong><span>调度完成</span></div></div><div className="audit-checks">{data.audit.checks.map((check) => <span key={check}><Check size={14}/>{check}</span>)}</div></div>}</section></main>
+      <aside className="pipeline-column"><RuntimeWorkbench taskId={taskId} enabled mode="mock" events={[]}/><AgentPipeline agents={agents} onReplay={replay}/><section className="dispatch-result"><div className="panel-heading"><div><p className="eyebrow">调度结果</p><h2>执行结果</h2></div><RouteIcon size={18}/></div>{[["决策", data.dispatch.decision], ["原路线", data.dispatch.originalRoute], ["目标路线", data.dispatch.targetRoute], ["已执行", data.dispatch.executed ? "是" : "否"], ["版本", String(data.dispatch.version)], ["已采纳记忆", data.dispatch.memoryAdopted ? "是" : "否"], ["已使用降级", data.dispatch.fallbackUsed ? "是" : "否"]].map(([label, value]) => <DetailRow key={label} label={label} value={value}/>)}</section></aside>
+    </div></div>;
+}

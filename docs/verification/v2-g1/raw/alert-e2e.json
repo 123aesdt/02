@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-08-29T05:26:07.417097+00:00",
+  "alert": "CountyFlowDependencyDown",
+  "dependency": "neo4j",
+  "states": {
+    "pending": "2026-08-29T05:22:07.555353+00:00",
+    "firing": "2026-08-29T05:24:05.675099+00:00",
+    "resolved": "2026-08-29T05:26:07.415591+00:00"
+  },
+  "rule_for_unchanged": "2m",
+  "passed": true
+}

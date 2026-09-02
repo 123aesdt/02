@@ -1,0 +1,49 @@
+{
+  "as_of": "2026-08-28T08:44:49.7242210+08:00",
+  "overall": "COMPLETE",
+  "backend": {
+    "ruff": "PASS",
+    "pytest_passed": 525,
+    "pytest_skipped_default": 3,
+    "business_algorithm_changed": false,
+    "safe_dto_or_event_fields_only": true
+  },
+  "frontend": {
+    "lint": "PASS",
+    "lint_warnings": 0,
+    "test_files_passed": 17,
+    "tests_passed": 77,
+    "production_build": "PASS"
+  },
+  "browser": {
+    "runner": "Playwright",
+    "data_mode": "api",
+    "scenarios_passed": 1,
+    "scenarios_failed": 0,
+    "console_errors": 0,
+    "page_errors": 0,
+    "viewports": [1440, 1920],
+    "screenshots": 12,
+    "result": "docs/verification/v2-f/raw/browser-e2e.json"
+  },
+  "docker": {
+    "declared_services": 9,
+    "running_services": 8,
+    "migration_exit_code": 0,
+    "redis_pending": 0
+  },
+  "security": {
+    "secret_scan_findings": 0,
+    "embedding_api_called": false,
+    "env_ignored": true,
+    "docker_env_ignored": true
+  },
+  "git": {
+    "diff_check": "PASS",
+    "cached_diff_check": "PASS",
+    "commit_created": false,
+    "author_changed": false
+  },
+  "v2e_heavy_acceptance_rerun": false,
+  "quality_gate": "PASS"
+}

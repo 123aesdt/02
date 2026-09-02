@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-08-29T05:18:28.908394+00:00",
+  "health": "ok",
+  "datasource_uid": "countyflow-prometheus",
+  "dashboard_uid": "countyflow-v2-operations",
+  "passed": true
+}

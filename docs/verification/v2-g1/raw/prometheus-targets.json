@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-08-29T05:18:28.907874+00:00",
+  "targets": {
+    "backend": "up",
+    "worker-1": "up",
+    "worker-2": "up"
+  },
+  "required_metric_families": [
+    "countyflow_http_requests_total",
+    "countyflow_agent_duration_seconds",
+    "countyflow_vector_recall_total",
+    "countyflow_graph_queries_total",
+    "countyflow_checkpoint_operations_total",
+    "countyflow_runtime_overrides_total",
+    "countyflow_worker_messages_total",
+    "countyflow_dependency_up"
+  ],
+  "real_dispatch_task_id": "TASK-f2fc259281574852b20d093f77d1dbd",
+  "agent_execution_delta": 8.0,
+  "graph_query_delta": 1.0,
+  "passed": true
+}

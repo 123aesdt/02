@@ -1,0 +1,11 @@
+{
+  "sample_context": "50-user Locust load window",
+  "containers": [
+    {"name": "countyflow-ai-backend-1", "cpu_percent": 7.10, "memory_usage": "161.6MiB", "memory_percent": 2.14},
+    {"name": "countyflow-ai-mysql-1", "cpu_percent": 0.52, "memory_usage": "527.1MiB", "memory_percent": 6.99},
+    {"name": "countyflow-ai-redis-1", "cpu_percent": 0.48, "memory_usage": "16.21MiB", "memory_percent": 0.22},
+    {"name": "countyflow-ai-qdrant-1", "cpu_percent": 0.32, "memory_usage": "204.7MiB", "memory_percent": 2.72},
+    {"name": "countyflow-ai-worker-1-1", "cpu_percent": 0.27, "memory_usage": "117.3MiB", "memory_percent": 1.56},
+    {"name": "countyflow-ai-worker-2-1", "cpu_percent": 0.25, "memory_usage": "118.3MiB", "memory_percent": 1.57}
+  ]
+}

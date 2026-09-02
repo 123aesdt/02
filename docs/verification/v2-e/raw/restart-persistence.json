@@ -1,0 +1,161 @@
+{
+  "before": {
+    "mysql": {
+      "audit_records": 2334,
+      "dispatches": 2335,
+      "runtime_overrides": 580,
+      "runtime_threads": 2917,
+      "shared_memory_facts": 2
+    },
+    "neo4j": {
+      "constraints": [
+        "graph_entity_key_unique"
+      ],
+      "entities": 83,
+      "indexes": [
+        "graph_entity_id_index",
+        "graph_entity_key_unique",
+        "graph_entity_type_index",
+        "index_343aff4e",
+        "index_f7700477"
+      ],
+      "projection_statuses": {
+        "ACTIVE": 2
+      },
+      "relations": 16
+    },
+    "qdrant": {
+      "entity_resolution_memory": 3
+    },
+    "runtime": {
+      "checkpoint_available": true,
+      "checkpoint_history": 8,
+      "checkpoint_id": "1f1a20d7-3e9a-669a-8009-b9348c52717b",
+      "state_version": 9,
+      "task_event_count": 33,
+      "task_stream_pending": 0,
+      "vehicle_status": "BROKEN"
+    }
+  },
+  "passed": true,
+  "source_task_id": "TASK-0c70ae78980746cdb24bba12a797944",
+  "source_thread_id": "cf:dispatch:TASK-0c70ae78980746cdb24bba12a797944",
+  "steps": {
+    "compose_full_restart": {
+      "after": {
+        "marker_persisted": true,
+        "mysql": {
+          "audit_records": 2334,
+          "dispatches": 2335,
+          "runtime_overrides": 580,
+          "runtime_threads": 2917,
+          "shared_memory_facts": 2
+        },
+        "neo4j": {
+          "constraints": [
+            "graph_entity_key_unique"
+          ],
+          "entities": 83,
+          "indexes": [
+            "graph_entity_id_index",
+            "graph_entity_key_unique",
+            "graph_entity_type_index",
+            "index_343aff4e",
+            "index_f7700477"
+          ],
+          "projection_statuses": {
+            "ACTIVE": 2
+          },
+          "relations": 16
+        },
+        "qdrant": {
+          "entity_resolution_memory": 3
+        },
+        "runtime": {
+          "checkpoint_available": true,
+          "checkpoint_history": 8,
+          "checkpoint_id": "1f1a20d7-3e9a-669a-8009-b9348c52717b",
+          "state_version": 9,
+          "task_event_count": 33,
+          "task_stream_pending": 0,
+          "vehicle_status": "BROKEN"
+        }
+      },
+      "migration_exit_code": 0,
+      "passed": true,
+      "running_services": [
+        "backend",
+        "frontend",
+        "mysql",
+        "neo4j",
+        "qdrant",
+        "redis",
+        "worker-1",
+        "worker-2"
+      ],
+      "services": [
+        "mysql",
+        "neo4j",
+        "qdrant",
+        "redis",
+        "migration",
+        "worker-1",
+        "worker-2",
+        "backend",
+        "frontend"
+      ],
+      "volumes_removed": false
+    },
+    "mysql_restart": {
+      "after": {
+        "audit_records": 2334,
+        "dispatches": 2335,
+        "runtime_overrides": 580,
+        "runtime_threads": 2917,
+        "shared_memory_facts": 2
+      },
+      "passed": true
+    },
+    "neo4j_restart": {
+      "after": {
+        "constraints": [
+          "graph_entity_key_unique"
+        ],
+        "entities": 83,
+        "indexes": [
+          "graph_entity_id_index",
+          "graph_entity_key_unique",
+          "graph_entity_type_index",
+          "index_343aff4e",
+          "index_f7700477"
+        ],
+        "projection_statuses": {
+          "ACTIVE": 2
+        },
+        "relations": 16
+      },
+      "passed": true
+    },
+    "qdrant_restart": {
+      "after": {
+        "entity_resolution_memory": 3
+      },
+      "passed": true
+    },
+    "redis_restart": {
+      "aof_marker_persisted": true,
+      "lock_owner_release": true,
+      "lock_preserved": true,
+      "passed": true,
+      "runtime": {
+        "checkpoint_available": true,
+        "checkpoint_history": 8,
+        "checkpoint_id": "1f1a20d7-3e9a-669a-8009-b9348c52717b",
+        "state_version": 9,
+        "task_event_count": 33,
+        "task_stream_pending": 0,
+        "vehicle_status": "BROKEN"
+      }
+    }
+  }
+}

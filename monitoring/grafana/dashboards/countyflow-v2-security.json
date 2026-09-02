@@ -1,0 +1,48 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Authentication Failures",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "countyflow-prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (reason_code, route_class) (rate(countyflow_authentication_failures_total[5m]))"}]
+    },
+    {
+      "id": 2,
+      "title": "Authorization Denials",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "countyflow-prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (reason_code, route_class) (rate(countyflow_authorization_denied_total[5m]))"}]
+    },
+    {
+      "id": 3,
+      "title": "Rate Limit Exceeded",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "countyflow-prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (reason_code, route_class) (rate(countyflow_rate_limit_exceeded_total[5m]))"}]
+    },
+    {
+      "id": 4,
+      "title": "WebSocket Ticket Rejections",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "countyflow-prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (reason_code, route_class) (rate(countyflow_ws_ticket_rejected_total[5m]))"}]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["countyflow", "security"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "CountyFlow V2 Security",
+  "uid": "countyflow-v2-security",
+  "version": 1
+}

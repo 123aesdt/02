@@ -1,0 +1,19 @@
+import { Database, ShieldCheck } from "lucide-react";
+
+import { ProjectionStatus } from "./projection-status";
+import type { SharedMemoryFactDetail } from "../types/memory";
+import { useHasPermission } from "../auth/auth-state";
+import { localizeStatus } from "../utils/presentation-labels";
+
+function value(value: string | null | undefined) { return value || "—"; }
+
+export function SharedMemoryControl({ factKey, onFactKeyChange, data, loading, error, demo }: { factKey: string; onFactKeyChange: (value: string) => void; data: SharedMemoryFactDetail | null; loading: boolean; error: string | null; demo: boolean }) {
+  const canMutate = useHasPermission("memory:mutate");
+  return <section className="workspace-panel memory-control-panel"><div className="panel-heading"><div><p className="eyebrow">MYSQL 控制平面</p><h2>共享记忆控制平面</h2></div><span className={`source-label ${demo ? "demo" : "live"}`}>{demo ? "演示数据" : "实时 API"}</span></div>
+    <div className="memory-control-toolbar"><label><Database size={15}/><input aria-label="规范事实键" value={factKey} onChange={(event) => onFactKeyChange(event.target.value)} placeholder="smf_<sha256>"/></label><button type="button" className="button-secondary" disabled>人工确认</button><span className="authorization-note"><ShieldCheck size={14}/>{canMutate ? "具备 memory:mutate；当前版本未开放写入表单" : "授权尚未配置（缺少 memory:mutate），写入操作不可用"}</span></div>
+    {loading ? <p className="memory-control-empty">正在读取规范事实…</p> : null}
+    {error ? <p className="error-banner">{error}</p> : null}
+    {!loading && !error && !data ? <p className="memory-control-empty">输入规范事实键查看当前事实与有界历史。API 模式不会回退演示数据。</p> : null}
+    {data ? <div className="memory-control-content"><div className="memory-control-summary control-plane-grid"><span><small>规范事实</small><strong>{data.fact_key}</strong></span><span><small>分类 / 类型</small><strong>{value(data.category)} · {value(data.fact_kind)}</strong></span><span><small>主体</small><strong>{value(data.subject_type)}:{value(data.subject_id)}</strong></span><span><small>谓词</small><strong>{value(data.predicate)}</strong></span><span><small>版本</small><strong>版本 {data.version}</strong></span><span><small>置信度</small><strong>{data.confidence}</strong></span><span><small>状态</small><strong>{localizeStatus(data.status)}</strong></span><span><small>过期时间</small><strong>{value(data.expires_at)}</strong></span><span><small>Qdrant 投影</small><strong>{value(data.vector_memory_id)}</strong></span><span><small>Neo4j 投影</small><strong>{value(data.graph_fact_key)}</strong></span><span><small>最近变更</small><strong>{value(data.last_mutation_id)}</strong></span><span><small>更新时间</small><strong>{value(data.updated_at)}</strong></span></div><pre className="memory-current-value">{JSON.stringify(data.value_json, null, 2)}</pre><div className="mutation-heading"><div><p className="eyebrow">仅追加历史</p><h3>记忆变更历史</h3></div><span>{data.mutations.length} 条记录</span></div><div className="table-wrap"><table><thead><tr><th>变更</th><th>决策</th><th>状态</th><th>版本</th><th>置信度</th><th>操作人 / 来源</th><th>Qdrant</th><th>Neo4j</th><th>时间</th><th>原因 / 错误</th></tr></thead><tbody>{data.mutations.map((mutation) => <tr key={mutation.mutation_id}><td>{mutation.mutation_id}</td><td>{localizeStatus(mutation.decision)}</td><td>{localizeStatus(mutation.status)}</td><td>{mutation.before_version ?? "—"} → {mutation.after_version ?? "—"}</td><td>{value(mutation.incoming_confidence)}</td><td>{value(mutation.operator_id)}<small className="table-subline">{value(mutation.source_type)} · {value(mutation.source_id)}</small></td><td><ProjectionStatus status={mutation.vector_status}/></td><td><ProjectionStatus status={mutation.graph_status}/></td><td>{value(mutation.completed_at ?? mutation.created_at)}</td><td>{localizeStatus(mutation.error_code ?? mutation.reason_code ?? "—")}</td></tr>)}</tbody></table></div></div> : null}
+  </section>;
+}

@@ -1,0 +1,841 @@
+{
+  "as_of": "2026-08-27T02:58:34.242228+00:00",
+  "provider": "deterministic-functional-no-credential",
+  "provider_base_host": null,
+  "model": null,
+  "dimension": 128,
+  "formal_real_embedding": false,
+  "credential_status": "REAL EMBEDDING BENCHMARK BLOCKED BY CREDENTIAL",
+  "qdrant_url_kind": "server",
+  "collection": "entity_resolution_memory_benchmark",
+  "collection_points": 10,
+  "dataset_size": 50,
+  "memory_count": 10,
+  "top1_correct": null,
+  "top1_accuracy": null,
+  "top3_hits": null,
+  "top3_hit_rate": null,
+  "functional_fake_results": {
+    "top1_correct": 43,
+    "top1_accuracy": 0.86,
+    "top3_hits": 50,
+    "top3_hit_rate": 1.0,
+    "not_formal": true
+  },
+  "failed_query_count": 7,
+  "failed_queries": [
+    {
+      "query_id": "query-005",
+      "query_text": "雨后新平路打滑但未封闭，查询李司机相似调度记录",
+      "expected_top1": "memory-rain-li",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.20861523,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-rain-li",
+        "memory-fog-chen"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-006",
+      "query_text": "王师傅北山路遇到大雪封路如何绕行",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.1950649,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-landslide-qian",
+        "memory-snow-wang"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-010",
+      "query_text": "北山路是积雪封堵而非普通湿滑，应召回哪次经验",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.1565846,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-snow-wang",
+        "memory-rain-li"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-013",
+      "query_text": "河边线路看不清，历史浓雾处置记录",
+      "expected_top1": "memory-fog-chen",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.24325639,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-landslide-qian",
+        "memory-fog-chen"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-018",
+      "query_text": "桥面积水导致道路中断，查询赵师傅历史方案",
+      "expected_top1": "memory-flood-zhao",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.28319693,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-flood-zhao",
+        "memory-snow-wang"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-030",
+      "query_text": "中心站容量问题而非车辆问题，查询分流记录",
+      "expected_top1": "memory-station-liu",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.109710306,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-station-liu",
+        "memory-cold-zheng"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-040",
+      "query_text": "老城路是施工不是积水，找对应改道经验",
+      "expected_top1": "memory-construction-wu",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.16374467,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-construction-wu",
+        "memory-landslide-qian"
+      ],
+      "correct": false
+    }
+  ],
+  "retrieval_representation": {
+    "memory": "司机 {driver_id} 路线 {route_id} 异常 {anomaly_type} 解决方案 {resolution_text} {metadata.text}",
+    "query": "raw benchmark query text",
+    "ranking": "Qdrant cosine similarity Top-K without manual reranking"
+  },
+  "adoption": {
+    "cases": [
+      {
+        "case_id": "valid-rain-route",
+        "valid": true,
+        "expected_adopted": true,
+        "actual_adopted": true,
+        "recommended_route": "national-102",
+        "passed": true
+      },
+      {
+        "case_id": "valid-construction-route",
+        "valid": true,
+        "expected_adopted": true,
+        "actual_adopted": true,
+        "recommended_route": "national-102",
+        "passed": true
+      },
+      {
+        "case_id": "valid-flood-route",
+        "valid": true,
+        "expected_adopted": true,
+        "actual_adopted": true,
+        "recommended_route": "county-308",
+        "passed": true
+      },
+      {
+        "case_id": "valid-snow-route",
+        "valid": true,
+        "expected_adopted": true,
+        "actual_adopted": true,
+        "recommended_route": "county-308",
+        "passed": true
+      },
+      {
+        "case_id": "invalid-low-score",
+        "valid": false,
+        "expected_adopted": false,
+        "actual_adopted": false,
+        "recommended_route": "national-102",
+        "passed": true
+      },
+      {
+        "case_id": "invalid-unknown-route",
+        "valid": false,
+        "expected_adopted": false,
+        "actual_adopted": false,
+        "recommended_route": "national-102",
+        "passed": true
+      },
+      {
+        "case_id": "invalid-capacity",
+        "valid": false,
+        "expected_adopted": false,
+        "actual_adopted": false,
+        "recommended_route": null,
+        "passed": true
+      }
+    ],
+    "valid_sample_count": 4,
+    "valid_adoption_rate": 1.0,
+    "invalid_sample_count": 3,
+    "invalid_adoption_rate": 0.0,
+    "passed": true
+  },
+  "queries": [
+    {
+      "query_id": "query-001",
+      "query_text": "李师傅在新平路送货，暴雨后路面很滑怎么办",
+      "expected_top1": "memory-rain-li",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.23145503,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-fog-chen",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-002",
+      "query_text": "司机李师傅，新平路，雨天轮胎打滑，需要历史建议",
+      "expected_top1": "memory-rain-li",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.25877458,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-fog-chen",
+        "memory-snow-wang"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-003",
+      "query_text": "新平路湿滑风险，李师傅应选择哪条替代路线",
+      "expected_top1": "memory-rain-li",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.269374,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-fog-chen",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-004",
+      "query_text": "李师傅 遇到大雨 新平 路况滑 有无处置经验",
+      "expected_top1": "memory-rain-li",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.1454786,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-snow-wang",
+        "memory-battery-sun"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-005",
+      "query_text": "雨后新平路打滑但未封闭，查询李司机相似调度记录",
+      "expected_top1": "memory-rain-li",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.20861523,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-rain-li",
+        "memory-fog-chen"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-006",
+      "query_text": "王师傅北山路遇到大雪封路如何绕行",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.1950649,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-landslide-qian",
+        "memory-snow-wang"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-007",
+      "query_text": "北山积雪，司机王，需要防滑和替代道路方案",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-snow-wang",
+      "top1_score": 0.3904344,
+      "top3_ids": [
+        "memory-snow-wang",
+        "memory-landslide-qian",
+        "memory-station-liu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-008",
+      "query_text": "雪天北山道路不通，历史上王师傅怎么处理",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-snow-wang",
+      "top1_score": 0.14724205,
+      "top3_ids": [
+        "memory-snow-wang",
+        "memory-rain-li",
+        "memory-capacity-zhou"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-009",
+      "query_text": "王 师傅 北山 路 雪堵 防滑链 方案",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-snow-wang",
+      "top1_score": 0.43314812,
+      "top3_ids": [
+        "memory-snow-wang",
+        "memory-landslide-qian",
+        "memory-station-liu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-010",
+      "query_text": "北山路是积雪封堵而非普通湿滑，应召回哪次经验",
+      "expected_top1": "memory-snow-wang",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.1565846,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-snow-wang",
+        "memory-rain-li"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-011",
+      "query_text": "陈师傅沿河路遇浓雾能见度很低如何调度",
+      "expected_top1": "memory-fog-chen",
+      "actual_top1": "memory-fog-chen",
+      "top1_score": 0.13699915,
+      "top3_ids": [
+        "memory-fog-chen",
+        "memory-flood-zhao",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-012",
+      "query_text": "沿河道路大雾，陈司机需要低速绕行建议",
+      "expected_top1": "memory-fog-chen",
+      "actual_top1": "memory-fog-chen",
+      "top1_score": 0.21556325,
+      "top3_ids": [
+        "memory-fog-chen",
+        "memory-landslide-qian",
+        "memory-construction-wu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-013",
+      "query_text": "河边线路看不清，历史浓雾处置记录",
+      "expected_top1": "memory-fog-chen",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.24325639,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-landslide-qian",
+        "memory-fog-chen"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-014",
+      "query_text": "陈师傅 河 路 雾 很大 能见度低",
+      "expected_top1": "memory-fog-chen",
+      "actual_top1": "memory-fog-chen",
+      "top1_score": 0.2518699,
+      "top3_ids": [
+        "memory-fog-chen",
+        "memory-rain-li",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-015",
+      "query_text": "沿河路是雾不是积雪，找对应安全路线经验",
+      "expected_top1": "memory-fog-chen",
+      "actual_top1": "memory-fog-chen",
+      "top1_score": 0.2602984,
+      "top3_ids": [
+        "memory-fog-chen",
+        "memory-rain-li",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-016",
+      "query_text": "赵师傅发现南桥积水无法通过应如何绕行",
+      "expected_top1": "memory-flood-zhao",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.3147326,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-rain-li",
+        "memory-construction-wu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-017",
+      "query_text": "南桥被水淹，赵司机需要替代县道路由",
+      "expected_top1": "memory-flood-zhao",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.33704692,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-snow-wang",
+        "memory-fog-chen"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-018",
+      "query_text": "桥面积水导致道路中断，查询赵师傅历史方案",
+      "expected_top1": "memory-flood-zhao",
+      "actual_top1": "memory-rain-li",
+      "top1_score": 0.28319693,
+      "top3_ids": [
+        "memory-rain-li",
+        "memory-flood-zhao",
+        "memory-snow-wang"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-019",
+      "query_text": "赵 师傅 南桥 积 水 绕行",
+      "expected_top1": "memory-flood-zhao",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.3108483,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-rain-li",
+        "memory-construction-wu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-020",
+      "query_text": "南桥是洪水积水而不是大雾，召回正确记录",
+      "expected_top1": "memory-flood-zhao",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.20218927,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-fog-chen",
+        "memory-station-liu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-021",
+      "query_text": "孙师傅东线新能源车电量不足如何继续配送",
+      "expected_top1": "memory-battery-sun",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.29524067,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-cold-zheng",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-022",
+      "query_text": "司机孙，东站附近车辆低电，需要换车",
+      "expected_top1": "memory-battery-sun",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.31039095,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-capacity-zhou",
+        "memory-station-liu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-023",
+      "query_text": "配送车电池告急，历史备用车辆处置",
+      "expected_top1": "memory-battery-sun",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.25522134,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-cold-zheng",
+        "memory-capacity-zhou"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-024",
+      "query_text": "孙师傅 东线 电 量 不足 备用车",
+      "expected_top1": "memory-battery-sun",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.433963,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-cold-zheng",
+        "memory-capacity-zhou"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-025",
+      "query_text": "东线问题是车辆电池而非道路封闭，找换车经验",
+      "expected_top1": "memory-battery-sun",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.2083269,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-capacity-zhou",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-026",
+      "query_text": "刘师傅到中心站发现站点拥堵如何分流",
+      "expected_top1": "memory-station-liu",
+      "actual_top1": "memory-station-liu",
+      "top1_score": 0.3052101,
+      "top3_ids": [
+        "memory-station-liu",
+        "memory-battery-sun",
+        "memory-flood-zhao"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-027",
+      "query_text": "中心站超负荷，刘司机应去哪个备用站",
+      "expected_top1": "memory-station-liu",
+      "actual_top1": "memory-station-liu",
+      "top1_score": 0.26653758,
+      "top3_ids": [
+        "memory-station-liu",
+        "memory-cold-zheng",
+        "memory-battery-sun"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-028",
+      "query_text": "卸货站排队严重，需要历史站点分流方案",
+      "expected_top1": "memory-station-liu",
+      "actual_top1": "memory-station-liu",
+      "top1_score": 0.33573115,
+      "top3_ids": [
+        "memory-station-liu",
+        "memory-capacity-zhou",
+        "memory-battery-sun"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-029",
+      "query_text": "刘 师傅 中心 站 拥堵 北站",
+      "expected_top1": "memory-station-liu",
+      "actual_top1": "memory-station-liu",
+      "top1_score": 0.36484528,
+      "top3_ids": [
+        "memory-station-liu",
+        "memory-battery-sun",
+        "memory-snow-wang"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-030",
+      "query_text": "中心站容量问题而非车辆问题，查询分流记录",
+      "expected_top1": "memory-station-liu",
+      "actual_top1": "memory-battery-sun",
+      "top1_score": 0.109710306,
+      "top3_ids": [
+        "memory-battery-sun",
+        "memory-station-liu",
+        "memory-cold-zheng"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-031",
+      "query_text": "周师傅西线装载能力不足如何完成运单",
+      "expected_top1": "memory-capacity-zhou",
+      "actual_top1": "memory-capacity-zhou",
+      "top1_score": 0.15774912,
+      "top3_ids": [
+        "memory-capacity-zhou",
+        "memory-flood-zhao",
+        "memory-battery-sun"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-032",
+      "query_text": "西线运力短缺，周司机需要拆单增派车辆",
+      "expected_top1": "memory-capacity-zhou",
+      "actual_top1": "memory-capacity-zhou",
+      "top1_score": 0.4557197,
+      "top3_ids": [
+        "memory-capacity-zhou",
+        "memory-battery-sun",
+        "memory-snow-wang"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-033",
+      "query_text": "货物超过当前车辆能力，历史运力补充方案",
+      "expected_top1": "memory-capacity-zhou",
+      "actual_top1": "memory-capacity-zhou",
+      "top1_score": 0.37717116,
+      "top3_ids": [
+        "memory-capacity-zhou",
+        "memory-battery-sun",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-034",
+      "query_text": "周师傅 西线 运 力 不足 拆分",
+      "expected_top1": "memory-capacity-zhou",
+      "actual_top1": "memory-capacity-zhou",
+      "top1_score": 0.33415943,
+      "top3_ids": [
+        "memory-capacity-zhou",
+        "memory-snow-wang",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-035",
+      "query_text": "西线是容量不足不是电量不足，召回拆单经验",
+      "expected_top1": "memory-capacity-zhou",
+      "actual_top1": "memory-capacity-zhou",
+      "top1_score": 0.20196743,
+      "top3_ids": [
+        "memory-capacity-zhou",
+        "memory-battery-sun",
+        "memory-station-liu"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-036",
+      "query_text": "吴师傅遇到老城路施工管制应如何绕行",
+      "expected_top1": "memory-construction-wu",
+      "actual_top1": "memory-construction-wu",
+      "top1_score": 0.1729286,
+      "top3_ids": [
+        "memory-construction-wu",
+        "memory-flood-zhao",
+        "memory-cold-zheng"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-037",
+      "query_text": "老城区道路施工，吴司机需要替代主干道",
+      "expected_top1": "memory-construction-wu",
+      "actual_top1": "memory-construction-wu",
+      "top1_score": 0.21383429,
+      "top3_ids": [
+        "memory-construction-wu",
+        "memory-flood-zhao",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-038",
+      "query_text": "道路因工程封闭，查询老城历史绕行记录",
+      "expected_top1": "memory-construction-wu",
+      "actual_top1": "memory-construction-wu",
+      "top1_score": 0.06917144,
+      "top3_ids": [
+        "memory-construction-wu",
+        "memory-landslide-qian",
+        "memory-capacity-zhou"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-039",
+      "query_text": "吴 师傅 老城 路 施 工 绕行",
+      "expected_top1": "memory-construction-wu",
+      "actual_top1": "memory-construction-wu",
+      "top1_score": 0.21452907,
+      "top3_ids": [
+        "memory-construction-wu",
+        "memory-flood-zhao",
+        "memory-landslide-qian"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-040",
+      "query_text": "老城路是施工不是积水，找对应改道经验",
+      "expected_top1": "memory-construction-wu",
+      "actual_top1": "memory-flood-zhao",
+      "top1_score": 0.16374467,
+      "top3_ids": [
+        "memory-flood-zhao",
+        "memory-construction-wu",
+        "memory-landslide-qian"
+      ],
+      "correct": false
+    },
+    {
+      "query_id": "query-041",
+      "query_text": "郑师傅冷链车辆温度报警如何保护货物",
+      "expected_top1": "memory-cold-zheng",
+      "actual_top1": "memory-cold-zheng",
+      "top1_score": 0.28293115,
+      "top3_ids": [
+        "memory-cold-zheng",
+        "memory-battery-sun",
+        "memory-capacity-zhou"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-042",
+      "query_text": "冷藏车温控异常，郑司机需要备用冷链车",
+      "expected_top1": "memory-cold-zheng",
+      "actual_top1": "memory-cold-zheng",
+      "top1_score": 0.49730986,
+      "top3_ids": [
+        "memory-cold-zheng",
+        "memory-battery-sun",
+        "memory-fog-chen"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-043",
+      "query_text": "生鲜运输温度升高，查询优先配送历史方案",
+      "expected_top1": "memory-cold-zheng",
+      "actual_top1": "memory-cold-zheng",
+      "top1_score": 0.17107978,
+      "top3_ids": [
+        "memory-cold-zheng",
+        "memory-capacity-zhou",
+        "memory-battery-sun"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-044",
+      "query_text": "郑 师傅 冷链 温 度 报警 转移",
+      "expected_top1": "memory-cold-zheng",
+      "actual_top1": "memory-cold-zheng",
+      "top1_score": 0.3460259,
+      "top3_ids": [
+        "memory-cold-zheng",
+        "memory-snow-wang",
+        "memory-fog-chen"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-045",
+      "query_text": "当前是冷藏温控问题而非普通电量不足，找对应经验",
+      "expected_top1": "memory-cold-zheng",
+      "actual_top1": "memory-cold-zheng",
+      "top1_score": 0.20823167,
+      "top3_ids": [
+        "memory-cold-zheng",
+        "memory-rain-li",
+        "memory-fog-chen"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-046",
+      "query_text": "钱师傅山区道路出现滑坡风险应如何绕行",
+      "expected_top1": "memory-landslide-qian",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.27714348,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-flood-zhao",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-047",
+      "query_text": "山路可能塌方，钱司机需要关闭路线并改道",
+      "expected_top1": "memory-landslide-qian",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.41513908,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-snow-wang",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-048",
+      "query_text": "边坡松动威胁山区线路，查询历史安全处置",
+      "expected_top1": "memory-landslide-qian",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.26631182,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-rain-li",
+        "memory-capacity-zhou"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-049",
+      "query_text": "钱 师傅 山 路 滑坡 风险 县道",
+      "expected_top1": "memory-landslide-qian",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.36184654,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-snow-wang",
+        "memory-rain-li"
+      ],
+      "correct": true
+    },
+    {
+      "query_id": "query-050",
+      "query_text": "山路是滑坡隐患不是施工管制，召回封路经验",
+      "expected_top1": "memory-landslide-qian",
+      "actual_top1": "memory-landslide-qian",
+      "top1_score": 0.30129746,
+      "top3_ids": [
+        "memory-landslide-qian",
+        "memory-construction-wu",
+        "memory-rain-li"
+      ],
+      "correct": true
+    }
+  ]
+}

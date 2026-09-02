@@ -1,0 +1,48 @@
+{
+  "as_of": "2026-08-27T21:16:56.969892+08:00",
+  "overall": "COMPLETE",
+  "backend": {
+    "ruff": "PASS",
+    "pytest_passed": 512,
+    "pytest_skipped_default": 3,
+    "real_redis_integration_passed": 2,
+    "real_shared_memory_integration_passed": 1
+  },
+  "frontend": {
+    "lint": "PASS",
+    "test_files_passed": 13,
+    "tests_passed": 64,
+    "production_build": "PASS",
+    "playwright_scenarios_passed": 7
+  },
+  "quality_gate": "PASS",
+  "docker": {
+    "declared_services": 9,
+    "healthy_running_services": 8,
+    "migration_exit_code": 0,
+    "redis_pending": 0
+  },
+  "security": {
+    "secret_scan_findings": 0
+  },
+  "git": {
+    "diff_check": "PASS",
+    "cached_diff_check": "PASS",
+    "commit_created": false,
+    "author_changed": false
+  },
+  "external_vector_regression": {
+    "model": "Qwen/Qwen3-Embedding-4B",
+    "endpoint_host": "api.siliconflow.cn",
+    "dimension": 2560,
+    "dataset_size": 50,
+    "memory_count": 10,
+    "top1_correct": 49,
+    "top1_accuracy": 0.98,
+    "top3_correct": 50,
+    "top3_hit_rate": 1.0,
+    "failed_queries": ["query-045"],
+    "status": "VERIFIED",
+    "result_artifact": "docs/verification/v2-e/raw/v2-e-real-embedding-regression.json"
+  }
+}

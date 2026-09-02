@@ -1,0 +1,74 @@
+{
+  "workload": [
+    "health",
+    "task submit/status/result",
+    "runtime thread GET",
+    "runtime override POST",
+    "Qdrant vector query",
+    "Neo4j bounded graph query",
+    "shared memory mutation"
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "duration_seconds": 60,
+      "users": 50,
+      "spawn_rate_per_second": 25,
+      "requests": 23697,
+      "failures": 0,
+      "qps": 400.071,
+      "p50_ms": 78.0,
+      "p95_ms": 190.0,
+      "p99_ms": 260.0,
+      "error_rate_percent": 0.0,
+      "graph_requests": 189,
+      "graph_p95_ms": 8.0,
+      "stats_csv": "docs\\verification\\v2-e\\raw\\locust-v2e-run-1_stats.csv",
+      "html": "docs\\verification\\v2-e\\raw\\locust-v2e-run-1.html",
+      "passed": true
+    },
+    {
+      "run": 2,
+      "duration_seconds": 60,
+      "users": 50,
+      "spawn_rate_per_second": 25,
+      "requests": 24955,
+      "failures": 0,
+      "qps": 420.842,
+      "p50_ms": 70.0,
+      "p95_ms": 200.0,
+      "p99_ms": 280.0,
+      "error_rate_percent": 0.0,
+      "graph_requests": 240,
+      "graph_p95_ms": 9.0,
+      "stats_csv": "docs\\verification\\v2-e\\raw\\locust-v2e-run-2_stats.csv",
+      "html": "docs\\verification\\v2-e\\raw\\locust-v2e-run-2.html",
+      "passed": true
+    },
+    {
+      "run": 3,
+      "duration_seconds": 60,
+      "users": 50,
+      "spawn_rate_per_second": 25,
+      "requests": 25016,
+      "failures": 0,
+      "qps": 422.349,
+      "p50_ms": 71.0,
+      "p95_ms": 190.0,
+      "p99_ms": 280.0,
+      "error_rate_percent": 0.0,
+      "graph_requests": 219,
+      "graph_p95_ms": 8.0,
+      "stats_csv": "docs\\verification\\v2-e\\raw\\locust-v2e-run-3_stats.csv",
+      "html": "docs\\verification\\v2-e\\raw\\locust-v2e-run-3.html",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "minimum_qps": 400.071,
+    "maximum_p95_ms": 200.0,
+    "maximum_graph_p95_ms": 9.0,
+    "maximum_error_rate_percent": 0.0,
+    "passed": true
+  }
+}

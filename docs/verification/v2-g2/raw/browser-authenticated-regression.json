@@ -1,0 +1,448 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "v2e-normal-routing.spec.ts",
+      "v2e-memory-reconcile.spec.ts",
+      "runtime-override-success.spec.ts",
+      "runtime-override-stale.spec.ts",
+      "runtime-override-concurrent.spec.ts",
+      "runtime-override-terminal.spec.ts",
+      "runtime-override-forbidden.spec.ts"
+    ],
+    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\docs\\verification\\v2-g2\\raw\\browser-authenticated-regression.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "runtime-override-concurrent.spec.ts",
+      "file": "runtime-override-concurrent.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_concurrent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4656,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:17:34.210Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e7ca9d60ba6518969dbd-19464c075bb1c57da1dc",
+          "file": "runtime-override-concurrent.spec.ts",
+          "line": 8,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-forbidden.spec.ts",
+      "file": "runtime-override-forbidden.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_forbidden",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 283,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:17:39.205Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "bb237a371c9198addd62-6125c8548465daed2a98",
+          "file": "runtime-override-forbidden.spec.ts",
+          "line": 6,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-stale.spec.ts",
+      "file": "runtime-override-stale.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_stale",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3605,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:17:39.512Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eac03db4a630752cd944-5c14798d0482e522783a",
+          "file": "runtime-override-stale.spec.ts",
+          "line": 8,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-success.spec.ts",
+      "file": "runtime-override-success.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [
+                {
+                  "type": "runtime-request-count",
+                  "description": "{\"stable_window\":[6,6],\"total\":32,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-88a8d526744243cc82549757d996fd4\":11,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/history\":10,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/intervention\":5,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/overrides\":6}}"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11733,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "buffer": "RXJyb3IgcmVzcG9uc2UgZnJvbSBkYWVtb246IENvbnRhaW5lciA2YzljYjQ0N2ZhYjI3YWRiOTk2NDUyOGQ4OGRlZmRmNDE1NDAzNGY1MWVhYTM1NDU5ZDZlYTNjM2MxNGQ3NmQyIGlzIG5vdCBwYXVzZWQK"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:17:43.138Z",
+                  "annotations": [
+                    {
+                      "type": "runtime-request-count",
+                      "description": "{\"stable_window\":[6,6],\"total\":32,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-88a8d526744243cc82549757d996fd4\":11,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/history\":10,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/intervention\":5,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/overrides\":6}}"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "45e3fd794aec716dbc71-2f439ca6073621e3a6bf",
+          "file": "runtime-override-success.spec.ts",
+          "line": 10,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "runtime-override-terminal.spec.ts",
+      "file": "runtime-override-terminal.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_browser_runtime_override_terminal",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1413,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:17:54.886Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e4d2c73a241ef2e6137c-9e3e85a404f1698b16fe",
+          "file": "runtime-override-terminal.spec.ts",
+          "line": 6,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "v2e-memory-reconcile.spec.ts",
+      "file": "v2e-memory-reconcile.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_v2e_real_shared_memory_partial_and_reconcile",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11542,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS1xZHJhbnQtMQo="
+                    },
+                    {
+                      "buffer": "Y291bnR5Zmxvdy1haS1xZHJhbnQtMQo="
+                    },
+                    {
+                      "buffer": "eyJtdXRhdGlvbl9pZCI6ICI2ZWNmNjU4ZC1mY2ViLTQ4MWEtOWQ5Ny0zYWZhYjdlY2NlNDciLCAiZmFjdF9rZXkiOiAic21mX2Y1YzE0NjJmNjNkMWI0NGQ4ODczNDgxY2ZhNTFjYjYxNGE5MTQxNzA2NGFmNzcwZGJhZjc4NTU3MTk2ODgxYTkiLCAiZGVjaXNpb24iOiAiQ1JFQVRFIiwgInN0YXR1cyI6ICJBUFBMSUVEIiwgImJlZm9yZV92ZXJzaW9uIjogbnVsbCwgImFmdGVyX3ZlcnNpb24iOiAxLCAidmVjdG9yX3N0YXR1cyI6ICJBQ1RJVkUiLCAiZ3JhcGhfc3RhdHVzIjogIkFDVElWRSIsICJwcm9qZWN0aW9uX2luY29tcGxldGUiOiBmYWxzZSwgImVycm9yX2NvZGUiOiBudWxsLCAiZXJyb3Jfc3VtbWFyeSI6IG51bGwsICJtZXRhZGF0YSI6IHt9fQ0K"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "buffer": "RXJyb3IgcmVzcG9uc2UgZnJvbSBkYWVtb246IENvbnRhaW5lciAxZDI2Y2JhNmFhZTk5ZWI3ZDBmZmNlNjlkOTdhZGNkZmFkOGZhODNhZWE1NDVjNjVhNjljMzMxODQzOTE4YjkzIGlzIG5vdCBwYXVzZWQK"
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:17:56.320Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c2b8db482efb3b7c4f9c-6f81131e5c4db9da28ce",
+          "file": "v2e-memory-reconcile.spec.ts",
+          "line": 26,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "v2e-normal-routing.spec.ts",
+      "file": "v2e-normal-routing.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "test_v2e_real_normal_routing_and_graph_memory",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1374,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-08-29T05:18:07.887Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "df974bbe8a0a45fd479c-006a48a98cec300b4488",
+          "file": "v2e-normal-routing.spec.ts",
+          "line": 9,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-08-29T05:17:33.612Z",
+    "duration": 35888.378,
+    "expected": 7,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -1,0 +1,12 @@
+[
+  {"memory_id":"memory-rain-li","driver_id":"driver-li","route_id":"xinping-road","anomaly_type":"rain_slippery","resolution_text":"建议改走102国道","text":"李师傅雨天经过新平路时路面湿滑，历史处置为改走102国道。","category":"weather-road"},
+  {"memory_id":"memory-snow-wang","driver_id":"driver-wang","route_id":"beishan-road","anomaly_type":"snow_blocked","resolution_text":"改走308县道并安装防滑链","text":"王师傅在北山路遭遇积雪封堵，使用防滑链并改走308县道。","category":"weather-road"},
+  {"memory_id":"memory-fog-chen","driver_id":"driver-chen","route_id":"river-road","anomaly_type":"fog_low_visibility","resolution_text":"降低车速并改走national-102","text":"陈师傅在沿河路遇浓雾能见度低，降速后转入102国道。","category":"weather-road"},
+  {"memory_id":"memory-flood-zhao","driver_id":"driver-zhao","route_id":"south-bridge","anomaly_type":"flooded_road","resolution_text":"避开南桥并改走308县道","text":"赵师傅发现南桥积水无法通行，绕行308县道。","category":"weather-road"},
+  {"memory_id":"memory-battery-sun","driver_id":"driver-sun","route_id":"east-line","anomaly_type":"vehicle_battery_low","resolution_text":"在东站更换车辆后继续","text":"孙师傅车辆电量不足，在东站更换备用新能源车辆。","category":"vehicle"},
+  {"memory_id":"memory-station-liu","driver_id":"driver-liu","route_id":"central-station","anomaly_type":"station_overload","resolution_text":"分流至北站卸货","text":"刘师傅抵达中心站时站点拥堵，历史方案为分流北站。","category":"station"},
+  {"memory_id":"memory-capacity-zhou","driver_id":"driver-zhou","route_id":"west-line","anomaly_type":"capacity_shortage","resolution_text":"拆分运单并增派小型车辆","text":"周师傅西线运力不足，将货物拆单并增派小型车辆。","category":"capacity"},
+  {"memory_id":"memory-construction-wu","driver_id":"driver-wu","route_id":"old-town-road","anomaly_type":"road_construction","resolution_text":"绕行102国道","text":"吴师傅遇老城路施工管制，改从102国道绕行。","category":"road"},
+  {"memory_id":"memory-cold-zheng","driver_id":"driver-zheng","route_id":"cold-chain-line","anomaly_type":"temperature_alarm","resolution_text":"转移至冷藏备用车并优先配送","text":"郑师傅冷链车辆温度报警，转移备用冷藏车并优先送达。","category":"vehicle"},
+  {"memory_id":"memory-landslide-qian","driver_id":"driver-qian","route_id":"mountain-road","anomaly_type":"landslide_risk","resolution_text":"封闭山路并改走county-308","text":"钱师傅山区道路出现滑坡风险，封闭山路并转县道308。","category":"road"}
+]

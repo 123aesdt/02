@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-08-29T05:27:51.725446+00:00",
+  "workload": {
+    "api_requests": 3000,
+    "api_concurrency": 64,
+    "graph_dispatches_per_mode": 3,
+    "runtime_overrides_per_mode": 2,
+    "real_services": [
+      "backend",
+      "worker-1",
+      "worker-2",
+      "mysql",
+      "redis",
+      "qdrant",
+      "neo4j"
+    ]
+  },
+  "observability_off": {
+    "api_p95_ms": 66.948,
+    "graph_p95_ms": 1123.224,
+    "override_p95_ms": 158.812,
+    "worker_throughput": 0.388,
+    "qps": 1047.707,
+    "error_rate": 0.0
+  },
+  "observability_on": {
+    "api_p95_ms": 66.022,
+    "graph_p95_ms": 167.311,
+    "override_p95_ms": 158.597,
+    "worker_throughput": 0.479,
+    "qps": 1037.85,
+    "error_rate": 0.0
+  },
+  "deltas_percent": {
+    "api_p95_ms": -1.383,
+    "graph_p95_ms": -85.104,
+    "override_p95_ms": -0.135,
+    "worker_throughput": 23.454,
+    "qps": -0.941,
+    "error_rate": null
+  },
+  "guardrails": {
+    "minimum_qps": 200,
+    "maximum_api_p95_ms": 300,
+    "maximum_error_rate": 0.001
+  },
+  "passed": true
+}

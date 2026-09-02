@@ -1,0 +1,1 @@
+{"configuration": {"users": 50, "duration_seconds_per_formal_run": 60}, "summary": {"average_qps": 317.999, "maximum_p95_ms": 240.0, "maximum_error_rate_percent": 0.0, "passed": true}}

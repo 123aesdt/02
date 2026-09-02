@@ -1,0 +1,51 @@
+query_id,query_text,expected_top1,actual_top1,top1_score,top3_ids,correct
+query-001,李师傅在新平路送货，暴雨后路面很滑怎么办,memory-rain-li,memory-rain-li,0.75950325,memory-rain-li|memory-landslide-qian|memory-construction-wu,True
+query-002,司机李师傅，新平路，雨天轮胎打滑，需要历史建议,memory-rain-li,memory-rain-li,0.86561894,memory-rain-li|memory-landslide-qian|memory-fog-chen,True
+query-003,新平路湿滑风险，李师傅应选择哪条替代路线,memory-rain-li,memory-rain-li,0.8208061,memory-rain-li|memory-landslide-qian|memory-fog-chen,True
+query-004,李师傅 遇到大雨 新平 路况滑 有无处置经验,memory-rain-li,memory-rain-li,0.75633246,memory-rain-li|memory-landslide-qian|memory-fog-chen,True
+query-005,雨后新平路打滑但未封闭，查询李司机相似调度记录,memory-rain-li,memory-rain-li,0.829301,memory-rain-li|memory-landslide-qian|memory-fog-chen,True
+query-006,王师傅北山路遇到大雪封路如何绕行,memory-snow-wang,memory-snow-wang,0.76910484,memory-snow-wang|memory-construction-wu|memory-landslide-qian,True
+query-007,北山积雪，司机王，需要防滑和替代道路方案,memory-snow-wang,memory-snow-wang,0.81955516,memory-snow-wang|memory-landslide-qian|memory-rain-li,True
+query-008,雪天北山道路不通，历史上王师傅怎么处理,memory-snow-wang,memory-snow-wang,0.76119614,memory-snow-wang|memory-landslide-qian|memory-construction-wu,True
+query-009,王 师傅 北山 路 雪堵 防滑链 方案,memory-snow-wang,memory-snow-wang,0.8032122,memory-snow-wang|memory-landslide-qian|memory-flood-zhao,True
+query-010,北山路是积雪封堵而非普通湿滑，应召回哪次经验,memory-snow-wang,memory-snow-wang,0.7511667,memory-snow-wang|memory-landslide-qian|memory-rain-li,True
+query-011,陈师傅沿河路遇浓雾能见度很低如何调度,memory-fog-chen,memory-fog-chen,0.78977084,memory-fog-chen|memory-construction-wu|memory-landslide-qian,True
+query-012,沿河道路大雾，陈司机需要低速绕行建议,memory-fog-chen,memory-fog-chen,0.82575464,memory-fog-chen|memory-rain-li|memory-construction-wu,True
+query-013,河边线路看不清，历史浓雾处置记录,memory-fog-chen,memory-fog-chen,0.5843204,memory-fog-chen|memory-capacity-zhou|memory-rain-li,True
+query-014,陈师傅 河 路 雾 很大 能见度低,memory-fog-chen,memory-fog-chen,0.7833404,memory-fog-chen|memory-construction-wu|memory-landslide-qian,True
+query-015,沿河路是雾不是积雪，找对应安全路线经验,memory-fog-chen,memory-fog-chen,0.7333302,memory-fog-chen|memory-landslide-qian|memory-rain-li,True
+query-016,赵师傅发现南桥积水无法通过应如何绕行,memory-flood-zhao,memory-flood-zhao,0.8292489,memory-flood-zhao|memory-rain-li|memory-fog-chen,True
+query-017,南桥被水淹，赵司机需要替代县道路由,memory-flood-zhao,memory-flood-zhao,0.838928,memory-flood-zhao|memory-fog-chen|memory-rain-li,True
+query-018,桥面积水导致道路中断，查询赵师傅历史方案,memory-flood-zhao,memory-flood-zhao,0.72651446,memory-flood-zhao|memory-fog-chen|memory-rain-li,True
+query-019,赵 师傅 南桥 积 水 绕行,memory-flood-zhao,memory-flood-zhao,0.8049716,memory-flood-zhao|memory-rain-li|memory-fog-chen,True
+query-020,南桥是洪水积水而不是大雾，召回正确记录,memory-flood-zhao,memory-flood-zhao,0.76483613,memory-flood-zhao|memory-fog-chen|memory-rain-li,True
+query-021,孙师傅东线新能源车电量不足如何继续配送,memory-battery-sun,memory-battery-sun,0.7309295,memory-battery-sun|memory-capacity-zhou|memory-station-liu,True
+query-022,司机孙，东站附近车辆低电，需要换车,memory-battery-sun,memory-battery-sun,0.8420628,memory-battery-sun|memory-station-liu|memory-fog-chen,True
+query-023,配送车电池告急，历史备用车辆处置,memory-battery-sun,memory-battery-sun,0.61723757,memory-battery-sun|memory-cold-zheng|memory-capacity-zhou,True
+query-024,孙师傅 东线 电 量 不足 备用车,memory-battery-sun,memory-battery-sun,0.65841115,memory-battery-sun|memory-capacity-zhou|memory-station-liu,True
+query-025,东线问题是车辆电池而非道路封闭，找换车经验,memory-battery-sun,memory-battery-sun,0.7524364,memory-battery-sun|memory-capacity-zhou|memory-fog-chen,True
+query-026,刘师傅到中心站发现站点拥堵如何分流,memory-station-liu,memory-station-liu,0.7941724,memory-station-liu|memory-capacity-zhou|memory-fog-chen,True
+query-027,中心站超负荷，刘司机应去哪个备用站,memory-station-liu,memory-station-liu,0.8277949,memory-station-liu|memory-battery-sun|memory-capacity-zhou,True
+query-028,卸货站排队严重，需要历史站点分流方案,memory-station-liu,memory-station-liu,0.73462117,memory-station-liu|memory-capacity-zhou|memory-battery-sun,True
+query-029,刘 师傅 中心 站 拥堵 北站,memory-station-liu,memory-station-liu,0.7273558,memory-station-liu|memory-construction-wu|memory-snow-wang,True
+query-030,中心站容量问题而非车辆问题，查询分流记录,memory-station-liu,memory-station-liu,0.7162609,memory-station-liu|memory-capacity-zhou|memory-battery-sun,True
+query-031,周师傅西线装载能力不足如何完成运单,memory-capacity-zhou,memory-capacity-zhou,0.7544944,memory-capacity-zhou|memory-station-liu|memory-construction-wu,True
+query-032,西线运力短缺，周司机需要拆单增派车辆,memory-capacity-zhou,memory-capacity-zhou,0.8746587,memory-capacity-zhou|memory-station-liu|memory-battery-sun,True
+query-033,货物超过当前车辆能力，历史运力补充方案,memory-capacity-zhou,memory-capacity-zhou,0.61858773,memory-capacity-zhou|memory-station-liu|memory-battery-sun,True
+query-034,周师傅 西线 运 力 不足 拆分,memory-capacity-zhou,memory-capacity-zhou,0.78981346,memory-capacity-zhou|memory-station-liu|memory-construction-wu,True
+query-035,西线是容量不足不是电量不足，召回拆单经验,memory-capacity-zhou,memory-capacity-zhou,0.7069323,memory-capacity-zhou|memory-battery-sun|memory-station-liu,True
+query-036,吴师傅遇到老城路施工管制应如何绕行,memory-construction-wu,memory-construction-wu,0.79506755,memory-construction-wu|memory-rain-li|memory-fog-chen,True
+query-037,老城区道路施工，吴司机需要替代主干道,memory-construction-wu,memory-construction-wu,0.7915006,memory-construction-wu|memory-rain-li|memory-fog-chen,True
+query-038,道路因工程封闭，查询老城历史绕行记录,memory-construction-wu,memory-construction-wu,0.72902185,memory-construction-wu|memory-rain-li|memory-landslide-qian,True
+query-039,吴 师傅 老城 路 施 工 绕行,memory-construction-wu,memory-construction-wu,0.7864293,memory-construction-wu|memory-rain-li|memory-fog-chen,True
+query-040,老城路是施工不是积水，找对应改道经验,memory-construction-wu,memory-construction-wu,0.7063706,memory-construction-wu|memory-rain-li|memory-flood-zhao,True
+query-041,郑师傅冷链车辆温度报警如何保护货物,memory-cold-zheng,memory-cold-zheng,0.8219912,memory-cold-zheng|memory-battery-sun|memory-station-liu,True
+query-042,冷藏车温控异常，郑司机需要备用冷链车,memory-cold-zheng,memory-cold-zheng,0.7285452,memory-cold-zheng|memory-capacity-zhou|memory-station-liu,True
+query-043,生鲜运输温度升高，查询优先配送历史方案,memory-cold-zheng,memory-cold-zheng,0.6953453,memory-cold-zheng|memory-capacity-zhou|memory-station-liu,True
+query-044,郑 师傅 冷链 温 度 报警 转移,memory-cold-zheng,memory-cold-zheng,0.772644,memory-cold-zheng|memory-station-liu|memory-battery-sun,True
+query-045,当前是冷藏温控问题而非普通电量不足，找对应经验,memory-cold-zheng,memory-battery-sun,0.57240146,memory-battery-sun|memory-cold-zheng|memory-capacity-zhou,False
+query-046,钱师傅山区道路出现滑坡风险应如何绕行,memory-landslide-qian,memory-landslide-qian,0.79759026,memory-landslide-qian|memory-rain-li|memory-snow-wang,True
+query-047,山路可能塌方，钱司机需要关闭路线并改道,memory-landslide-qian,memory-landslide-qian,0.7799332,memory-landslide-qian|memory-rain-li|memory-fog-chen,True
+query-048,边坡松动威胁山区线路，查询历史安全处置,memory-landslide-qian,memory-landslide-qian,0.6104392,memory-landslide-qian|memory-snow-wang|memory-rain-li,True
+query-049,钱 师傅 山 路 滑坡 风险 县道,memory-landslide-qian,memory-landslide-qian,0.7454383,memory-landslide-qian|memory-snow-wang|memory-rain-li,True
+query-050,山路是滑坡隐患不是施工管制，召回封路经验,memory-landslide-qian,memory-landslide-qian,0.7773238,memory-landslide-qian|memory-rain-li|memory-snow-wang,True

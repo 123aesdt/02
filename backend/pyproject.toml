@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "countyflow-backend"
+version = "0.1.0"
+description = "CountyFlow AI backend"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14,<2",
+  "fastapi>=0.115,<1",
+  "httpx>=0.28,<1",
+  "pydantic-settings>=2.6,<3",
+  "pymysql>=1.1,<2",
+  "qdrant-client>=1.12,<2",
+  "redis>=5,<7",
+  "sqlalchemy>=2.0,<2.1",
+  "uvicorn[standard]>=0.32,<1",
+  "langgraph>=1.2,<2",
+  "langgraph-checkpoint-redis>=0.5.2,<0.6",
+  "neo4j>=5.26,<7",
+  "prometheus-client>=0.21,<1",
+  "PyJWT[crypto]>=2.10,<3",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "fakeredis>=2.26,<3",
+  "ruff>=0.8,<1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+norecursedirs = [".git", ".venv", "__pycache__", ".pytest_cache", ".ruff_cache", "tmpk5_mvaee", "tmpyahwhtqw"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 160
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["E501"]
