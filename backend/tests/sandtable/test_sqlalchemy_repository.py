@@ -11,7 +11,8 @@ from app.models.base import Base
 from app.models.fleet_driver import FleetDriver
 from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
-from app.models.road import RoadEdge
+from app.models.road import RoadEdge, RoadNode
+from app.models.station import LogisticsStation
 from app.sandtable.service import RoadLocationUnresolved, SandtableContextService
 from app.sandtable.sqlalchemy_repository import (
     SandtableOrderConflictError,
@@ -210,7 +211,40 @@ def test_seed_conflict_rolls_back_all_new_sandtable_rows_after_caller_commit(sql
     with sqlite_factory() as session:
         user_order = session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-001"))
         assert (user_order.status, user_order.vehicle_id, user_order.origin) == ("USER", "user-vehicle", "用户起点")
+        assert session.scalar(select(func.count()).select_from(RoadNode)) == 0
+        assert session.scalar(select(func.count()).select_from(LogisticsStation)) == 0
         assert session.scalar(select(func.count()).select_from(RoadEdge)) == 0
         assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 0
         assert session.scalar(select(func.count()).select_from(FleetDriver)) == 0
+        assert session.scalar(select(func.count()).select_from(Order)) == 1
+
+
+def test_seed_savepoint_rolls_back_partial_flush_and_keeps_outer_transaction(sqlite_factory, monkeypatch) -> None:
+    with sqlite_factory() as session:
+        session.add(
+            Order(order_no="OUTER-ORDER-001", status="OUTER", driver_id=None, vehicle_id=None, route_id=None, origin="外层起点", destination="外层终点")
+        )
+        session.flush()
+        original_flush = session.flush
+        calls = 0
+
+        def fail_after_nodes(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise RuntimeError("测试注入的第二次 flush 失败")
+            return original_flush(*args, **kwargs)
+
+        monkeypatch.setattr(session, "flush", fail_after_nodes)
+        with pytest.raises(RuntimeError, match="第二次 flush"):
+            seed_new_county_sandtable(session)
+        monkeypatch.setattr(session, "flush", original_flush)
+        session.commit()
+    with sqlite_factory() as session:
+        assert session.scalar(select(Order.status).where(Order.order_no == "OUTER-ORDER-001")) == "OUTER"
+        assert session.scalar(select(func.count()).select_from(RoadNode)) == 0
+        assert session.scalar(select(func.count()).select_from(LogisticsStation)) == 0
+        assert session.scalar(select(func.count()).select_from(FleetDriver)) == 0
+        assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 0
+        assert session.scalar(select(func.count()).select_from(RoadEdge)) == 0
         assert session.scalar(select(func.count()).select_from(Order)) == 1
