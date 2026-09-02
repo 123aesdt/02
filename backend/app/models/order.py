@@ -1,4 +1,6 @@
-from sqlalchemy import Index, String, UniqueConstraint
+from decimal import Decimal
+
+from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -19,3 +21,7 @@ class Order(TimestampMixin, Base):
     route_id: Mapped[str | None] = mapped_column(String(64))
     origin: Mapped[str] = mapped_column(String(255), nullable=False)
     destination: Mapped[str] = mapped_column(String(255), nullable=False)
+    cargo_weight_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 2, asdecimal=True))
+    cargo_type: Mapped[str | None] = mapped_column(String(32))
+    origin_station_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("logistics_stations.station_id", ondelete="RESTRICT"))
+    destination_station_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("logistics_stations.station_id", ondelete="RESTRICT"))

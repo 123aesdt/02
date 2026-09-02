@@ -24,5 +24,7 @@ class Anomaly(TimestampMixin, Base):
     location_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
     reported_vehicle_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     report_idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    incident_node_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("road_nodes.node_id", ondelete="RESTRICT"))
+    affected_edge_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("road_edges.edge_id", ondelete="RESTRICT"))
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     reported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
