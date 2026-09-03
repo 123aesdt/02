@@ -133,6 +133,7 @@ class DispatchGraphState(TypedDict):
     candidate_vehicles: NotRequired[list[dict[str, object]]]
     selected_vehicle_id: NotRequired[str]
     selected_driver_id: NotRequired[str]
+    selected_vehicle_gross_weight_tons: NotRequired[str]
     vehicle_reassigned: NotRequired[bool]
     pickup_route: NotRequired[PathState | None]
     blocked_edge_ids: NotRequired[list[str]]
