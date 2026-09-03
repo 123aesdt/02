@@ -41,6 +41,7 @@ def _candidate_to_state(candidate: VehicleCandidate) -> dict[str, object]:
         "driver_id": candidate.driver_id,
         "vehicle_status": candidate.vehicle_status,
         "remaining_load_kg": str(candidate.remaining_load_kg),
+        "gross_weight_tons": str(candidate.gross_weight_tons),
         "pickup_route": _path_to_state(candidate.pickup_route),
         "pickup_distance_km": str(candidate.pickup_distance_km) if candidate.pickup_distance_km is not None else None,
         "pickup_eta_minutes": candidate.pickup_eta_minutes,
@@ -120,6 +121,9 @@ async def capacity_node(
                 "candidate_vehicles": candidates,
                 "selected_vehicle_id": allocation.selected_vehicle_id,
                 "selected_driver_id": allocation.selected_driver_id,
+                "selected_vehicle_gross_weight_tons": str(
+                    next(candidate.gross_weight_tons for candidate in allocation.candidates if candidate.vehicle_id == allocation.selected_vehicle_id)
+                ),
                 "vehicle_reassigned": True,
                 "pickup_route": _path_to_state(allocation.pickup_route),
                 "requires_manual_review": False,

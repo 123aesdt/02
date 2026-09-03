@@ -55,7 +55,7 @@ def _sandtable_context(state: DispatchGraphState) -> SandtableTaskContext:
         incident_node_id=state.get("incident_node_id"),
         affected_edge_ids=tuple(state.get("affected_edge_ids", [])),
         road_network_version=state.get("road_network_version", 0),
-        vehicle_weight_tons=Decimal(str(state.get("vehicle_weight_tons", "2.00"))),
+        vehicle_weight_tons=Decimal(str(state.get("selected_vehicle_gross_weight_tons") or state.get("vehicle_weight_tons", "2.00"))),
     )
 
 
@@ -102,9 +102,7 @@ async def routing_node(
     if routing_service is None:
         return {}
     if routing_service.can_plan and state.get("origin_node_id") and state.get("destination_node_id"):
-        result = routing_service.plan(
-            _sandtable_context(state), state["capacity_state"], state.get("affected_edge_ids", []), state.get("memory_results", [])
-        )
+        result = routing_service.plan(_sandtable_context(state), state["capacity_state"], state.get("affected_edge_ids", []), state.get("memory_results", []))
         candidate_routes = [route_candidate_to_state(candidate) for candidate in result.candidate_routes]
         return {
             **_recommendation_patch(state, result, candidate_routes, recommendation_service),
