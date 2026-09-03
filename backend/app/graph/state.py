@@ -50,12 +50,12 @@ class CapacityState(TypedDict):
 class RouteCandidateState(TypedDict):
     route_id: str
     route_name: str
-    distance_km: float
+    distance_km: str
     estimated_minutes: int
     risk_level: str
     available: bool
     reason: str | None
-    score: float
+    score: str
     node_ids: NotRequired[list[str]]
     edge_ids: NotRequired[list[str]]
     objective: NotRequired[str | None]

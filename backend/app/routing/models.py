@@ -8,12 +8,12 @@ from app.road_network.models import PathResult
 class RouteCandidate:
     route_id: str
     route_name: str
-    distance_km: float
+    distance_km: Decimal
     estimated_minutes: int
     risk_level: str
     available: bool
     reason: str | None
-    score: float
+    score: Decimal
     node_ids: tuple[str, ...] = ()
     edge_ids: tuple[str, ...] = ()
     objective: str | None = None

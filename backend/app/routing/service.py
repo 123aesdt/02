@@ -155,15 +155,15 @@ class RoutingService:
                 risk_level="high" if road_condition == "slippery" else "critical",
                 available=False,
                 reason="Current route is unsafe for the reported road condition.",
-                score=-1000.0,
+                score=Decimal("-1000"),
             )
-        score = 100.0 - candidate.distance_km * 2 - candidate.estimated_minutes * 0.1
+        score = Decimal("100") - candidate.distance_km * Decimal("2") - Decimal(candidate.estimated_minutes) * Decimal("0.1")
         if environment_risk in {"high", "critical"} and candidate.risk_level in {"medium", "high"}:
-            score -= 15.0
+            score -= Decimal("15")
         if candidate.route_id == memory_route:
-            score += 30.0
+            score += Decimal("30")
         if capacity_status == "LIMITED":
-            score -= 5.0
+            score -= Decimal("5")
         return replace(candidate, score=score)
 
     @staticmethod
@@ -184,12 +184,12 @@ class RoutingService:
                 RouteCandidate(
                     route_id=f"RTE-{sha256('|'.join(path.edge_ids).encode()).hexdigest()[:16].upper()}",
                     route_name=f"{path.objective.value} route",
-                    distance_km=float(path.distance_km),
+                    distance_km=path.distance_km,
                     estimated_minutes=path.estimated_minutes,
                     risk_level=RoutingService._risk_level(path.risk_cost),
                     available=True,
                     reason=None,
-                    score=float(score.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                    score=score.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
                     node_ids=path.node_ids,
                     edge_ids=path.edge_ids,
                     objective=path.objective.value,

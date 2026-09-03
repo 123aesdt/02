@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from app.graph.state import CapacityState, MemoryRecallState
@@ -39,7 +41,7 @@ def _capacity(status: str = "AVAILABLE") -> CapacityState:
 
 @pytest.mark.asyncio
 async def test_route_candidate_model():
-    candidate = RouteCandidate("xinping-road", "新平路", 10.0, 20, "low", True, None, 80.0)
+    candidate = RouteCandidate("xinping-road", "新平路", Decimal("10.0"), 20, "low", True, None, Decimal("80.0"))
 
     assert candidate.route_name == "新平路"
 
@@ -134,3 +136,71 @@ def test_routing_plan_excludes_two_ton_shortcut_for_heavy_vehicle():
     assert heavy.original_path.edge_ids == ("SAFE_1", "SAFE_2")
     assert heavy.recommended_path.edge_ids == ("SAFE_1", "SAFE_2")
     assert all("FAST" not in candidate.edge_ids for candidate in heavy.candidate_routes)
+
+
+def test_path_candidates_preserve_decimal_precision_until_json_boundary():
+    from decimal import Decimal
+
+    from app.agents.routing import route_candidate_to_state
+    from app.road_network.models import PathResult, RouteObjective
+
+    paths = [
+        PathResult(RouteObjective.FASTEST, ("A", "B"), ("E-FAST",), Decimal("0.10"), 1, Decimal("0.00"), 2),
+        PathResult(RouteObjective.SHORTEST, ("A", "C", "B"), ("E-SHORT",), Decimal("0.30"), 3, Decimal("0.00"), 3),
+    ]
+
+    candidates = RoutingService._score_paths(paths, road_network_version=7)
+    fastest = next(candidate for candidate in candidates if candidate.edge_ids == ("E-FAST",))
+    shortest = next(candidate for candidate in candidates if candidate.edge_ids == ("E-SHORT",))
+
+    assert (fastest.distance_km, fastest.score) == (Decimal("0.10"), Decimal("75.00"))
+    assert (shortest.distance_km, shortest.score) == (Decimal("0.30"), Decimal("25.00"))
+    assert route_candidate_to_state(fastest)["distance_km"] == "0.10"
+    assert route_candidate_to_state(fastest)["score"] == "75.00"
+
+
+def test_route_plan_breaks_equal_decimal_scores_by_edge_sequence():
+    from decimal import Decimal
+
+    from app.road_network.models import PathResult, RoadNetworkSnapshot, RoadNodeSnapshot, RouteObjective
+    from app.sandtable.models import SandtableTaskContext
+
+    class StaticRoadNetwork:
+        def snapshot(self) -> RoadNetworkSnapshot:
+            return RoadNetworkSnapshot(
+                version=7,
+                nodes=(
+                    RoadNodeSnapshot("A", "起点", Decimal("0"), Decimal("0"), "DEPOT"),
+                    RoadNodeSnapshot("B", "终点", Decimal("1"), Decimal("0"), "CUSTOMER"),
+                ),
+                edges=(),
+            )
+
+    class TiePathFinder:
+        def find(
+            self,
+            snapshot: RoadNetworkSnapshot,
+            start_node_id: str,
+            end_node_id: str,
+            objective: RouteObjective,
+            vehicle_weight_tons: Decimal,
+            excluded_edge_ids: frozenset[str] = frozenset(),
+        ) -> PathResult:
+            if objective == RouteObjective.SHORTEST:
+                return PathResult(objective, ("A", "B"), ("E-FAST",), Decimal("20.00"), 10, Decimal("0.00"), 2)
+            return PathResult(objective, ("A", "B"), ("E-SLOW",), Decimal("20.00"), 10, Decimal("0.00"), 2)
+
+    service = RoutingService(
+        None,
+        memory_adoption_threshold=0.75,
+        road_network_provider=StaticRoadNetwork(),
+        path_finder=TiePathFinder(),
+    )
+    context = SandtableTaskContext(1, "ORDER-DECIMAL", Decimal("100"), "GENERAL", "A", "B", "V-001", None, None, (), 7, Decimal("2.00"))
+
+    result = service.plan(context, _capacity(), [], [])
+
+    assert result.recommended_path is not None
+    assert result.recommended_path.edge_ids == ("E-FAST",)
+    assert {candidate.score for candidate in result.candidate_routes} == {Decimal("25.00")}
+    assert all(isinstance(candidate.distance_km, Decimal) and isinstance(candidate.score, Decimal) for candidate in result.candidate_routes)
