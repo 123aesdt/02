@@ -1,6 +1,11 @@
+from decimal import Decimal
+
 from app.capacity.models import CapacityResult
 from app.capacity.service import CapacityEvaluationError, CapacityService
+from app.fleet.models import FleetAllocationRequest, VehicleCandidate
+from app.fleet.service import FleetAllocationService
 from app.graph.state import CapacityState, DispatchGraphState
+from app.road_network.models import PathResult
 
 
 def capacity_result_to_state(result: CapacityResult) -> CapacityState:
@@ -16,31 +21,122 @@ def capacity_result_to_state(result: CapacityResult) -> CapacityState:
     }
 
 
-async def capacity_node(state: DispatchGraphState, capacity_service: CapacityService | None) -> dict[str, object]:
+def _path_to_state(path: PathResult | None) -> dict[str, object] | None:
+    if path is None:
+        return None
+    return {
+        "objective": str(path.objective),
+        "node_ids": list(path.node_ids),
+        "edge_ids": list(path.edge_ids),
+        "distance_km": str(path.distance_km),
+        "estimated_minutes": path.estimated_minutes,
+        "risk_cost": str(path.risk_cost),
+        "visited_node_count": path.visited_node_count,
+    }
+
+
+def _candidate_to_state(candidate: VehicleCandidate) -> dict[str, object]:
+    return {
+        "vehicle_id": candidate.vehicle_id,
+        "driver_id": candidate.driver_id,
+        "vehicle_status": candidate.vehicle_status,
+        "remaining_load_kg": str(candidate.remaining_load_kg),
+        "pickup_route": _path_to_state(candidate.pickup_route),
+        "pickup_distance_km": str(candidate.pickup_distance_km) if candidate.pickup_distance_km is not None else None,
+        "pickup_eta_minutes": candidate.pickup_eta_minutes,
+        "score": str(candidate.score) if candidate.score is not None else None,
+        "eligible": candidate.eligible,
+        "exclusion_reasons": list(candidate.exclusion_reasons),
+    }
+
+
+async def capacity_node(
+    state: DispatchGraphState,
+    capacity_service: CapacityService | None,
+    fleet_allocation_service: FleetAllocationService | None = None,
+) -> dict[str, object]:
     if capacity_service is None:
-        return {}
-    try:
-        result = await capacity_service.evaluate(
-            state["driver_id"],
-            state.get("vehicle_id"),
-            state["route_id"],
-            state["order_id"],
-            vehicle_status=state.get("vehicle_status", "NORMAL"),
-        )
-    except CapacityEvaluationError:
-        return {
-            "capacity_state": {
-                "driver_available": False,
-                "vehicle_available": False,
-                "load_ratio": 0.0,
-                "station_load_ratio": None,
-                "capacity_status": "UNKNOWN",
-                "risk_level": "high",
-                "reason": "Capacity evaluation is temporarily unavailable.",
-                "provider_name": "unknown",
-            },
-            "requires_manual_review": True,
-            "error_code": "CAPACITY_EVALUATION_ERROR",
-            "error_message": "Capacity evaluation is temporarily unavailable.",
+        available = state.get("vehicle_status", "NORMAL") == "NORMAL"
+        capacity_state: CapacityState = {
+            "driver_available": available,
+            "vehicle_available": available,
+            "load_ratio": 0.0,
+            "station_load_ratio": None,
+            "capacity_status": "AVAILABLE" if available else "UNAVAILABLE",
+            "risk_level": "low" if available else "high",
+            "reason": None,
+            "provider_name": "sandtable_graph",
         }
-    return {"capacity_state": capacity_result_to_state(result)}
+    else:
+        try:
+            result = await capacity_service.evaluate(
+                state["driver_id"],
+                state.get("vehicle_id"),
+                state["route_id"],
+                state["order_id"],
+                vehicle_status=state.get("vehicle_status", "NORMAL"),
+            )
+        except CapacityEvaluationError:
+            return {
+                "capacity_state": {
+                    "driver_available": False,
+                    "vehicle_available": False,
+                    "load_ratio": 0.0,
+                    "station_load_ratio": None,
+                    "capacity_status": "UNKNOWN",
+                    "risk_level": "high",
+                    "reason": "Capacity evaluation is temporarily unavailable.",
+                    "provider_name": "unknown",
+                },
+                "requires_manual_review": True,
+                "error_code": "CAPACITY_EVALUATION_ERROR",
+                "error_message": "Capacity evaluation is temporarily unavailable.",
+            }
+        capacity_state = capacity_result_to_state(result)
+
+    if state.get("vehicle_status") in {"BROKEN", "UNAVAILABLE", "MAINTENANCE"} and fleet_allocation_service is not None:
+        allocation = fleet_allocation_service.allocate(
+            FleetAllocationRequest(
+                original_vehicle_id=state.get("vehicle_id", ""),
+                incident_node_id=state.get("incident_node_id") or state.get("origin_node_id", ""),
+                cargo_weight_kg=Decimal(state.get("cargo_weight_kg", "0")),
+                cargo_type=state.get("cargo_type", "GENERAL"),
+                destination_node_id=state.get("destination_node_id"),
+            )
+        )
+        candidates = [_candidate_to_state(candidate) for candidate in allocation.candidates]
+        if allocation.vehicle_reassigned:
+            capacity_state.update(
+                {
+                    "driver_available": True,
+                    "vehicle_available": True,
+                    "capacity_status": "REASSIGNED",
+                    "risk_level": "low",
+                    "reason": None,
+                }
+            )
+            return {
+                "capacity_state": capacity_state,
+                "candidate_vehicles": candidates,
+                "selected_vehicle_id": allocation.selected_vehicle_id,
+                "selected_driver_id": allocation.selected_driver_id,
+                "vehicle_reassigned": True,
+                "pickup_route": _path_to_state(allocation.pickup_route),
+                "requires_manual_review": False,
+            }
+        capacity_state.update(
+            {
+                "vehicle_available": False,
+                "capacity_status": "UNAVAILABLE",
+                "risk_level": "high",
+                "reason": allocation.reason,
+            }
+        )
+        return {
+            "capacity_state": capacity_state,
+            "candidate_vehicles": candidates,
+            "requires_manual_review": True,
+            "error_code": "NO_REPLACEMENT_VEHICLE",
+            "error_message": "No eligible replacement vehicle is available.",
+        }
+    return {"capacity_state": capacity_state}

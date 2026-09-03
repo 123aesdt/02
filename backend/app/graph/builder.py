@@ -108,6 +108,8 @@ def build_graph(
     graph_memory_service = dependencies.graph_memory_service if dependencies else None
     environment_service = dependencies.environment_service if dependencies else None
     routing_service = dependencies.routing_service if dependencies else None
+    sandtable_context_service = dependencies.sandtable_context_service if dependencies else None
+    fleet_allocation_service = dependencies.fleet_allocation_service if dependencies else None
     issue_recommendation_service = dependencies.issue_recommendation_service if dependencies else None
     metrics = dependencies.metrics if dependencies else NoOpMetricsRecorder()
 
@@ -121,7 +123,7 @@ def build_graph(
         return await graph_memory_node(state, graph_memory_service)
 
     async def capacity(state: DispatchGraphState) -> dict[str, object]:
-        return await capacity_node(state, capacity_service)
+        return await capacity_node(state, capacity_service, fleet_allocation_service)
 
     async def routing(state: DispatchGraphState) -> dict[str, object]:
         return await routing_node(state, routing_service, issue_recommendation_service)
@@ -133,7 +135,7 @@ def build_graph(
         return await audit_node(state, audit_service)
 
     graph = StateGraph(DispatchGraphState)
-    graph.add_node("intake", _instrument_node("intake", intake_node, metrics))
+    graph.add_node("intake", _instrument_node("intake", lambda state: intake_node(state, sandtable_context_service), metrics))
     graph.add_node("entity_memory", _instrument_node("entity_memory", entity_memory, metrics))
     graph.add_node("graph_memory", _instrument_node("graph_memory", graph_memory, metrics))
     graph.add_node("environment", _instrument_node("environment", environment, metrics))

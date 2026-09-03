@@ -37,7 +37,7 @@ def test_runtime_graph_rejects_production_until_real_provider_wiring_exists():
     )
 
     with pytest.raises(RuntimeError, match="Production runtime provider wiring is not implemented"):
-        build_runtime_graph(settings, object())
+        build_runtime_graph(settings, object(), object())
 
 
 def test_docker_http_environment_provider_uses_the_configured_timeout_boundary():
@@ -105,7 +105,7 @@ def test_runtime_builders_use_the_configured_embedding_dimension(monkeypatch):
     monkeypatch.setattr(runtime_module, "QdrantMemoryProjection", RecordingProjection)
     settings = Settings(_env_file=None, embedding_dimension=16)
 
-    build_runtime_graph(settings, object())
+    build_runtime_graph(settings, object(), object())
     build_shared_memory_service(
         settings,
         FakeRedis(decode_responses=False),
@@ -120,14 +120,34 @@ def test_runtime_builders_use_the_configured_embedding_dimension(monkeypatch):
     }
 
 
-def test_docker_runtime_capacity_catalog_covers_seeded_demo_assignments(monkeypatch):
-    captured: dict[tuple[str, str], object] = {}
+def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatch):
+    captured: dict[str, object] = {}
 
-    class RecordingCapacityProvider:
-        def __init__(self, records):
-            captured.update(records)
+    class RecordingSandtableRepository:
+        def __init__(self, session):
+            captured["sandtable_repository"] = session
 
-    monkeypatch.setattr(runtime_module, "InMemoryCapacityProvider", RecordingCapacityProvider)
+    class RecordingFleetRepository:
+        def __init__(self, session):
+            captured["fleet_repository"] = session
+
+    class RecordingRoadRepository:
+        def __init__(self, session):
+            captured.setdefault("road_repositories", []).append(session)
+
+    class RecordingFleetAllocationService:
+        def __init__(self, fleet_repository, estimator):
+            captured["fleet_allocation"] = (fleet_repository, estimator)
+
+    class RecordingRoutingService:
+        def __init__(self, route_provider, **kwargs):
+            captured["routing"] = (route_provider, kwargs)
+
+    monkeypatch.setattr(runtime_module, "SqlAlchemySandtableRepository", RecordingSandtableRepository)
+    monkeypatch.setattr(runtime_module, "SqlAlchemyFleetRepository", RecordingFleetRepository)
+    monkeypatch.setattr(runtime_module, "SqlAlchemyRoadNetworkRepository", RecordingRoadRepository)
+    monkeypatch.setattr(runtime_module, "FleetAllocationService", RecordingFleetAllocationService)
+    monkeypatch.setattr(runtime_module, "RoutingService", RecordingRoutingService)
     settings = Settings(
         _env_file=None,
         runtime_profile="docker-dev",
@@ -150,18 +170,8 @@ def test_docker_runtime_capacity_catalog_covers_seeded_demo_assignments(monkeypa
 
     build_runtime_graph(settings, object(), object())
 
-    assert set(captured) == {
-        ("demo-driver-li", "demo-vehicle-001"),
-        ("demo-driver-zhang", "demo-vehicle-002"),
-        ("demo-driver-chen", "demo-vehicle-003"),
-        ("demo-driver-wang", "demo-vehicle-004"),
-        ("demo-driver-lin", "demo-vehicle-005"),
-        ("demo-driver-huang", "demo-vehicle-006"),
-        ("demo-driver-zhou", "demo-vehicle-007"),
-        ("demo-driver-xu", "demo-vehicle-008"),
-        ("demo-driver-guo", "demo-vehicle-009"),
-        ("demo-driver-yang", "demo-vehicle-010"),
-    }
-    first = captured[("demo-driver-li", "demo-vehicle-001")]
-    assert first.driver_available is True
-    assert first.vehicle_available is True
+    assert captured["routing"][0] is None
+    assert len(captured["road_repositories"]) == 2
+    assert "sandtable_repository" in captured
+    assert "fleet_repository" in captured
+    assert "fleet_allocation" in captured
