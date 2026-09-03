@@ -86,3 +86,51 @@ async def test_routing_service_does_not_adopt_unavailable_memory_route():
     assert result.memory_adopted is True
     assert closed.recommended_route != "xinping-road"
     assert closed.candidate_routes[-1].route_id == "xinping-road"
+
+
+def test_routing_plan_excludes_two_ton_shortcut_for_heavy_vehicle():
+    """4.50t 车辆必须避开 2.00t 限重捷径，且 2.00t 可选择该捷径。"""
+    from decimal import Decimal
+
+    from app.road_network.dijkstra import DijkstraPathFinder
+    from app.road_network.models import RoadEdgeSnapshot, RoadNetworkSnapshot, RoadNodeSnapshot
+    from app.sandtable.models import SandtableTaskContext
+
+    class StaticRoadNetwork:
+        def snapshot(self) -> RoadNetworkSnapshot:
+            return RoadNetworkSnapshot(
+                version=1,
+                nodes=(
+                    RoadNodeSnapshot("A", "起点", Decimal("0"), Decimal("0"), "DEPOT"),
+                    RoadNodeSnapshot("B", "终点", Decimal("2"), Decimal("0"), "CUSTOMER"),
+                    RoadNodeSnapshot("C", "绕行点", Decimal("1"), Decimal("1"), "JUNCTION"),
+                ),
+                edges=(
+                    RoadEdgeSnapshot("FAST", "限重捷径", "A", "B", Decimal("1.00"), 1, "COUNTY", "LOW", "OPEN", Decimal("1.00"), Decimal("2.00"), False, 1),
+                    RoadEdgeSnapshot(
+                        "SAFE_1", "可承载绕路一", "A", "C", Decimal("2.00"), 3, "COUNTY", "LOW", "OPEN", Decimal("1.00"), Decimal("10.00"), False, 1
+                    ),
+                    RoadEdgeSnapshot(
+                        "SAFE_2", "可承载绕路二", "C", "B", Decimal("2.00"), 3, "COUNTY", "LOW", "OPEN", Decimal("1.00"), Decimal("10.00"), False, 1
+                    ),
+                ),
+            )
+
+    service = RoutingService(
+        None,
+        memory_adoption_threshold=0.75,
+        road_network_provider=StaticRoadNetwork(),
+        path_finder=DijkstraPathFinder(),
+    )
+    common = (1, "ORDER-1", Decimal("100"), "GENERAL", "A", "B", "V-HEAVY", None, None, (), 1)
+
+    light = service.plan(SandtableTaskContext(*common, Decimal("2.00")), _capacity(), [], [])
+    heavy = service.plan(SandtableTaskContext(*common, Decimal("4.50")), _capacity(), [], [])
+
+    assert light.original_path is not None
+    assert light.original_path.edge_ids == ("FAST",)
+    assert heavy.original_path is not None
+    assert heavy.recommended_path is not None
+    assert heavy.original_path.edge_ids == ("SAFE_1", "SAFE_2")
+    assert heavy.recommended_path.edge_ids == ("SAFE_1", "SAFE_2")
+    assert all("FAST" not in candidate.edge_ids for candidate in heavy.candidate_routes)
