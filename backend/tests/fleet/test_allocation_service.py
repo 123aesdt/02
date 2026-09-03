@@ -121,9 +121,7 @@ def test_hard_filters_report_state_and_driver_exclusions(vehicle: FleetVehicleSn
 def test_unreachable_and_weight_restricted_pickups_are_distinguished() -> None:
     unreachable = _vehicle("V-030", current_node_id="N30")
     restricted = _vehicle("V-031", current_node_id="N31", gross_weight_tons="5.10")
-    service, _ = _service(
-        (unreachable, restricted), {"N30": None, "N31": None}, restricted_nodes=frozenset({"N31"})
-    )
+    service, _ = _service((unreachable, restricted), {"N30": None, "N31": None}, restricted_nodes=frozenset({"N31"}))
     result = service.allocate(_request())
     by_vehicle = {candidate.vehicle_id: candidate for candidate in result.candidates}
     assert by_vehicle["V-030"].exclusion_reasons == ("PICKUP_UNREACHABLE",)
@@ -153,14 +151,22 @@ def test_eligible_ties_are_stable_and_rejected_candidates_follow_by_vehicle_id()
 def _road_snapshot() -> RoadNetworkSnapshot:
     return RoadNetworkSnapshot(
         version=1,
-        nodes=tuple(
-            RoadNodeSnapshot(row["node_id"], row["name"], Decimal(row["x_km"]), Decimal(row["y_km"]), row["node_type"])
-            for row in ROAD_NODES
-        ),
+        nodes=tuple(RoadNodeSnapshot(row["node_id"], row["name"], Decimal(row["x_km"]), Decimal(row["y_km"]), row["node_type"]) for row in ROAD_NODES),
         edges=tuple(
             RoadEdgeSnapshot(
-                row["edge_id"], row["name"], row["from_node_id"], row["to_node_id"], Decimal(row["distance_km"]), row["base_minutes"],
-                row["road_level"], row["risk_level"], "OPEN", Decimal("1.00"), Decimal(row["weight_limit_tons"]), True, 1,
+                row["edge_id"],
+                row["name"],
+                row["from_node_id"],
+                row["to_node_id"],
+                Decimal(row["distance_km"]),
+                row["base_minutes"],
+                row["road_level"],
+                row["risk_level"],
+                "OPEN",
+                Decimal("1.00"),
+                Decimal(row["weight_limit_tons"]),
+                True,
+                1,
             )
             for row in ROAD_EDGES
         ),
@@ -187,16 +193,57 @@ def test_collects_every_applicable_cheap_exclusion_in_design_order() -> None:
         "ORIGINAL_VEHICLE_EXCLUDED",
         "VEHICLE_UNAVAILABLE",
         "DRIVER_UNAVAILABLE",
+        "LICENSE_MISMATCH",
         "INSUFFICIENT_CAPACITY",
         "CARGO_CAPABILITY_MISMATCH",
     )
     assert estimator.calls == []
+
 
 def test_b2_driver_satisfies_light_vehicle_license_requirement() -> None:
     vehicle = _vehicle("V-050", vehicle_type="VAN", driver=_driver(license_class="B2"))
     service, _ = _service((vehicle,), {"N15": _path()})
     candidate = service.allocate(_request()).candidates[0]
     assert candidate.eligible is True
+
+
+class _VersionedRoadProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def snapshot(self) -> RoadNetworkSnapshot:
+        self.calls += 1
+        return RoadNetworkSnapshot(version=self.calls, nodes=(), edges=())
+
+
+class _VersionRecordingPathFinder:
+    def __init__(self) -> None:
+        self.snapshot_versions: list[int] = []
+
+    def find(
+        self,
+        snapshot: RoadNetworkSnapshot,
+        start_node_id: str,
+        end_node_id: str,
+        objective: RouteObjective,
+        vehicle_weight_tons: Decimal,
+        excluded_edge_ids: frozenset[str] = frozenset(),
+    ) -> PathResult:
+        self.snapshot_versions.append(snapshot.version)
+        return _path()
+
+
+def test_allocate_freezes_one_road_snapshot_for_all_eligible_candidates() -> None:
+    provider = _VersionedRoadProvider()
+    finder = _VersionRecordingPathFinder()
+    estimator = DijkstraTravelTimeEstimator(provider, finder)
+    candidates = (_vehicle("V-060", current_node_id="N60"), _vehicle("V-061", current_node_id="N61"))
+
+    FleetAllocationService(_FleetProvider(candidates), estimator).allocate(_request())
+
+    assert provider.calls == 1
+    assert finder.snapshot_versions == [1, 1]
+
 
 def test_dijkstra_adapter_uses_narrow_road_interfaces_and_returns_e20_pickup() -> None:
     result = DijkstraTravelTimeEstimator(_RoadProvider(), DijkstraPathFinder()).estimate("N15", "N04", Decimal("2.40"))

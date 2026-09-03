@@ -8,8 +8,8 @@ from app.fleet.models import (
     FleetVehicleSnapshot,
     VehicleCandidate,
 )
-from app.fleet.protocols import FleetProvider, TravelTimeEstimator
-from app.road_network.models import PathResult, RouteObjective
+from app.fleet.protocols import AllocationPreparableTravelTimeEstimator, FleetProvider, TravelTimeEstimator
+from app.road_network.models import PathResult, RoadNetworkSnapshot, RouteObjective
 from app.road_network.protocols import PathFinder, RoadNetworkProvider
 
 _SCORE_QUANTUM = Decimal("0.1")
@@ -28,15 +28,38 @@ class DijkstraTravelTimeEstimator:
         self._path_finder = path_finder
 
     def estimate(self, from_node_id: str, to_node_id: str, vehicle_weight_tons: Decimal) -> PathResult | None:
-        return self._path_finder.find(
-            self._road_network.snapshot(), from_node_id, to_node_id, RouteObjective.FASTEST, vehicle_weight_tons
-        )
+        snapshot = self._road_network.snapshot()
+        return self._path_finder.find(snapshot, from_node_id, to_node_id, RouteObjective.FASTEST, vehicle_weight_tons)
 
     def is_weight_restricted(self, from_node_id: str, to_node_id: str, vehicle_weight_tons: Decimal) -> bool:
-        snapshot = self._road_network.snapshot()
-        return self._path_finder.find(snapshot, from_node_id, to_node_id, RouteObjective.FASTEST, vehicle_weight_tons) is None and (
-            self._path_finder.find(snapshot, from_node_id, to_node_id, RouteObjective.FASTEST, Decimal("0")) is not None
-        )
+        return _is_weight_restricted(self._path_finder, self._road_network.snapshot(), from_node_id, to_node_id, vehicle_weight_tons)
+
+    def for_allocation(self) -> TravelTimeEstimator:
+        return _PreparedDijkstraTravelTimeEstimator(self._road_network.snapshot(), self._path_finder)
+
+
+class _PreparedDijkstraTravelTimeEstimator:
+    def __init__(self, snapshot: RoadNetworkSnapshot, path_finder: PathFinder) -> None:
+        self._snapshot = snapshot
+        self._path_finder = path_finder
+
+    def estimate(self, from_node_id: str, to_node_id: str, vehicle_weight_tons: Decimal) -> PathResult | None:
+        return self._path_finder.find(self._snapshot, from_node_id, to_node_id, RouteObjective.FASTEST, vehicle_weight_tons)
+
+    def is_weight_restricted(self, from_node_id: str, to_node_id: str, vehicle_weight_tons: Decimal) -> bool:
+        return _is_weight_restricted(self._path_finder, self._snapshot, from_node_id, to_node_id, vehicle_weight_tons)
+
+
+def _is_weight_restricted(
+    path_finder: PathFinder,
+    snapshot: RoadNetworkSnapshot,
+    from_node_id: str,
+    to_node_id: str,
+    vehicle_weight_tons: Decimal,
+) -> bool:
+    return path_finder.find(snapshot, from_node_id, to_node_id, RouteObjective.FASTEST, vehicle_weight_tons) is None and (
+        path_finder.find(snapshot, from_node_id, to_node_id, RouteObjective.FASTEST, Decimal("0")) is not None
+    )
 
 
 class FleetAllocationService:
@@ -45,7 +68,8 @@ class FleetAllocationService:
         self._travel_time_estimator = travel_time_estimator
 
     def allocate(self, request: FleetAllocationRequest) -> FleetAllocationResult:
-        candidates = tuple(self._evaluate(vehicle, request) for vehicle in self._fleet_provider.list_candidates(request.original_vehicle_id))
+        estimator = self._prepare_estimator()
+        candidates = tuple(self._evaluate(vehicle, request, estimator) for vehicle in self._fleet_provider.list_candidates(request.original_vehicle_id))
         eligible = sorted(
             (candidate for candidate in candidates if candidate.eligible),
             key=lambda candidate: (-candidate.score, candidate.pickup_eta_minutes, candidate.vehicle_id),
@@ -66,20 +90,20 @@ class FleetAllocationService:
             None,
         )
 
-    def _evaluate(self, vehicle: FleetVehicleSnapshot, request: FleetAllocationRequest) -> VehicleCandidate:
+    def _evaluate(self, vehicle: FleetVehicleSnapshot, request: FleetAllocationRequest, estimator: TravelTimeEstimator) -> VehicleCandidate:
         reasons = self._cheap_reasons(vehicle, request)
         if reasons:
             return self._rejected(vehicle, reasons)
-        pickup = self._travel_time_estimator.estimate(vehicle.current_node_id, request.incident_node_id, vehicle.gross_weight_tons)
+        pickup = estimator.estimate(vehicle.current_node_id, request.incident_node_id, vehicle.gross_weight_tons)
         if pickup is None:
-            if self._weight_restricted(vehicle, vehicle.current_node_id, request.incident_node_id):
+            if self._weight_restricted(estimator, vehicle, vehicle.current_node_id, request.incident_node_id):
                 reasons.append("ROAD_WEIGHT_RESTRICTION")
             reasons.append("PICKUP_UNREACHABLE")
             return self._rejected(vehicle, reasons)
         if request.destination_node_id is not None:
-            delivery = self._travel_time_estimator.estimate(request.incident_node_id, request.destination_node_id, vehicle.gross_weight_tons)
+            delivery = estimator.estimate(request.incident_node_id, request.destination_node_id, vehicle.gross_weight_tons)
             if delivery is None:
-                if self._weight_restricted(vehicle, request.incident_node_id, request.destination_node_id):
+                if self._weight_restricted(estimator, vehicle, request.incident_node_id, request.destination_node_id):
                     reasons.append("ROAD_WEIGHT_RESTRICTION")
                 reasons.append("DELIVERY_UNREACHABLE")
                 return self._rejected(vehicle, reasons, pickup)
@@ -114,10 +138,13 @@ class FleetAllocationService:
             reasons.append("ORIGINAL_VEHICLE_EXCLUDED")
         if vehicle.status != "AVAILABLE":
             reasons.append("VEHICLE_UNAVAILABLE")
-        if vehicle.driver is None or vehicle.driver.status != "ON_DUTY":
+        if vehicle.driver is None:
             reasons.append("DRIVER_UNAVAILABLE")
-        elif not FleetAllocationService._license_matches(vehicle):
-            reasons.append("LICENSE_MISMATCH")
+        else:
+            if vehicle.driver.status != "ON_DUTY":
+                reasons.append("DRIVER_UNAVAILABLE")
+            if not FleetAllocationService._license_matches(vehicle):
+                reasons.append("LICENSE_MISMATCH")
         if vehicle.remaining_load_kg < request.cargo_weight_kg:
             reasons.append("INSUFFICIENT_CAPACITY")
         if request.cargo_type == "COLD_CHAIN" and vehicle.cargo_capability != "COLD_CHAIN":
@@ -130,16 +157,19 @@ class FleetAllocationService:
             return False
         return vehicle.driver.license_class in ({"C1", "B2"} if vehicle.vehicle_type in _LIGHT_VEHICLE_TYPES else {"B2"})
 
-    def _weight_restricted(self, vehicle: FleetVehicleSnapshot, from_node_id: str, to_node_id: str) -> bool:
+    def _prepare_estimator(self) -> TravelTimeEstimator:
         estimator = self._travel_time_estimator
+        if isinstance(estimator, AllocationPreparableTravelTimeEstimator):
+            return estimator.for_allocation()
+        return estimator
+
+    def _weight_restricted(self, estimator: TravelTimeEstimator, vehicle: FleetVehicleSnapshot, from_node_id: str, to_node_id: str) -> bool:
         if not isinstance(estimator, _WeightRestrictionAware):
             return False
         return estimator.is_weight_restricted(from_node_id, to_node_id, vehicle.gross_weight_tons)
 
     @staticmethod
-    def _score_components(
-        vehicle: FleetVehicleSnapshot, request: FleetAllocationRequest, pickup: PathResult
-    ) -> FleetScoreComponents:
+    def _score_components(vehicle: FleetVehicleSnapshot, request: FleetAllocationRequest, pickup: PathResult) -> FleetScoreComponents:
         return FleetScoreComponents(
             eta_penalty=Decimal(pickup.estimated_minutes) * Decimal("1.5"),
             distance_penalty=pickup.distance_km * Decimal("2"),
@@ -150,9 +180,7 @@ class FleetAllocationService:
         )
 
     @staticmethod
-    def _rejected(
-        vehicle: FleetVehicleSnapshot, reasons: list[str], pickup: PathResult | None = None
-    ) -> VehicleCandidate:
+    def _rejected(vehicle: FleetVehicleSnapshot, reasons: list[str], pickup: PathResult | None = None) -> VehicleCandidate:
         return VehicleCandidate(
             vehicle.vehicle_id,
             vehicle.driver.driver_id if vehicle.driver else None,

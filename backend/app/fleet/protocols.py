@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from app.fleet.models import FleetVehicleSnapshot
 from app.road_network.models import PathResult
@@ -11,3 +11,8 @@ class FleetProvider(Protocol):
 
 class TravelTimeEstimator(Protocol):
     def estimate(self, from_node_id: str, to_node_id: str, vehicle_weight_tons: Decimal) -> PathResult | None: ...
+
+
+@runtime_checkable
+class AllocationPreparableTravelTimeEstimator(Protocol):
+    def for_allocation(self) -> TravelTimeEstimator: ...
