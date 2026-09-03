@@ -22,6 +22,7 @@ def route_candidate_to_state(candidate: RouteCandidate) -> RouteCandidateState:
         "edge_ids": list(candidate.edge_ids),
         "objective": candidate.objective,
         "algorithm_version": candidate.algorithm_version,
+        "scoring_formula": candidate.scoring_formula,
         "road_network_version": candidate.road_network_version,
         "visited_node_count": candidate.visited_node_count,
         "risk_cost": str(candidate.risk_cost) if candidate.risk_cost is not None else None,
@@ -106,10 +107,21 @@ async def routing_node(
         candidate_routes = [route_candidate_to_state(candidate) for candidate in result.candidate_routes]
         return {
             **_recommendation_patch(state, result, candidate_routes, recommendation_service),
+            **(
+                {
+                    "error_code": "NO_REACHABLE_ROUTE",
+                    "error_message": "排除受影响道路后不存在可达配送路线，请人工复核。",
+                }
+                if result.routing_status == "NO_REACHABLE_ROUTE"
+                else {}
+            ),
             "blocked_edge_ids": list(result.blocked_edge_ids),
             "original_path": _path_to_state(result.original_path),
-            "recommended_path": _path_to_state(result.recommended_path),
+            "recommended_path": (
+                {**_path_to_state(result.recommended_path), "scoring_formula": "ROUTE_SCORE_V1"} if result.recommended_path is not None else None
+            ),
             "routing_algorithm": "DIJKSTRA_V1",
+            "routing_status": result.routing_status,
             "road_network_version": result.road_network_version,
             "distance_delta_km": (
                 str(result.recommended_path.distance_km - result.original_path.distance_km)

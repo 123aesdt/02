@@ -43,9 +43,19 @@ class _RoadProvider:
             nodes=tuple(RoadNodeSnapshot(row["node_id"], row["name"], Decimal(row["x_km"]), Decimal(row["y_km"]), row["node_type"]) for row in ROAD_NODES),
             edges=tuple(
                 RoadEdgeSnapshot(
-                    row["edge_id"], row["name"], row["from_node_id"], row["to_node_id"], Decimal(row["distance_km"]), row["base_minutes"],
-                    row["road_level"], row["risk_level"], "BLOCKED" if row["edge_id"] in self._sandtable._blocked_edge_ids else "OPEN",
-                    Decimal("1.00"), Decimal(row["weight_limit_tons"]), True, 8 if row["edge_id"] in self._sandtable._blocked_edge_ids else 7,
+                    row["edge_id"],
+                    row["name"],
+                    row["from_node_id"],
+                    row["to_node_id"],
+                    Decimal(row["distance_km"]),
+                    row["base_minutes"],
+                    row["road_level"],
+                    row["risk_level"],
+                    "BLOCKED" if row["edge_id"] in self._sandtable._blocked_edge_ids else "OPEN",
+                    Decimal("1.00"),
+                    Decimal(row["weight_limit_tons"]),
+                    True,
+                    8 if row["edge_id"] in self._sandtable._blocked_edge_ids else 7,
                 )
                 for row in ROAD_EDGES
             ),
@@ -55,13 +65,20 @@ class _RoadProvider:
 class _FleetProvider:
     def list_candidates(self, excluding_vehicle_id: str) -> tuple[FleetVehicleSnapshot, ...]:
         drivers = {
-            row["driver_id"]: FleetDriverSnapshot(row["driver_id"], row["name"], row["license_class"], row["status"], row["current_node_id"])
-            for row in DRIVERS
+            row["driver_id"]: FleetDriverSnapshot(row["driver_id"], row["name"], row["license_class"], row["status"], row["current_node_id"]) for row in DRIVERS
         }
         return tuple(
             FleetVehicleSnapshot(
-                row["vehicle_id"], row["plate_no"], row["vehicle_type"], Decimal(row["max_load_kg"]), Decimal(row["current_load_kg"]),
-                row["cargo_capability"], Decimal(row["gross_weight_tons"]), row["status"], row["current_node_id"], drivers.get(row["assigned_driver_id"]),
+                row["vehicle_id"],
+                row["plate_no"],
+                row["vehicle_type"],
+                Decimal(row["max_load_kg"]),
+                Decimal(row["current_load_kg"]),
+                row["cargo_capability"],
+                Decimal(row["gross_weight_tons"]),
+                row["status"],
+                row["current_node_id"],
+                drivers.get(row["assigned_driver_id"]),
             )
             for row in VEHICLES
         )
@@ -145,3 +162,80 @@ async def test_road_block_replans_without_e04(graph, blocked_state) -> None:
     assert result["distance_delta_km"] == "3.20"
     assert result["eta_delta_minutes"] == 4
     assert result["routing_algorithm"] == "DIJKSTRA_V1"
+
+
+@pytest.mark.asyncio
+async def test_fixed_scenarios_include_fleet_and_route_scoring_evidence(graph, breakdown_state, blocked_state) -> None:
+    breakdown = await graph.ainvoke(breakdown_state)
+    selected = next(candidate for candidate in breakdown["candidate_vehicles"] if candidate["vehicle_id"] == "V-005")
+
+    assert selected["score"] in {"93.4", "93.40"}
+    assert selected["scoring_formula"] == "FLEET_SCORE_V1"
+    assert selected["score_components"] == {
+        "eta_penalty": "9.0",
+        "distance_penalty": "5.60",
+        "load_penalty": "2.0",
+        "road_risk_penalty": "0",
+        "same_station_bonus": "0",
+        "cargo_exact_match_bonus": "10",
+    }
+
+    blocked = await graph.ainvoke(blocked_state)
+
+    assert blocked["routing_algorithm"] == "DIJKSTRA_V1"
+    assert blocked["recommended_path"]["scoring_formula"] == "ROUTE_SCORE_V1"
+    assert all(candidate["scoring_formula"] == "ROUTE_SCORE_V1" for candidate in blocked["candidate_routes"])
+    assert all(candidate["algorithm_version"] == "DIJKSTRA_V1" for candidate in blocked["candidate_routes"])
+
+
+class _NoReachableRoadProvider:
+    def snapshot(self) -> RoadNetworkSnapshot:
+        return RoadNetworkSnapshot(
+            version=99,
+            nodes=tuple(RoadNodeSnapshot(row["node_id"], row["name"], Decimal(row["x_km"]), Decimal(row["y_km"]), row["node_type"]) for row in ROAD_NODES),
+            edges=tuple(
+                RoadEdgeSnapshot(
+                    row["edge_id"],
+                    row["name"],
+                    row["from_node_id"],
+                    row["to_node_id"],
+                    Decimal(row["distance_km"]),
+                    row["base_minutes"],
+                    row["road_level"],
+                    row["risk_level"],
+                    "BLOCKED",
+                    Decimal("1.00"),
+                    Decimal(row["weight_limit_tons"]),
+                    True,
+                    99,
+                )
+                for row in ROAD_EDGES
+            ),
+        )
+
+
+@pytest.fixture
+def unreachable_graph():
+    sandtable_provider = _SandtableProvider()
+    road_provider = _NoReachableRoadProvider()
+    return build_graph(
+        GraphDependencies(
+            sandtable_context_service=SandtableContextService(sandtable_provider),
+            routing_service=__import__("app.routing.service", fromlist=["RoutingService"]).RoutingService(
+                None,
+                memory_adoption_threshold=0.75,
+                road_network_provider=road_provider,
+                path_finder=DijkstraPathFinder(),
+            ),
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_unreachable_graph_returns_stable_route_error(unreachable_graph, blocked_state) -> None:
+    result = await unreachable_graph.ainvoke(blocked_state)
+
+    assert result["routing_status"] == "NO_REACHABLE_ROUTE"
+    assert result["error_code"] == "NO_REACHABLE_ROUTE"
+    assert result["error_message"] == "排除受影响道路后不存在可达配送路线，请人工复核。"
+    assert result["requires_manual_review"] is True

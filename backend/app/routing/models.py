@@ -21,6 +21,7 @@ class RouteCandidate:
     road_network_version: int | None = None
     visited_node_count: int | None = None
     risk_cost: Decimal | None = None
+    scoring_formula: str | None = None
 
 
 @dataclass(frozen=True)

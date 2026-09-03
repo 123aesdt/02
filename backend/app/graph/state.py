@@ -63,6 +63,7 @@ class RouteCandidateState(TypedDict):
     road_network_version: NotRequired[int | None]
     visited_node_count: NotRequired[int | None]
     risk_cost: NotRequired[str | None]
+    scoring_formula: NotRequired[str | None]
 
 
 class PathState(TypedDict):
@@ -140,6 +141,7 @@ class DispatchGraphState(TypedDict):
     original_path: NotRequired[PathState | None]
     recommended_path: NotRequired[PathState | None]
     routing_algorithm: NotRequired[str]
+    routing_status: NotRequired[str]
     road_network_version: NotRequired[int]
     distance_delta_km: NotRequired[str]
     eta_delta_minutes: NotRequired[int]

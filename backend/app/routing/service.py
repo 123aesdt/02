@@ -96,9 +96,19 @@ class RoutingService:
             by_edges.setdefault(path.edge_ids, path)
         if not by_edges:
             return RoutingResult(
-                [], None, "MANUAL_REVIEW", "No reachable route remains after excluding affected roads.", False, None, "NO_REACHABLE_ROUTE", True,
-                original_path=original_path, blocked_edge_ids=blocked, road_network_version=snapshot.version,
-                road_network_nodes=self._nodes_to_state(snapshot), road_network_edges=self._edges_to_state(snapshot),
+                [],
+                None,
+                "MANUAL_REVIEW",
+                "No reachable route remains after excluding affected roads.",
+                False,
+                None,
+                "NO_REACHABLE_ROUTE",
+                True,
+                original_path=original_path,
+                blocked_edge_ids=blocked,
+                road_network_version=snapshot.version,
+                road_network_nodes=self._nodes_to_state(snapshot),
+                road_network_edges=self._edges_to_state(snapshot),
             )
         candidates = self._score_paths(list(by_edges.values()), snapshot.version)
         recommended = min(
@@ -184,6 +194,7 @@ class RoutingService:
                     edge_ids=path.edge_ids,
                     objective=path.objective.value,
                     algorithm_version="DIJKSTRA_V1",
+                    scoring_formula="ROUTE_SCORE_V1",
                     road_network_version=road_network_version,
                     visited_node_count=path.visited_node_count,
                     risk_cost=path.risk_cost,
@@ -202,8 +213,7 @@ class RoutingService:
     @staticmethod
     def _nodes_to_state(snapshot: RoadNetworkSnapshot) -> list[dict[str, object]]:
         return [
-            {"node_id": node.node_id, "name": node.name, "x_km": str(node.x_km), "y_km": str(node.y_km), "node_type": node.node_type}
-            for node in snapshot.nodes
+            {"node_id": node.node_id, "name": node.name, "x_km": str(node.x_km), "y_km": str(node.y_km), "node_type": node.node_type} for node in snapshot.nodes
         ]
 
     @staticmethod

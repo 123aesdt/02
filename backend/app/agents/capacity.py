@@ -35,6 +35,19 @@ def _path_to_state(path: PathResult | None) -> dict[str, object] | None:
     }
 
 
+def _score_components_to_state(candidate: VehicleCandidate) -> dict[str, str] | None:
+    if candidate.score_components is None:
+        return None
+    return {
+        "eta_penalty": format(candidate.score_components.eta_penalty, "f"),
+        "distance_penalty": format(candidate.score_components.distance_penalty, "f"),
+        "load_penalty": format(candidate.score_components.load_penalty, "f"),
+        "road_risk_penalty": format(candidate.score_components.road_risk_penalty, "f"),
+        "same_station_bonus": format(candidate.score_components.same_station_bonus, "f"),
+        "cargo_exact_match_bonus": format(candidate.score_components.cargo_exact_match_bonus, "f"),
+    }
+
+
 def _candidate_to_state(candidate: VehicleCandidate) -> dict[str, object]:
     return {
         "vehicle_id": candidate.vehicle_id,
@@ -46,6 +59,8 @@ def _candidate_to_state(candidate: VehicleCandidate) -> dict[str, object]:
         "pickup_distance_km": str(candidate.pickup_distance_km) if candidate.pickup_distance_km is not None else None,
         "pickup_eta_minutes": candidate.pickup_eta_minutes,
         "score": str(candidate.score) if candidate.score is not None else None,
+        "score_components": _score_components_to_state(candidate),
+        "scoring_formula": "FLEET_SCORE_V1",
         "eligible": candidate.eligible,
         "exclusion_reasons": list(candidate.exclusion_reasons),
     }
