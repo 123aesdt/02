@@ -13,6 +13,7 @@ from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.road import RoadEdge, RoadNode
 from app.models.station import LogisticsStation
+from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
 from app.sandtable.service import RoadLocationUnresolved, SandtableContextService
 from app.sandtable.sqlalchemy_repository import (
     SandtableOrderConflictError,
@@ -252,3 +253,19 @@ def test_seed_savepoint_rolls_back_partial_flush_and_keeps_outer_transaction(sql
         assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 0
         assert session.scalar(select(func.count()).select_from(RoadEdge)) == 0
         assert session.scalar(select(func.count()).select_from(Order)) == 1
+
+def test_road_repository_factory_reads_latest_committed_snapshot(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        session.commit()
+    repository = SqlAlchemyRoadNetworkRepository(sqlite_factory)
+    first = repository.snapshot()
+    with sqlite_factory() as session:
+        edge = session.scalar(select(RoadEdge).where(RoadEdge.edge_id == "E04"))
+        edge.status = "BLOCKED"
+        session.commit()
+    second = repository.snapshot()
+    assert next(edge for edge in first.edges if edge.edge_id == "E04").status == "OPEN"
+    blocked = next(edge for edge in second.edges if edge.edge_id == "E04")
+    assert blocked.status == "BLOCKED"
+    assert second.version > first.version
