@@ -129,6 +129,7 @@ class FleetAllocationService:
             score,
             True,
             (),
+            vehicle.gross_weight_tons,
         )
 
     @staticmethod
@@ -193,6 +194,7 @@ class FleetAllocationService:
             None,
             False,
             tuple(reasons),
+            vehicle.gross_weight_tons,
         )
 
 
