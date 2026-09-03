@@ -128,6 +128,7 @@ async def test_vehicle_breakdown_reassigns_vehicle_and_continues_to_routing(grap
     assert result["capacity_state"]["capacity_status"] == "REASSIGNED"
     assert result["selected_vehicle_id"] == "V-005"
     assert result["selected_driver_id"] == "D-003"
+    assert result["selected_vehicle_gross_weight_tons"] == "2.40"
     assert result["vehicle_reassigned"] is True
     assert result["pickup_route"]["edge_ids"] == ["E20"]
     assert result["recommended_path"]["node_ids"][-1] == "N06"
