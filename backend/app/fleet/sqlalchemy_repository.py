@@ -17,16 +17,16 @@ def _decimal(value: Decimal) -> Decimal:
 class SqlAlchemyFleetRepository:
     """Maps ORM rows to detached immutable fleet snapshots."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | object) -> None:
         self._session = session
 
     def list_candidates(self, excluding_vehicle_id: str) -> tuple[FleetVehicleSnapshot, ...]:
+        owns_session = callable(self._session)
+        session = self._session() if owns_session else self._session
         try:
             drivers = {
-                driver.driver_id: FleetDriverSnapshot(
-                    driver.driver_id, driver.name, driver.license_class, driver.status, driver.current_node_id
-                )
-                for driver in self._session.scalars(select(FleetDriver))
+                driver.driver_id: FleetDriverSnapshot(driver.driver_id, driver.name, driver.license_class, driver.status, driver.current_node_id)
+                for driver in session.scalars(select(FleetDriver))
             }
             return tuple(
                 FleetVehicleSnapshot(
@@ -41,7 +41,8 @@ class SqlAlchemyFleetRepository:
                     vehicle.current_node_id,
                     drivers.get(vehicle.assigned_driver_id),
                 )
-                for vehicle in self._session.scalars(select(FleetVehicle).order_by(FleetVehicle.vehicle_id))
+                for vehicle in session.scalars(select(FleetVehicle).order_by(FleetVehicle.vehicle_id))
             )
         finally:
-            self._session.close()
+            if owns_session:
+                session.close()

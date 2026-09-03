@@ -55,6 +55,7 @@ def _sandtable_context(state: DispatchGraphState) -> SandtableTaskContext:
         incident_node_id=state.get("incident_node_id"),
         affected_edge_ids=tuple(state.get("affected_edge_ids", [])),
         road_network_version=state.get("road_network_version", 0),
+        vehicle_weight_tons=Decimal(str(state.get("vehicle_weight_tons", "2.00"))),
     )
 
 

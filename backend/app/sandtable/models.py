@@ -15,3 +15,4 @@ class SandtableTaskContext:
     incident_node_id: str | None
     affected_edge_ids: tuple[str, ...]
     road_network_version: int
+    vehicle_weight_tons: Decimal = Decimal("2.00")

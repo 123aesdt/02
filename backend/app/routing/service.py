@@ -74,7 +74,7 @@ class RoutingService:
             return RoutingResult([], None, "MANUAL_REVIEW", "No vehicle is available for route planning.", False, None, "MANUAL_REVIEW", True)
 
         snapshot = self._road_network_provider.snapshot()
-        vehicle_weight_tons = Decimal("2.00")
+        vehicle_weight_tons = context.vehicle_weight_tons
         start_node_id = context.incident_node_id or context.origin_node_id
         blocked = tuple(sorted(set(affected_edge_ids)))
         original_snapshot = RoadNetworkSnapshot(

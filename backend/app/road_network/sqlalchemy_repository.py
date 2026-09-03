@@ -14,13 +14,14 @@ def _decimal(value: Decimal) -> Decimal:
 
 
 class SqlAlchemyRoadNetworkRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | object) -> None:
         self._session = session
 
     def snapshot(self) -> RoadNetworkSnapshot:
+        session = self._session() if callable(self._session) else self._session
         nodes = tuple(
             RoadNodeSnapshot(node.node_id, node.name, _decimal(node.x_km), _decimal(node.y_km), node.node_type)
-            for node in self._session.scalars(select(RoadNode).order_by(RoadNode.node_id))
+            for node in session.scalars(select(RoadNode).order_by(RoadNode.node_id))
         )
         edges = tuple(
             RoadEdgeSnapshot(
@@ -38,6 +39,6 @@ class SqlAlchemyRoadNetworkRepository:
                 edge.bidirectional,
                 edge.version,
             )
-            for edge in self._session.scalars(select(RoadEdge).order_by(RoadEdge.edge_id))
+            for edge in session.scalars(select(RoadEdge).order_by(RoadEdge.edge_id))
         )
         return RoadNetworkSnapshot(max((edge.version for edge in edges), default=0), nodes, edges)

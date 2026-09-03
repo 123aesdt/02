@@ -101,39 +101,51 @@ def seed_new_county_sandtable(session: Session) -> None:
 
 
 class SqlAlchemySandtableRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session | object) -> None:
         self._session = session
 
     def load(self, order_id: int) -> SandtableTaskContext:
-        order = self._session.get(Order, order_id)
-        if order is None:
-            raise LookupError(f"订单不存在: {order_id}")
-        origin = self._session.scalar(select(LogisticsStation).where(LogisticsStation.station_id == order.origin_station_id))
-        destination = self._session.scalar(select(LogisticsStation).where(LogisticsStation.station_id == order.destination_station_id))
-        vehicle = self._session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == order.vehicle_id))
-        if origin is None or destination is None or vehicle is None:
-            raise LookupError(f"订单沙盘上下文不完整: {order.order_no}")
-        road_network_version = self._session.scalar(select(func.max(RoadEdge.version))) or 0
-        return SandtableTaskContext(
-            order_id=order.id,
-            order_no=order.order_no,
-            cargo_weight_kg=order.cargo_weight_kg or Decimal("0.00"),
-            cargo_type=order.cargo_type or "GENERAL",
-            origin_node_id=origin.road_node_id,
-            destination_node_id=destination.road_node_id,
-            current_vehicle_id=vehicle.vehicle_id,
-            current_driver_id=vehicle.assigned_driver_id,
-            incident_node_id=None,
-            affected_edge_ids=(),
-            road_network_version=int(road_network_version),
-        )
+        owns = callable(self._session)
+        session = self._session() if owns else self._session
+        try:
+            order = session.get(Order, order_id)
+            if order is None:
+                raise LookupError(f"订单不存在: {order_id}")
+            origin = session.scalar(select(LogisticsStation).where(LogisticsStation.station_id == order.origin_station_id))
+            destination = session.scalar(select(LogisticsStation).where(LogisticsStation.station_id == order.destination_station_id))
+            vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == order.vehicle_id))
+            if origin is None or destination is None or vehicle is None:
+                raise LookupError(f"订单沙盘上下文不完整: {order.order_no}")
+            version = session.scalar(select(func.max(RoadEdge.version))) or 0
+            return SandtableTaskContext(
+                order.id,
+                order.order_no,
+                order.cargo_weight_kg or Decimal("0.00"),
+                order.cargo_type or "GENERAL",
+                origin.road_node_id,
+                destination.road_node_id,
+                vehicle.vehicle_id,
+                vehicle.assigned_driver_id,
+                None,
+                (),
+                int(version),
+                vehicle.gross_weight_tons,
+            )
+        finally:
+            if owns:
+                session.close()
 
     def set_edge_status(self, edge_id: str, status: str) -> int:
-        edge = self._session.scalar(select(RoadEdge).where(RoadEdge.edge_id == edge_id))
-        if edge is None:
-            raise LookupError(f"道路不存在: {edge_id}")
-        if edge.status == status:
+        owns = callable(self._session)
+        session = self._session() if owns else self._session
+        try:
+            edge = session.scalar(select(RoadEdge).where(RoadEdge.edge_id == edge_id))
+            if edge is None:
+                raise LookupError(f"道路不存在: {edge_id}")
+            if edge.status != status:
+                edge.status = status
+                session.commit()
             return edge.version
-        edge.status = status
-        self._session.commit()
-        return edge.version
+        finally:
+            if owns:
+                session.close()
