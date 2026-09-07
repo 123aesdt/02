@@ -90,13 +90,13 @@ class RouteScoreComponentsResponse(_StrictEvidenceResponse):
 
 
 class PathResponse(_StrictEvidenceResponse):
-    objective: str | None = None
-    node_ids: list[str] = Field(default_factory=list)
-    edge_ids: list[str] = Field(default_factory=list)
-    distance_km: str | None = None
-    estimated_minutes: int | None = None
-    risk_cost: str | None = None
-    visited_node_count: int | None = None
+    objective: str
+    node_ids: list[str]
+    edge_ids: list[str]
+    distance_km: str
+    estimated_minutes: int
+    risk_cost: str
+    visited_node_count: int
     scoring_formula: str | None = None
 
 
@@ -154,20 +154,20 @@ class RoadEdgeResponse(_StrictEvidenceResponse):
 
 class RouteCandidateResponse(_StrictEvidenceResponse):
     route_id: str
-    route_name: str | None = None
-    objective: str | None = None
-    node_ids: list[str] = Field(default_factory=list)
-    edge_ids: list[str] = Field(default_factory=list)
-    distance_km: str | None = None
-    estimated_minutes: int | None = None
-    risk_level: str | None = None
-    risk_cost: str | None = None
-    visited_node_count: int | None = None
-    available: bool | None = None
-    reason: str | None = None
-    score: str | None = None
+    route_name: str
+    objective: str
+    node_ids: list[str]
+    edge_ids: list[str]
+    distance_km: str
+    estimated_minutes: int
+    risk_level: str
+    risk_cost: str
+    visited_node_count: int
+    available: bool
+    reason: str | None
+    score: str
     score_components: RouteScoreComponentsResponse | None = None
-    scoring_formula: str | None = None
+    scoring_formula: str
     algorithm_version: str | None = None
     road_network_version: int | None = None
 

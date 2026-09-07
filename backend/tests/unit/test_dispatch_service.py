@@ -883,3 +883,37 @@ def test_dispatch_persists_complete_historical_route_snapshot_with_allowlisted_f
     finally:
         engine.dispose()
         temp.cleanup()
+
+
+def test_dispatch_persists_absent_paths_as_null() -> None:
+    temp, engine, factory = _service()
+    try:
+        _seed_breakdown_vehicle(factory)
+        args = _breakdown_execution_args()
+        args["route_evidence"] = {
+            "algorithm_version": "DIJKSTRA_V1",
+            "road_network_version": 7,
+            "original_path": None,
+            "recommended_path": None,
+            "pickup_path": None,
+            "blocked_edge_ids": [],
+            "candidate_routes": [],
+            "road_network_nodes": [],
+            "road_network_edges": [],
+        }
+
+        result = DispatchService(factory).execute(**args)
+        with factory() as session:
+            route = session.scalar(
+                select(DispatchEvidence).where(
+                    DispatchEvidence.dispatch_id == result.dispatch_id,
+                    DispatchEvidence.evidence_type == "ROUTE_CALCULATION",
+                )
+            )
+
+        assert route.payload_json["original_path"] is None
+        assert route.payload_json["recommended_path"] is None
+        assert route.payload_json["pickup_path"] is None
+    finally:
+        engine.dispose()
+        temp.cleanup()

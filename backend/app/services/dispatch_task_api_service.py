@@ -235,7 +235,11 @@ class DispatchTaskApiService:
         if not isinstance(fleet_row.payload_json, Mapping) or not isinstance(route_row.payload_json, Mapping):
             return None, None
         try:
-            candidates = cls._vehicle_candidates(fleet_row.payload_json, dispatch.target_vehicle_id)
+            candidates = cls._vehicle_candidates(
+                fleet_row.payload_json,
+                dispatch.target_vehicle_id,
+                dispatch.target_driver_id,
+            )
             pickup_source = fleet_row.payload_json.get("pickup_route")
             if pickup_source is None:
                 pickup_source = route_row.payload_json.get("pickup_path")
@@ -274,16 +278,41 @@ class DispatchTaskApiService:
         return allocation.model_dump(mode="json"), route_plan.model_dump(mode="json")
 
     @classmethod
-    def _vehicle_candidates(cls, payload: Mapping[str, object], target_vehicle_id: str | None) -> list[dict[str, object]]:
+    def _vehicle_candidates(
+        cls,
+        payload: Mapping[str, object],
+        target_vehicle_id: str | None,
+        target_driver_id: str | None,
+    ) -> list[dict[str, object]]:
+        for key, expected in (
+            ("target_vehicle_id", target_vehicle_id),
+            ("target_driver_id", target_driver_id),
+        ):
+            if key in payload and payload[key] != expected:
+                raise ValueError("Fleet evidence identity conflicts with dispatch facts.")
         raw_candidates = cls._mapping_list(payload.get("candidates"))
         selected = payload.get("selected_candidate")
         selected_candidate = selected if isinstance(selected, Mapping) else {}
+        for key, expected in (
+            ("vehicle_id", target_vehicle_id),
+            ("driver_id", target_driver_id),
+        ):
+            if key in selected_candidate and selected_candidate[key] != expected:
+                raise ValueError("Selected candidate identity conflicts with dispatch facts.")
         output: list[dict[str, object]] = []
+        selected_count = 0
         for candidate in raw_candidates:
             source = dict(candidate)
             if source.get("vehicle_id") == target_vehicle_id:
-                source.update(selected_candidate)
+                selected_count += 1
+                if "driver_id" in source and source["driver_id"] != target_driver_id:
+                    raise ValueError("Candidate driver identity conflicts with dispatch facts.")
+                source.update({key: value for key, value in selected_candidate.items() if key not in {"vehicle_id", "driver_id"}})
+                source["vehicle_id"] = target_vehicle_id
+                source["driver_id"] = target_driver_id
             output.append(VehicleCandidateResponse.model_validate(cls._pick(source, cls._vehicle_candidate_keys())).model_dump(mode="json"))
+        if target_vehicle_id is not None and selected_count != 1:
+            raise ValueError("Fleet evidence must contain exactly one selected vehicle.")
         return output
 
     @classmethod

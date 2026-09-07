@@ -104,3 +104,16 @@ Task 6 原有 `ROUTE_CALCULATION.relevant_edges` 是紧凑审计摘要，不足�
 - 安全兜底：`GraphEventAdapter._json_safe` 对未知对象归一为 `null`，不再调用任意对象的 `str()`。
 - GREEN：新增两条测试 `2 passed`；事件/WebSocket/跨实例 Redis broker 回归 `21 passed`；`ruff check backend` 与 `py_compile` 通过。
 - 本批只处理事件白名单，不修改 Result API 的证据身份或路径完整性规则。
+
+## Important #2 审查修复：持久证据身份与路径完整性
+
+- 修复基线：`38a09d8561b5dfb399661e7238215d65beb52eba`，开始时工作树干净。
+- RED（结果 API）：身份篡改、空推荐路径、路径缺少距离、候选路线缺少距离、ETA 错误类型共 5 个用例，首次为 `4 failed, 1 passed`；证明错误类型已被 strict int 拒绝，但身份冲突和空/缺字段路径仍被接受。
+- RED（持久化）：缺失原/推荐路径应保持 `null` 的用例首次为 `1 failed`；原压缩逻辑把缺失路径伪造成八字段空对象。
+- 修复：结果服务以同一 session 中的 `Dispatch.target_vehicle_id/target_driver_id` 为选中身份事实锚；证据顶层身份、`selected_candidate` 和目标候选的司机身份如与 Dispatch 冲突，则整组车辆/路线证据稳定归一为 `null`。通过后响应身份仍由 Dispatch 固定写入，不信任证据覆盖。
+- 路径模型：`PathResponse` 与 `RouteCandidateResponse` 的核心路径、距离、ETA、风险、可用性及评分字段改为显式 strict required；缺字段、空对象或错误类型均由 Pydantic 拒绝。可选扩展字段仍按白名单处理。
+- 持久语义：`DispatchService` 对不存在的路径持久化 JSON `null`，不再生成看似完整的空路径对象；相关边和访问节点统计只消费真实 Mapping。
+- GREEN：上述新增 6 条测试 `6 passed`；事件、WebSocket、Result、实际沙盘 E2E、DispatchService、Routing 和 Task 5/6 graph 扩大回归 `102 passed`。
+- 合并后完整 backend：`982 passed, 12 skipped, 866 warnings in 283.45s`，exit 0；12 个 skip 均为未启用的 opt-in MySQL/真实 Redis/四存储集成环境。
+- `ruff check backend`、`py_compile` 与 `git diff --check` 均通过；新增行敏感格式扫描无命中。
+- 本批没有修改前端，也没有查询当前可变路网补全历史事实；RoutePlan 仍只来自同一调度持久证据快照。

@@ -374,7 +374,8 @@ class DispatchService:
         blocked_edge_ids = cls._string_list(source.get("blocked_edge_ids"))
         relevant_edge_ids = set(blocked_edge_ids)
         for path in (original_path, recommended_path, pickup_path):
-            relevant_edge_ids.update(path["edge_ids"])
+            if path is not None:
+                relevant_edge_ids.update(path["edge_ids"])
         routes = source.get("candidate_routes")
         candidate_routes = routes if isinstance(routes, Sequence) and not isinstance(routes, str) else ()
         return {
@@ -386,7 +387,7 @@ class DispatchService:
             "blocked_edge_ids": blocked_edge_ids,
             "distance_delta_km": cls._number_text(source.get("distance_delta_km")),
             "eta_delta_minutes": cls._integer(source.get("eta_delta_minutes")),
-            "visited_node_count": recommended_path.get("visited_node_count"),
+            "visited_node_count": None if recommended_path is None else recommended_path.get("visited_node_count"),
             "routing_status": cls._text(source, "routing_status"),
             "relevant_edges": cls._compact_relevant_edges(
                 source.get("road_network_edges"),
@@ -398,17 +399,18 @@ class DispatchService:
         }
 
     @classmethod
-    def _compact_path(cls, value: object) -> dict[str, object]:
-        path = value if isinstance(value, Mapping) else {}
+    def _compact_path(cls, value: object) -> dict[str, object] | None:
+        if not isinstance(value, Mapping):
+            return None
         return {
-            "objective": cls._text(path, "objective"),
-            "node_ids": cls._string_list(path.get("node_ids")),
-            "edge_ids": cls._string_list(path.get("edge_ids")),
-            "distance_km": cls._number_text(path.get("distance_km")),
-            "estimated_minutes": cls._integer(path.get("estimated_minutes")),
-            "risk_cost": cls._number_text(path.get("risk_cost")),
-            "visited_node_count": cls._integer(path.get("visited_node_count")),
-            "scoring_formula": cls._text(path, "scoring_formula"),
+            "objective": cls._text(value, "objective"),
+            "node_ids": cls._string_list(value.get("node_ids")),
+            "edge_ids": cls._string_list(value.get("edge_ids")),
+            "distance_km": cls._number_text(value.get("distance_km")),
+            "estimated_minutes": cls._integer(value.get("estimated_minutes")),
+            "risk_cost": cls._number_text(value.get("risk_cost")),
+            "visited_node_count": cls._integer(value.get("visited_node_count")),
+            "scoring_formula": cls._text(value, "scoring_formula"),
         }
 
     @classmethod

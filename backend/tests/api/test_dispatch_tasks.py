@@ -899,3 +899,78 @@ def test_result_rejects_malformed_or_duplicate_evidence_without_leaking_internal
         asyncio.run(redis.aclose())
         engine.dispose()
         temp.cleanup()
+
+
+def test_result_rejects_selected_candidate_identity_tampering() -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        fleet = session.query(DispatchEvidence).filter_by(evidence_type="FLEET_ALLOCATION").one()
+        payload = dict(fleet.payload_json)
+        payload["selected_candidate"] = {
+            "vehicle_id": "V-TAMPERED",
+            "driver_id": "D-TAMPERED",
+            "vehicle_status": "AVAILABLE",
+        }
+        fleet.payload_json = payload
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert response.status_code == 200
+        assert response.json()["vehicle_allocation"] is None
+        assert response.json()["route_plan"] is None
+        assert "TAMPERED" not in response.text
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        "empty_recommended_path",
+        "recommended_path_missing_distance",
+        "candidate_route_missing_distance",
+        "recommended_path_wrong_eta_type",
+    ],
+)
+def test_result_rejects_incomplete_or_wrong_typed_path_evidence(corruption: str) -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        route = session.query(DispatchEvidence).filter_by(evidence_type="ROUTE_CALCULATION").one()
+        payload = dict(route.payload_json)
+        if corruption == "empty_recommended_path":
+            payload["recommended_path"] = {}
+        elif corruption == "recommended_path_missing_distance":
+            recommended_path = dict(payload["recommended_path"])
+            recommended_path.pop("distance_km")
+            payload["recommended_path"] = recommended_path
+        elif corruption == "candidate_route_missing_distance":
+            candidate = dict(payload["candidate_routes"][0])
+            candidate.pop("distance_km")
+            payload["candidate_routes"] = [candidate]
+        else:
+            recommended_path = dict(payload["recommended_path"])
+            recommended_path["estimated_minutes"] = "24"
+            payload["recommended_path"] = recommended_path
+        route.payload_json = payload
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert response.status_code == 200
+        assert response.json()["vehicle_allocation"] is None
+        assert response.json()["route_plan"] is None
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
