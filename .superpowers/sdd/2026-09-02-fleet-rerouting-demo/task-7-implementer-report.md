@@ -95,3 +95,12 @@ Task 6 原有 `ROUTE_CALCULATION.relevant_edges` 是紧凑审计摘要，不足�
 - 权限：ticket 只增加服务端生成并严格解析的 `can_review` 布尔值；主管/具 `dispatch:review` 权限者继续看到未发布详情，员工只有发布后可见，与 Result API `route_visible` 语义一致。
 - GREEN：两条 Critical 测试 `2 passed`；WebSocket/ticket/Result 定向权限集 `28 passed`；四个 API/WebSocket 文件加 ticket 安全集 `68 passed`；跨实例 Redis broker 回归 `4 passed`；`ruff check backend` 通过。
 - 本批按审查要求只修 Critical；两个 Important（事件递归白名单、持久证据身份/完整结构校验）留待后续批次，本批未运行完整 backend 全量测试。
+
+## Important #1 审查修复：事件严格白名单
+
+- 修复基线：`d83992bbc332b654864a9dc031e53771a518be32`。
+- RED：`2 failed`。capacity/routing 的嵌套 `authorization` 与未知对象被完整保留，dispatch 的错误类型 `target_driver_id` 被调用 `__str__` 后公开。
+- 修复：新增 `graph_payloads` 窄模块，对 capacity、routing、dispatch 及其候选车辆、接驳/规划路径、评分项、候选路线、路网节点/边分别做显式字段与基本类型投影；未知键丢弃，错误类型字段省略，缺少合法标识的列表项拒绝。Decimal 仍由既有逻辑输出定点字符串。
+- 安全兜底：`GraphEventAdapter._json_safe` 对未知对象归一为 `null`，不再调用任意对象的 `str()`。
+- GREEN：新增两条测试 `2 passed`；事件/WebSocket/跨实例 Redis broker 回归 `21 passed`；`ruff check backend` 与 `py_compile` 通过。
+- 本批只处理事件白名单，不修改 Result API 的证据身份或路径完整性规则。

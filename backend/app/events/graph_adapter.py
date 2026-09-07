@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Protocol
 
 from app.events.broker import TaskEventBroker
+from app.events.graph_payloads import project_capacity_event, project_dispatch_event, project_routing_event
 from app.events.models import TaskEvent, TaskEventType
 from app.graph.state import DispatchGraphState
 
@@ -105,87 +106,11 @@ class GraphEventAdapter:
                 )
             }
         if node == "routing":
-            data = {
-                key: patch.get(key)
-                for key in (
-                    "recommended_route",
-                    "decision",
-                    "decision_reason",
-                    "memory_adopted",
-                    "requires_manual_review",
-                    "candidate_routes",
-                )
-            }
-            if "adopted_memory_id" in patch:
-                data["adopted_memory_id"] = patch.get("adopted_memory_id")
-            routing_fields = {
-                "blocked_edge_ids": "blocked_edge_ids",
-                "original_path": "original_path",
-                "recommended_path": "recommended_path",
-                "distance_delta_km": "distance_delta_km",
-                "eta_delta_minutes": "eta_delta_minutes",
-                "routing_status": "routing_status",
-                "routing_algorithm": "algorithm",
-                "road_network_version": "road_network_version",
-                "road_network_nodes": "network_nodes",
-                "road_network_edges": "network_edges",
-            }
-            for source_key, public_key in routing_fields.items():
-                if source_key in patch:
-                    data[public_key] = patch.get(source_key)
-            recommended = patch.get("recommended_path")
-            if isinstance(recommended, Mapping) and "visited_node_count" in recommended:
-                data["visited_node_count"] = recommended.get("visited_node_count")
-            return data
+            return project_routing_event(patch)
         if node == "capacity":
-            combined = state or patch
-            capacity = combined.get("capacity_state")
-            capacity_data = capacity if isinstance(capacity, Mapping) else {}
-            data = {
-                "vehicle_id": combined.get("vehicle_id"),
-                "vehicle_status": combined.get("vehicle_status"),
-                **{
-                    key: capacity_data.get(key)
-                    for key in (
-                        "driver_available",
-                        "vehicle_available",
-                        "capacity_status",
-                        "risk_level",
-                        "reason",
-                    )
-                },
-            }
-            for key in (
-                "candidate_vehicles",
-                "selected_vehicle_id",
-                "selected_driver_id",
-                "vehicle_reassigned",
-                "pickup_route",
-            ):
-                if key in combined:
-                    data[key] = combined.get(key)
-            candidates = combined.get("candidate_vehicles")
-            if isinstance(candidates, Sequence) and not isinstance(candidates, str) and candidates:
-                first = candidates[0]
-                if isinstance(first, Mapping) and isinstance(first.get("scoring_formula"), str):
-                    data["scoring_formula"] = first["scoring_formula"]
-            return data
+            return project_capacity_event(state or patch)
         if node == "dispatch":
-            result = patch.get("dispatch_result")
-            if not isinstance(result, Mapping):
-                return {}
-            return {
-                key: result.get(key)
-                for key in (
-                    "original_vehicle_id",
-                    "target_vehicle_id",
-                    "target_driver_id",
-                    "target_route_id",
-                    "status",
-                    "version",
-                    "executed",
-                )
-            }
+            return project_dispatch_event(patch.get("dispatch_result"))
         if node == "audit":
             return {"audit_result": patch.get("audit_result")}
         return {}
@@ -204,4 +129,4 @@ class GraphEventAdapter:
             return [cls._json_safe(item) for item in value]
         if value is None or isinstance(value, (str, int, float, bool)):
             return value
-        return str(value)
+        return None
