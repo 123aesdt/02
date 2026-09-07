@@ -84,3 +84,14 @@ Task 6 原有 `ROUTE_CALCULATION.relevant_edges` 是紧凑审计摘要，不足�
 - Task 7 brief 示例提到 11 个候选，但当前固定沙盘实际定义并扫描 12 辆车辆，且原故障车辆作为有排除原因的候选具有解释价值；测试按 `VEHICLES` 的实际数据推导为 12，没有为匹配示例而硬编码或删候选。
 - 为满足“完整历史路网而非当前路网”的要求，变更范围受控扩展到 Task 5 路由状态字段，以及 Task 6 的 agent/证据白名单链；没有改动权限基础规则或前端 Task 8。
 - `COUNTYFLOW_MYSQL_INTEGRATION_DOCKER_ENV` 与 `SECURITY_DATABASE_URL` 均未设置，因此未声称运行真实 MySQL 集成；完整测试中的相关 MySQL/真实 Redis 测试按既有 opt-in 条件跳过。SQLite 真实仓储/Worker/graph 沙盘链已覆盖本任务行为。
+
+## Critical 审查修复：事件发布边界
+
+- 修复基线：`ae22794ad3d374960583460aa304e1e52a60c60e`，开始时工作树干净。
+- RED：真实 HTTP ticket + WebSocket broker 的员工历史回放与实时推送测试为 `2 failed`；分别暴露 13 个路线敏感键和 7 个车辆/司机/接驳敏感键。
+- 根因：一次性 ticket 未携带 `dispatch:review` 能力，且 WebSocket 历史与实时两个分支均直接执行 `event.to_dict()`。
+- 修复：新增单一 `TaskEventVisibilityProjector` 服务端边界；snapshot、历史 replay、实时 live 都经同一 `project()` 发送。未发布非审核人员保留事件 envelope、`progress`、节点状态等非敏感数据，明确移除车辆、司机、接驳、路线、阻塞边、差值、算法/路网版本和路网节点/边键。
+- 发布状态：每一条含敏感键的实时事件都打开一个有界 session 查询当前 `DispatchPublication`，不缓存建连时状态；同一员工连接中发布后的下一条事件立即可见。SQLAlchemy 查询失败时关闭式脱敏，不回显内部异常。
+- 权限：ticket 只增加服务端生成并严格解析的 `can_review` 布尔值；主管/具 `dispatch:review` 权限者继续看到未发布详情，员工只有发布后可见，与 Result API `route_visible` 语义一致。
+- GREEN：两条 Critical 测试 `2 passed`；WebSocket/ticket/Result 定向权限集 `28 passed`；四个 API/WebSocket 文件加 ticket 安全集 `68 passed`；跨实例 Redis broker 回归 `4 passed`；`ruff check backend` 通过。
+- 本批按审查要求只修 Critical；两个 Important（事件递归白名单、持久证据身份/完整结构校验）留待后续批次，本批未运行完整 backend 全量测试。

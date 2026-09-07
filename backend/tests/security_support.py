@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from app.security.dependencies import get_current_principal
 from app.security.errors import SecurityHttpError
 from app.security.models import AuthenticatedPrincipal, AuthMethod
-from app.security.permissions import ROLE_PERMISSION_MATRIX, Role
+from app.security.permissions import ROLE_PERMISSION_MATRIX, Permission, Role
 from app.security.rate_limit import RateLimitDecision
 from app.security.ws_ticket import ConsumedWsTicket
 
@@ -20,6 +20,9 @@ TEST_WS_TICKET = "t" * 43
 
 
 class AllowAllWsTicketService:
+    def __init__(self, *, can_review: bool) -> None:
+        self._can_review = can_review
+
     async def consume(self, ticket, **scope) -> ConsumedWsTicket:
         now = datetime.now(UTC)
         return ConsumedWsTicket(
@@ -29,6 +32,7 @@ class AllowAllWsTicketService:
             required_permission=scope["required_permission"],
             issued_at=now,
             expires_at=now + timedelta(minutes=1),
+            can_review=self._can_review,
         )
 
 
@@ -60,7 +64,7 @@ def authorize_app(app: FastAPI, role: Role = Role.ADMIN) -> FastAPI:
     principal = principal_for(role)
     app.dependency_overrides[get_current_principal] = lambda: principal
     app.state.rate_limit_admission = AllowAllRateLimitAdmission()
-    app.state.ws_ticket_service = AllowAllWsTicketService()
+    app.state.ws_ticket_service = AllowAllWsTicketService(can_review=principal.can(Permission.DISPATCH_REVIEW))
     app.state.security_audit_recorder = NoOpSecurityAuditRecorder()
 
     @app.exception_handler(SecurityHttpError)
