@@ -461,13 +461,13 @@ def test_list_my_tasks_isolates_owner_and_returns_literal_summary(sqlite_factory
             vehicle_id="苏G·N2148",
             original_route_id="东河乡道",
             suggested_route_id=None,
-                status="REVIEW_REQUIRED",
-                created_at=REVIEW_TIME,
-                updated_at=REVIEW_TIME,
-                origin="东河镇",
-                destination="县城分拨中心",
-                publication_status="PENDING",
-            ),
+            status="REVIEW_REQUIRED",
+            created_at=REVIEW_TIME,
+            updated_at=REVIEW_TIME,
+            origin="东河镇",
+            destination="县城分拨中心",
+            publication_status="PENDING",
+        ),
         MyTaskListItem(
             row_id=1,
             task_id="TASK-approved-1",
@@ -476,14 +476,14 @@ def test_list_my_tasks_isolates_owner_and_returns_literal_summary(sqlite_factory
             description="降雨",
             vehicle_id="苏G·N2147",
             original_route_id="西河乡道",
-                suggested_route_id=None,
-                status="APPROVED",
-                created_at=datetime(2026, 8, 29, 8, 10, 0),
-                updated_at=datetime(2026, 8, 29, 8, 10, 0),
-                origin="青云镇",
-                destination="临港镇",
-                publication_status="PENDING",
-            ),
+            suggested_route_id=None,
+            status="APPROVED",
+            created_at=datetime(2026, 8, 29, 8, 10, 0),
+            updated_at=datetime(2026, 8, 29, 8, 10, 0),
+            origin="青云镇",
+            destination="临港镇",
+            publication_status="PENDING",
+        ),
     )
     assert all(item.task_id != "TASK-latest-3" for item in page.items)
 
@@ -560,25 +560,16 @@ def test_list_my_tasks_filters_state_without_changing_owner_summary(sqlite_facto
     assert page.summary == MyTaskSummary(total=2, ready=1, waiting=1, active=0, ended=0)
 
 
-def test_list_my_tasks_uses_latest_dispatch_and_stable_cursor(sqlite_factory):
+def test_list_my_tasks_uses_dispatch_and_stable_cursor(sqlite_factory):
     from app.workspace_reads.sqlalchemy_repository import SqlAlchemyWorkspaceReadRepository
 
     seed_workspace(sqlite_factory)
     with sqlite_factory() as session:
-        session.add(
-            Dispatch(
-                id=4,
-                dispatch_no="DISPATCH-004",
-                order_id=2,
-                task_id=2,
-                original_route_id="东河乡道-新",
-                target_route_id="国道-最新方案",
-                decision_reason="最新方案",
-                status="PENDING_REVIEW",
-                created_at=REVIEW_TIME,
-                updated_at=REVIEW_TIME,
-            )
-        )
+        dispatch = session.get(Dispatch, 2)
+        assert dispatch is not None
+        dispatch.original_route_id = "东河乡道-新"
+        dispatch.target_route_id = "国道-最新方案"
+        dispatch.decision_reason = "最新方案"
         session.commit()
     repository = SqlAlchemyWorkspaceReadRepository(sqlite_factory)
 
@@ -599,36 +590,28 @@ def test_list_my_tasks_uses_latest_dispatch_and_stable_cursor(sqlite_factory):
     assert second.next_cursor is None
 
 
-def test_list_reviews_uses_one_deterministic_latest_dispatch_and_audit_per_task(sqlite_factory):
+def test_list_reviews_uses_one_dispatch_and_deterministic_latest_audit_per_task(
+    sqlite_factory,
+):
     from app.workspace_reads.models import ReviewListItem
     from app.workspace_reads.sqlalchemy_repository import SqlAlchemyWorkspaceReadRepository
 
     seed_workspace(sqlite_factory)
     with sqlite_factory() as session:
-        session.add(
-            Dispatch(
-                id=3,
-                dispatch_no="DISPATCH-003",
-                order_id=2,
-                task_id=2,
-                original_route_id="东河乡道-旧",
-                target_route_id="国道-102",
-                decision_reason="最新绕行方案",
-                recommended_action="按核验路线安全绕行。",
-                analysis_mode="EIGHT_AGENT_RULE_ASSISTED",
-                issue_subtype="CLOSURE",
-                status="PENDING_REVIEW",
-                created_at=REVIEW_TIME,
-                updated_at=REVIEW_TIME,
-            )
-        )
-        session.flush()
+        dispatch = session.get(Dispatch, 2)
+        assert dispatch is not None
+        dispatch.original_route_id = "东河乡道-旧"
+        dispatch.target_route_id = "国道-102"
+        dispatch.decision_reason = "最新绕行方案"
+        dispatch.recommended_action = "按核验路线安全绕行。"
+        dispatch.analysis_mode = "EIGHT_AGENT_RULE_ASSISTED"
+        dispatch.issue_subtype = "CLOSURE"
         session.add_all(
             [
                 AuditRecord(
                     id=3,
                     task_id=2,
-                    dispatch_id=3,
+                    dispatch_id=2,
                     result="REVIEW_REQUIRED",
                     reason="旧复核原因",
                     evidence_json="{}",
@@ -638,7 +621,7 @@ def test_list_reviews_uses_one_deterministic_latest_dispatch_and_audit_per_task(
                 AuditRecord(
                     id=4,
                     task_id=2,
-                    dispatch_id=3,
+                    dispatch_id=2,
                     result="REVIEW_REQUIRED",
                     reason="最新复核原因",
                     evidence_json="{}",
