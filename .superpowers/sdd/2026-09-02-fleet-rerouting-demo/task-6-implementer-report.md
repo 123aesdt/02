@@ -105,3 +105,17 @@
 - Windows deny-read ACL 仍使 `apply_patch` 无法读取目标文件；按约束仅用完整函数/方法块 PowerShell 写入并立即 `py_compile`/diff，机械格式使用 Ruff。
 
 - 提交前最终相关回归：`119 passed, 4 skipped in 29.69s`；未启动完整后端全量，按协调要求留待五项审查修复汇总后统一执行。
+
+## Task 6 最终统一全量门禁
+
+- 门禁起点 HEAD：`5a3d6a92e84cdbe292be1c3c6ee41628799938d1`；起点工作树干净。固定 BASE 仍为 `c28040d5cfa2b076ccb25c5a9d4f5f3149ce1dc6`。
+- 首次完整后端 pytest 会话 `33879`，真实 exit code `1`：`955 passed, 12 skipped, 2 failed, 768 warnings in 258.05s`。
+- 两个失败均来自 workspace-read 旧测试夹具：`seed_workspace` 已为 `task_id=2` 创建 Dispatch，测试又插入第二条 Dispatch，触发本 Task 已发布的 `uq_dispatches_task_id`。最小复现为 `2 failed in 1.50s`。
+- 系统化根因修复只修改测试数据：改为更新种子中的唯一 Dispatch；最新审计测试的两条额外 AuditRecord 继续指向该 Dispatch，保留确定性审计选择覆盖，不改变生产代码。
+- 修复后原失败测试：`2 passed in 1.03s`；完整 workspace_reads：`28 passed in 9.28s`。
+- 测试夹具修复提交：`0e90d487ca71ed5bfa8c86f84cca2c1d5d7cc243`（`测试：对齐任务调度唯一约束`）。
+- 第二次完整后端 pytest 会话 `29052`，真实 exit code `0`：`957 passed, 12 skipped, 768 warnings in 262.69s`。
+- 完整 backend Ruff：`All checks passed!`；固定 BASE 到工作树的 `git diff --check` exit code 0。
+- Alembic heads：仅 `20260907_14 (head)`。
+- 固定 BASE 到测试修复提交的新增行敏感特征扫描：OpenAI 样式密钥、AWS 访问密钥、私钥头、URL 内嵌凭据、JWT 样式令牌均为 0。
+- 12 个跳过均为未配置的 opt-in Redis/MySQL/Qdrant/真实共享内存环境；未声称运行这些外部依赖测试。
