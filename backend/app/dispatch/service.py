@@ -3,6 +3,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -208,11 +209,47 @@ class DispatchService:
         except StaleDataError as error:
             session.rollback()
             raise _CandidateReservationConflict from error
+        except IntegrityError:
+            session.rollback()
+            existing_result = self._read_idempotent_result(
+                task_id=task_id,
+                order_id=order_id,
+                original_route_id=original_route_id,
+                decision_reason=decision_reason,
+            )
+            if existing_result is not None:
+                return existing_result
+            raise
         except Exception:
             session.rollback()
             raise
         finally:
             session.close()
+
+    def _read_idempotent_result(
+        self,
+        *,
+        task_id: str,
+        order_id: int,
+        original_route_id: str,
+        decision_reason: str,
+    ) -> DispatchResult | None:
+        with self._session_factory() as session:
+            task = session.scalar(
+                select(DispatchTask).where(DispatchTask.task_id == task_id)
+            )
+            if task is None:
+                return None
+            existing = DispatchRepository(session).get_by_task_id(task.id)
+            if existing is None:
+                return None
+            return self._result(
+                existing,
+                task_id,
+                order_id,
+                original_route_id,
+                decision_reason,
+            )
 
     @staticmethod
     def _result(

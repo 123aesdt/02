@@ -1,10 +1,13 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
+import app.dispatch.service as dispatch_service_module
 from app.agents.dispatch import dispatch_node
 from app.audit.service import AuditService
 from app.dispatch.models import DispatchResult
@@ -427,6 +430,57 @@ def test_dispatch_preserves_the_supplied_eligible_candidate_order() -> None:
             "V-006",
             "D-004",
         )
+    finally:
+        engine.dispose()
+        temp.cleanup()
+
+def test_dispatch_service_reraises_unrelated_integrity_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    temp, engine, factory = _service()
+    try:
+        with factory() as session:
+            first_task = session.scalar(
+                select(DispatchTask).where(DispatchTask.task_id == "task-001")
+            )
+            session.add(
+                DispatchTask(
+                    task_id="task-002",
+                    order_id=1,
+                    status="created",
+                    idempotency_key="key-002",
+                )
+            )
+            session.add(
+                Dispatch(
+                    dispatch_no="DSP-duplicate",
+                    order_id=1,
+                    task_id=first_task.id,
+                    status="REROUTED",
+                )
+            )
+            session.commit()
+        monkeypatch.setattr(
+            dispatch_service_module,
+            "uuid4",
+            lambda: SimpleNamespace(hex="duplicate"),
+        )
+
+        with pytest.raises(IntegrityError):
+            DispatchService(factory).execute(
+                "task-002",
+                1,
+                "xinping-road",
+                "national-102",
+                "REROUTE",
+                "safer",
+                False,
+                None,
+                False,
+            )
+
+        with factory() as session:
+            assert len(list(session.scalars(select(Dispatch)))) == 1
     finally:
         engine.dispose()
         temp.cleanup()

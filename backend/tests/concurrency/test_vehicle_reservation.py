@@ -351,3 +351,132 @@ def test_mysql_opt_in_two_sessions_reserve_distinct_ranked_vehicles() -> None:
         with admin.begin() as connection:
             connection.execute(text(f"DROP DATABASE IF EXISTS `{database}`"))
         admin.dispose()
+
+def _install_same_task_dispatch_barrier(factory: sessionmaker[Session]) -> None:
+    rendezvous = Barrier(2)
+    winner_committed = Event()
+    arrival_lock = Lock()
+    arrivals = 0
+
+    @event.listens_for(factory.class_, "before_flush")
+    def synchronize_dispatch_flush(session: Session, *_args: object) -> None:
+        nonlocal arrivals
+        if not any(isinstance(row, Dispatch) for row in session.new):
+            return
+        with arrival_lock:
+            arrival_index = arrivals
+            arrivals += 1
+        if arrival_index >= 2:
+            return
+        session.info["same_task_dispatch_arrival"] = arrival_index
+        rendezvous.wait(timeout=10)
+        if arrival_index == 1 and not winner_committed.wait(timeout=10):
+            raise TimeoutError("同任务赢家未在并发测试时限内提交")
+
+    @event.listens_for(factory.class_, "after_commit")
+    def release_same_task_loser(session: Session) -> None:
+        if session.info.get("same_task_dispatch_arrival") == 0:
+            winner_committed.set()
+
+
+def _run_same_task_race(
+    factory: sessionmaker[Session],
+    order_id: int,
+) -> list[object]:
+    service = DispatchService(factory)
+
+    def execute(candidate: dict[str, object]) -> object:
+        try:
+            return service.execute(
+                **_execution_args("task-race-a", order_id, [candidate])
+            )
+        except Exception as error:
+            return error
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(execute, _candidate("V-005", "D-003", "93.4")),
+            executor.submit(execute, _candidate("V-006", "D-004", "90.0")),
+        ]
+        return [future.result(timeout=20) for future in futures]
+
+
+def test_same_task_concurrent_replay_persists_one_dispatch_and_rolls_back_loser_vehicle() -> None:
+    with TemporaryDirectory(dir=Path(__file__).parent) as temp_dir:
+        engine, factory = _factory(Path(temp_dir) / "same-task-race.db")
+        try:
+            order_ids = _seed(factory)
+            _install_same_task_dispatch_barrier(factory)
+
+            results = _run_same_task_race(factory, order_ids[0])
+
+            assert all(not isinstance(result, Exception) for result in results), [
+                repr(result) for result in results
+            ]
+            with factory() as session:
+                dispatches = list(session.scalars(select(Dispatch)))
+                evidence_count = session.scalar(
+                    select(func.count()).select_from(DispatchEvidence)
+                )
+                reserved_count = session.scalar(
+                    select(func.count())
+                    .select_from(FleetVehicle)
+                    .where(FleetVehicle.status == "RESERVED")
+                )
+                vehicles = dict(
+                    session.execute(
+                        select(FleetVehicle.vehicle_id, FleetVehicle.status)
+                    ).all()
+                )
+            observed = (len(dispatches), evidence_count, reserved_count)
+            assert observed == (1, 2, 1), observed
+            assert results[0].dispatch_id == results[1].dispatch_id == dispatches[0].id
+            assert set(vehicles.values()) == {"AVAILABLE", "RESERVED"}
+        finally:
+            engine.dispose()
+
+
+def test_mysql_opt_in_same_task_concurrent_replay_is_idempotent() -> None:
+    admin_url, database_url, database = _mysql_urls()
+    assert "***" in str(admin_url) and "***" in str(database_url)
+    admin = create_engine(admin_url, future=True)
+    engine = None
+    try:
+        with admin.begin() as connection:
+            connection.execute(
+                text(f"CREATE DATABASE `{database}` CHARACTER SET utf8mb4")
+            )
+        engine = create_engine(database_url, future=True)
+        Base.metadata.create_all(engine)
+
+        class MySqlSameTaskSession(ReservationSession):
+            pass
+
+        factory = sessionmaker(
+            bind=engine,
+            class_=MySqlSameTaskSession,
+            expire_on_commit=False,
+        )
+        order_ids = _seed(factory)
+        _install_same_task_dispatch_barrier(factory)
+        results = _run_same_task_race(factory, order_ids[0])
+
+        assert all(not isinstance(result, Exception) for result in results), [
+            repr(result) for result in results
+        ]
+        with factory() as session:
+            dispatches = list(session.scalars(select(Dispatch)))
+            assert len(dispatches) == 1
+            assert session.scalar(select(func.count()).select_from(DispatchEvidence)) == 2
+            assert session.scalar(
+                select(func.count())
+                .select_from(FleetVehicle)
+                .where(FleetVehicle.status == "RESERVED")
+            ) == 1
+        assert results[0].dispatch_id == results[1].dispatch_id == dispatches[0].id
+    finally:
+        if engine is not None:
+            engine.dispose()
+        with admin.begin() as connection:
+            connection.execute(text(f"DROP DATABASE IF EXISTS `{database}`"))
+        admin.dispose()

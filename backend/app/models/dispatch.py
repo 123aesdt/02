@@ -6,7 +6,10 @@ from app.models.base import Base, TimestampMixin
 
 class Dispatch(TimestampMixin, Base):
     __tablename__ = "dispatches"
-    __table_args__ = (UniqueConstraint("dispatch_no", name="uq_dispatches_dispatch_no"),)
+    __table_args__ = (
+        UniqueConstraint("dispatch_no", name="uq_dispatches_dispatch_no"),
+        UniqueConstraint("task_id", name="uq_dispatches_task_id"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     dispatch_no: Mapped[str] = mapped_column(String(64), nullable=False)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False)

@@ -72,3 +72,19 @@
 - MySQL opt-in 并发测试未运行，因为本机未设置可用的 `COUNTYFLOW_MYSQL_INTEGRATION_DOCKER_ENV`。SQLite 双 Session/Barrier 并发测试已实际运行并验证 `StaleDataError` 路径。
 - 完整测试的 768 条警告为 FastAPI 生命周期弃用、Starlette/httpx 兼容及 Qdrant 版本探测等既有警告；没有测试失败。
 - 无实现阻塞。
+
+## 独立审查 Important #1 修复批次
+
+- 审查修复起点：`fa3d17037f287b33933b443f9e74cf9dd14f18ca`，起点工作树干净。
+- 本批次只修复“同一 `task_id` 并发重放可产生重复 Dispatch”；未处理审查报告 Important #2–#5，按协调要求也未重复运行完整后端全量。
+- 红灯：SQLite 两个真实 Session、Barrier、同 task 但分别选择 V-005/V-006，旧实现数据库实况为 `2 Dispatch / 4 Evidence / 2 RESERVED`；连同 ORM 唯一约束缺失和迁移文件缺失，共 `3 failed, 1 skipped`。
+- 数据库约束：ORM 新增 `uq_dispatches_task_id`；新增 Alembic `20260907_14_dispatch_task_uniqueness.py`，接续 `20260902_13`，upgrade 创建唯一约束、downgrade 删除约束，不修改旧迁移。
+- 竞争回读：服务仍先查询幂等结果；insert/flush/commit 的 `IntegrityError` 会先回滚原事务，再用全新 Session 按外部 task_id 查任务并回读赢家。仅确认同 task Dispatch 已存在时返回该结果；否则原样抛出 IntegrityError。
+- 回滚结果：并发输家的车辆状态与 Dispatch/Evidence 写入均随原事务回滚；最终两个调用返回同一 Dispatch，数据库为 `1 Dispatch / 2 Evidence / 1 RESERVED`，另一候选车保持 `AVAILABLE`。
+- 额外回归：人为制造非 task 唯一约束的 `dispatch_no` 冲突，验证服务不会将其误吞为幂等竞争。
+- 首次绿灯：新增同 task 并发、ORM 约束、SQLite 迁移往返为 `3 passed, 1 skipped`。
+- 最终相关回归：`24 passed, 4 skipped in 7.16s`，覆盖 Dispatch 单测、全部车辆并发测试和全部迁移测试；4 个跳过均为未配置的 opt-in MySQL 项。
+- Alembic head：`20260907_14 (head)`。
+- MySQL 状态：本机未设置 `COUNTYFLOW_MYSQL_INTEGRATION_DOCKER_ENV`，新增 MySQL 唯一约束往返与同 task 并发测试均如实跳过；未声称运行 MySQL。
+- Important #1 批次 Ruff：`All checks passed!`。
+- Important #1 暂存差异 `diff --check`：exit code 0；敏感特征扫描五类均为 0。
