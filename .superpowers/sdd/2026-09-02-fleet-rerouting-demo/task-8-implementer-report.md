@@ -25,6 +25,10 @@
    - 命令：`npm.cmd test -- tests/dynamic-route-visual.test.tsx`
    - 结果：`1 failed, 1 passed`；重复 E07 被画成两个元素，并触发 React 重复 key 警告。
 
+6. 独立审查两项 Important 修复：
+   - 命令：`npm.cmd test -- tests/fleet-allocation-panel.test.tsx`
+   - 结果：exit 1，`2 failed, 1 passed`；旧实现为陌生车辆构造重复身份标题且没有语义表，行为测试按预期阻断。
+
 ## 实现结果
 
 ### TypeScript 响应契约
@@ -37,9 +41,9 @@
 
 - 新增 `FleetAllocationPanel`，组件只接收 `VehicleAllocationResponse`。
 - 同屏展示故障车辆、接替箭头、新车辆、司机、接驳距离/时间、入选评分、评分公式与六项评分分解。
-- 完整遍历接口返回的全部候选车辆；每辆车都有 `data-vehicle-id`、虚拟车牌可访问标题、入选/可调度原因或全部排除原因。
-- 覆盖原车辆排除、车辆不可用、司机不可用、准驾不符、载重不足、冷链不匹配、道路限重、接驳不可达和配送不可达等中文原因。
-- 虚拟车牌来自既有沙盘 V-001 至 V-012 的固定映射；未知车辆 ID 安全回退显示原 ID，不伪造车牌。
+- 候选区使用真正的语义 `<table>`，包含 `caption`、`thead`、`tbody`、列头及 `scope="row"` 行头；每行保留 `data-vehicle-id` 与只由 `vehicle_id` 组成的可访问标题。
+- 每辆候选车逐项展示资格与全部排除原因、司机 ID/状态、车辆状态、剩余载重、总重、能力、接驳距离/时间、总分及六项评分分解；nullable 证据统一显示中性中文“未提供”。
+- 身份信息只展示 `VehicleAllocationResponse` 中已有的 `vehicle_id`/`driver_id`，不再内置车牌或名称映射；选中只依据 `target_vehicle_id`，合格未选候选只显示“满足硬约束”，不推断评分高低。
 
 ### 动态 SVG 道路网络
 
@@ -61,7 +65,7 @@
 ## 浏览器验收
 
 - 继承的详情页视觉基线：`docs/assets/frontend-demo/dispatch-detail-1440.png`。
-- 最新真实页面截图：`docs/verification/task-8/offline-dispatch-result.png`。
+- 初版真实页面截图：`docs/verification/task-8/offline-dispatch-result.png`；它记录审查修复前的页面，本轮只修复两项 Important，未将旧截图误称为最终表格证据。
 - 内置浏览器运行工具未向当前子任务暴露，因此按规范回退到仓库已有 Playwright Chromium；Vite 以 API 模式启动，HTTP 接口由本地完整虚拟 Result 拦截，不访问外部网络。
 - 第一次 Playwright 运行因“王主管”定位器同时匹配 3 个元素而失败；根因明确后仅将定位器收窄为 `exact: true`。复跑结果：`1 passed (1.8s)`。
 - 验收视口：1440 × 1200，full-page 截图。
@@ -76,9 +80,9 @@
 
 ## 最终验证记录
 
-- 聚焦核心测试：`5 passed` 文件，`27 passed` 测试。
+- 初版聚焦核心测试：`5 passed` 文件，`27 passed` 测试；独立审查修复聚焦测试：`1 passed` 文件，`3 passed` 测试。
 - 旧演示页兼容测试：`2 passed` 文件，`4 passed` 测试。
-- 完整前端测试：`54 passed` 文件，`248 passed` 测试，exit 0。
+- 完整前端测试：`54 passed` 文件，`250 passed` 测试，exit 0。
 - `npm.cmd run lint`：exit 0，0 errors；保留两个既有 Fast Refresh warnings，位置为 `router.tsx` 与 `dev-role-preview.tsx`。
 - `npm.cmd run build`：exit 0；TypeScript 与 Vite 构建成功，转换 1919 个模块。
 - Vite 保留一个非阻塞提示：主 bundle 压缩后超过 500 kB；本任务未引入第三方依赖，也未扩展范围做全局代码分割。
@@ -87,6 +91,6 @@
 
 ## 已知限制
 
-- 后端当前响应不包含车牌字段，因此面板用与沙盘种子一致的 V-001 至 V-012 本地车牌映射；若未来支持任意车辆，应由后端增加公开车牌字段后再移除该映射。
+- 后端当前响应不包含车牌或车辆名称字段，因此界面按 API 权威数据只显示车辆 ID；简报示例中的“新物冷链-01/05”无法由当前 Result 证明，若未来确需展示，应先由后端契约提供公开字段。
 - API 生产路径会展示后端持久化的完整 18 节点、26 边；旧 mock 页面使用较小的本地示例路网，仅用于不启动后端时保持演示可见。
-- 整体旧详情页在 1180px 以下沿用项目既有最小宽度布局；本任务新增面板自身已提供 900px 以下单列响应式规则，但未扩大范围重构整个旧 App Shell。
+- 整体旧详情页在 1180px 以下沿用项目既有最小宽度布局；候选证据表在窄容器中提供横向滚动，未扩大范围重构整个旧 App Shell。

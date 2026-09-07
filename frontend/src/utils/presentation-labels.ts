@@ -38,6 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
   NOT_EXPOSED: "未开放",
   NO_PERMISSION: "无权限",
   OFFLINE: "离线",
+  ON_DUTY: "在岗",
   PARTIAL: "部分完成",
   PENDING: "等待中",
   PUBLISHED: "已发布",
