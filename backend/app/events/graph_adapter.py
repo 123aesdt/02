@@ -1,4 +1,7 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from datetime import date, datetime
+from decimal import Decimal
+from enum import Enum
 from typing import Protocol
 
 from app.events.broker import TaskEventBroker
@@ -81,10 +84,11 @@ class GraphEventAdapter:
             )
 
     async def _publish(self, task_id: str, node: str, event_type: TaskEventType, status: str, data: Mapping[str, object]) -> None:
-        await self._broker.publish(TaskEvent.create(task_id, event_type, node, status, data=data))
+        await self._broker.publish(TaskEvent.create(task_id, event_type, node, status, data=self._json_safe(data)))
 
-    @staticmethod
+    @classmethod
     def _data_for(
+        cls,
         node: str,
         patch: Mapping[str, object],
         state: Mapping[str, object] | None = None,
@@ -114,12 +118,30 @@ class GraphEventAdapter:
             }
             if "adopted_memory_id" in patch:
                 data["adopted_memory_id"] = patch.get("adopted_memory_id")
+            routing_fields = {
+                "blocked_edge_ids": "blocked_edge_ids",
+                "original_path": "original_path",
+                "recommended_path": "recommended_path",
+                "distance_delta_km": "distance_delta_km",
+                "eta_delta_minutes": "eta_delta_minutes",
+                "routing_status": "routing_status",
+                "routing_algorithm": "algorithm",
+                "road_network_version": "road_network_version",
+                "road_network_nodes": "network_nodes",
+                "road_network_edges": "network_edges",
+            }
+            for source_key, public_key in routing_fields.items():
+                if source_key in patch:
+                    data[public_key] = patch.get(source_key)
+            recommended = patch.get("recommended_path")
+            if isinstance(recommended, Mapping) and "visited_node_count" in recommended:
+                data["visited_node_count"] = recommended.get("visited_node_count")
             return data
         if node == "capacity":
             combined = state or patch
             capacity = combined.get("capacity_state")
             capacity_data = capacity if isinstance(capacity, Mapping) else {}
-            return {
+            data = {
                 "vehicle_id": combined.get("vehicle_id"),
                 "vehicle_status": combined.get("vehicle_status"),
                 **{
@@ -133,6 +155,53 @@ class GraphEventAdapter:
                     )
                 },
             }
+            for key in (
+                "candidate_vehicles",
+                "selected_vehicle_id",
+                "selected_driver_id",
+                "vehicle_reassigned",
+                "pickup_route",
+            ):
+                if key in combined:
+                    data[key] = combined.get(key)
+            candidates = combined.get("candidate_vehicles")
+            if isinstance(candidates, Sequence) and not isinstance(candidates, str) and candidates:
+                first = candidates[0]
+                if isinstance(first, Mapping) and isinstance(first.get("scoring_formula"), str):
+                    data["scoring_formula"] = first["scoring_formula"]
+            return data
+        if node == "dispatch":
+            result = patch.get("dispatch_result")
+            if not isinstance(result, Mapping):
+                return {}
+            return {
+                key: result.get(key)
+                for key in (
+                    "original_vehicle_id",
+                    "target_vehicle_id",
+                    "target_driver_id",
+                    "target_route_id",
+                    "status",
+                    "version",
+                    "executed",
+                )
+            }
         if node == "audit":
             return {"audit_result": patch.get("audit_result")}
         return {}
+
+    @classmethod
+    def _json_safe(cls, value: object) -> object:
+        if isinstance(value, Decimal):
+            return format(value, "f")
+        if isinstance(value, Enum):
+            return cls._json_safe(value.value)
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, Mapping):
+            return {str(key): cls._json_safe(item) for key, item in value.items()}
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            return [cls._json_safe(item) for item in value]
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        return str(value)

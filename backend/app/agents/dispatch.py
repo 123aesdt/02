@@ -53,8 +53,12 @@ async def dispatch_node(
                 "original_path": state.get("original_path"),
                 "recommended_path": state.get("recommended_path"),
                 "pickup_route": state.get("pickup_route"),
+                "road_network_nodes": state.get("road_network_nodes", []),
                 "road_network_edges": state.get("road_network_edges", []),
                 "candidate_routes": state.get("candidate_routes", []),
+                "distance_delta_km": state.get("distance_delta_km"),
+                "eta_delta_minutes": state.get("eta_delta_minutes"),
+                "routing_status": state.get("routing_status"),
             },
         )
     except VehicleReservationConflict:

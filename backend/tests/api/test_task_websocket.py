@@ -165,3 +165,63 @@ def test_websocket_receives_worker_and_terminal_events_from_real_graph():
         asyncio.run(redis.aclose())
         engine.dispose()
         temp.cleanup()
+
+
+def test_websocket_preserves_extended_fleet_and_route_event_payloads() -> None:
+    app, temp, engine, redis, broker = _app_with_events()
+    try:
+        with TestClient(app).websocket_connect(ws_ticket_url("/api/v1/ws/tasks/task-001")) as socket:
+            assert socket.receive_json()["event_type"] == "TASK_SNAPSHOT"
+            asyncio.run(
+                broker.publish(
+                    TaskEvent.create(
+                        "task-001",
+                        TaskEventType.CAPACITY_COMPLETED,
+                        "capacity",
+                        "PROCESSING",
+                        data={
+                            "vehicle_id": "V-001",
+                            "capacity_status": "REASSIGNED",
+                            "selected_vehicle_id": "V-005",
+                            "selected_driver_id": "D-003",
+                            "vehicle_reassigned": True,
+                        },
+                    )
+                )
+            )
+            capacity = socket.receive_json()
+            asyncio.run(
+                broker.publish(
+                    TaskEvent.create(
+                        "task-001",
+                        TaskEventType.ROUTING_COMPLETED,
+                        "routing",
+                        "PROCESSING",
+                        data={
+                            "algorithm": "DIJKSTRA_V1",
+                            "blocked_edge_ids": ["E04"],
+                            "recommended_path": {"edge_ids": ["E01", "E06", "E07", "E08", "E09"]},
+                            "network_nodes": [],
+                            "network_edges": [],
+                        },
+                    )
+                )
+            )
+            routing = socket.receive_json()
+
+        assert capacity["data"]["vehicle_id"] == "V-001"
+        assert capacity["data"]["capacity_status"] == "REASSIGNED"
+        assert capacity["data"]["selected_vehicle_id"] == "V-005"
+        assert routing["data"]["algorithm"] == "DIJKSTRA_V1"
+        assert routing["data"]["blocked_edge_ids"] == ["E04"]
+        assert routing["data"]["recommended_path"]["edge_ids"] == [
+            "E01",
+            "E06",
+            "E07",
+            "E08",
+            "E09",
+        ]
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()

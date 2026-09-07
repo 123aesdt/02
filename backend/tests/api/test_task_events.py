@@ -160,3 +160,135 @@ async def test_graph_event_adapter_maps_fallback_and_safe_routing_data():
         "graph_memory_paths": [],
     }
     assert audit["data"] == {"audit_result": {"audit_status": "APPROVED"}}
+
+
+@pytest.mark.asyncio
+async def test_graph_event_adapter_projects_fleet_route_and_dispatch_snapshot_as_json_safe_data():
+    import json
+    from decimal import Decimal
+
+    from app.sandtable.seed_data import VEHICLES
+
+    candidate_vehicles = [
+        {
+            "vehicle_id": f"V-{index:03d}",
+            "driver_id": "D-003" if index == 5 else None,
+            "pickup_distance_km": Decimal("2.80") if index == 5 else None,
+            "score": Decimal("93.4") if index == 5 else None,
+            "eligible": index == 5,
+            "exclusion_reasons": [] if index == 5 else ["NOT_SELECTED"],
+        }
+        for index in range(1, len(VEHICLES) + 1)
+    ]
+
+    class StreamingGraph:
+        async def astream(self, state, *, stream_mode):
+            yield {"intake": {}}
+            yield {"entity_memory": {}}
+            yield {"graph_memory": {}}
+            yield {"environment": {}}
+            yield {
+                "capacity": {
+                    "capacity_state": {
+                        "driver_available": True,
+                        "vehicle_available": True,
+                        "capacity_status": "REASSIGNED",
+                        "risk_level": "low",
+                        "reason": None,
+                    },
+                    "candidate_vehicles": candidate_vehicles,
+                    "selected_vehicle_id": "V-005",
+                    "selected_driver_id": "D-003",
+                    "vehicle_reassigned": True,
+                    "pickup_route": {
+                        "node_ids": ["N15", "N04"],
+                        "edge_ids": ["E20"],
+                        "distance_km": Decimal("2.80"),
+                        "estimated_minutes": 6,
+                    },
+                }
+            }
+            yield {
+                "routing": {
+                    "blocked_edge_ids": ["E04"],
+                    "original_path": {
+                        "node_ids": ["N01", "N02", "N03", "N04", "N05", "N06"],
+                        "edge_ids": ["E01", "E02", "E03", "E04", "E05"],
+                        "distance_km": Decimal("10.00"),
+                        "estimated_minutes": 20,
+                    },
+                    "recommended_path": {
+                        "node_ids": ["N01", "N02", "N07", "N08", "N09", "N06"],
+                        "edge_ids": ["E01", "E06", "E07", "E08", "E09"],
+                        "distance_km": Decimal("13.20"),
+                        "estimated_minutes": 24,
+                        "visited_node_count": 8,
+                    },
+                    "candidate_routes": [],
+                    "distance_delta_km": Decimal("3.20"),
+                    "eta_delta_minutes": 4,
+                    "routing_algorithm": "DIJKSTRA_V1",
+                    "routing_status": "ROUTED",
+                    "road_network_version": 7,
+                    "road_network_nodes": [{"node_id": "N01", "name": "中心仓", "x_km": Decimal("0.00"), "y_km": Decimal("0.00"), "node_type": "STATION"}],
+                    "road_network_edges": [
+                        {
+                            "edge_id": "E04",
+                            "name": "新平路东河桥段",
+                            "from_node_id": "N04",
+                            "to_node_id": "N05",
+                            "distance_km": Decimal("2.50"),
+                            "base_minutes": 5,
+                            "road_level": "COUNTY",
+                            "risk_level": "HIGH",
+                            "status": "BLOCKED",
+                            "congestion_factor": Decimal("1.00"),
+                            "weight_limit_tons": Decimal("6.00"),
+                            "bidirectional": True,
+                            "version": 2,
+                        }
+                    ],
+                }
+            }
+            yield {
+                "dispatch": {
+                    "dispatch_result": {
+                        "original_vehicle_id": "V-001",
+                        "target_vehicle_id": "V-005",
+                        "target_driver_id": "D-003",
+                        "target_route_id": "RTE-RECOMMENDED",
+                        "status": "REROUTED",
+                        "version": 1,
+                        "executed": True,
+                    }
+                }
+            }
+            yield {"audit": {}}
+
+    broker = InMemoryTaskEventBroker()
+    subscription = await broker.subscribe("TASK-007")
+    await GraphEventAdapter(broker).invoke(
+        StreamingGraph(),
+        {"task_id": "TASK-007", "vehicle_id": "V-001", "vehicle_status": "BROKEN"},
+    )
+    events = [subscription.queue.get_nowait().to_dict() for _ in range(subscription.queue.qsize())]
+    capacity = next(event for event in events if event["event_type"] == "CAPACITY_COMPLETED")
+    routing = next(event for event in events if event["event_type"] == "ROUTING_COMPLETED")
+    dispatch = next(event for event in events if event["event_type"] == "DISPATCH_COMPLETED")
+
+    assert capacity["data"]["selected_vehicle_id"] == "V-005"
+    assert capacity["data"]["selected_driver_id"] == "D-003"
+    assert capacity["data"]["vehicle_reassigned"] is True
+    assert len(capacity["data"]["candidate_vehicles"]) == len(VEHICLES)
+    assert capacity["data"]["pickup_route"]["distance_km"] == "2.80"
+    assert routing["data"]["algorithm"] == "DIJKSTRA_V1"
+    assert routing["data"]["blocked_edge_ids"] == ["E04"]
+    assert routing["data"]["recommended_path"]["edge_ids"] == ["E01", "E06", "E07", "E08", "E09"]
+    assert routing["data"]["distance_delta_km"] == "3.20"
+    assert routing["data"]["visited_node_count"] == 8
+    assert routing["data"]["network_nodes"][0]["x_km"] == "0.00"
+    assert routing["data"]["network_edges"][0]["weight_limit_tons"] == "6.00"
+    assert dispatch["data"]["original_vehicle_id"] == "V-001"
+    assert dispatch["data"]["target_vehicle_id"] == "V-005"
+    assert dispatch["data"]["target_driver_id"] == "D-003"
+    json.dumps(events)

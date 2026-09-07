@@ -684,3 +684,202 @@ def test_persisted_evidence_replays_audit_and_rejects_tampering() -> None:
     finally:
         engine.dispose()
         temp.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_agent_passes_complete_planning_snapshot_to_persistence() -> None:
+    class RecordingService:
+        def __init__(self) -> None:
+            self.args = None
+
+        def execute(self, *args):
+            self.args = args
+            return DispatchResult(
+                1,
+                "DSP-1",
+                1,
+                "task-001",
+                "REROUTED",
+                "RTE-OLD",
+                "RTE-NEW",
+                1,
+                True,
+                "safer",
+                False,
+                "V-001",
+                "V-005",
+                "D-003",
+            )
+
+    service = RecordingService()
+    nodes = [{"node_id": "N01", "name": "中心仓", "x_km": "0.00", "y_km": "0.00", "node_type": "STATION"}]
+    edges = [
+        {
+            "edge_id": "E01",
+            "name": "中心仓连接线",
+            "from_node_id": "N01",
+            "to_node_id": "N02",
+            "distance_km": "1.50",
+            "base_minutes": 3,
+            "road_level": "COUNTY",
+            "risk_level": "LOW",
+            "status": "OPEN",
+            "congestion_factor": "1.00",
+            "weight_limit_tons": "8.00",
+            "bidirectional": True,
+            "version": 1,
+        }
+    ]
+    await dispatch_node(
+        {
+            "task_id": "task-001",
+            "order_id": 1,
+            "route_id": "RTE-OLD",
+            "recommended_route": "RTE-NEW",
+            "decision": "REROUTE",
+            "decision_reason": "safer",
+            "road_network_nodes": nodes,
+            "road_network_edges": edges,
+            "distance_delta_km": "3.20",
+            "eta_delta_minutes": 4,
+            "routing_status": "ROUTED",
+            "candidate_routes": [],
+        },
+        service,
+    )
+
+    route_evidence = service.args[-1]
+    assert route_evidence["road_network_nodes"] == nodes
+    assert route_evidence["road_network_edges"] == edges
+    assert route_evidence["distance_delta_km"] == "3.20"
+    assert route_evidence["eta_delta_minutes"] == 4
+    assert route_evidence["routing_status"] == "ROUTED"
+
+
+def test_dispatch_persists_complete_historical_route_snapshot_with_allowlisted_fields() -> None:
+    temp, engine, factory = _service()
+    try:
+        _seed_breakdown_vehicle(factory)
+        args = _breakdown_execution_args()
+        args["candidate_vehicles"][0].update(
+            {
+                "driver_status": "ON_DUTY",
+                "remaining_capacity_kg": "900.00",
+                "gross_weight_tons": "2.40",
+                "pickup_distance_km": "2.80",
+                "pickup_eta_minutes": 6,
+                "scoring_formula": "FLEET_SCORE_V1",
+                "pickup_route": {
+                    "objective": "FASTEST",
+                    "node_ids": ["N15", "N04"],
+                    "edge_ids": ["E20"],
+                    "distance_km": "2.80",
+                    "estimated_minutes": 6,
+                    "risk_cost": "0",
+                    "visited_node_count": 2,
+                },
+                "authorization": "must-not-persist",
+            }
+        )
+        args["fleet_evidence"] = {
+            "algorithm_version": "FLEET_SCORE_V1",
+            "pickup_route": args["candidate_vehicles"][0]["pickup_route"],
+        }
+        nodes = [
+            {
+                "node_id": "N01",
+                "name": "中心仓",
+                "x_km": "0.00",
+                "y_km": "0.00",
+                "node_type": "STATION",
+                "authorization": "must-not-persist",
+            }
+        ]
+        edges = [
+            {
+                "edge_id": "E04",
+                "name": "新平路东河桥段",
+                "from_node_id": "N04",
+                "to_node_id": "N05",
+                "distance_km": "2.50",
+                "base_minutes": 5,
+                "road_level": "COUNTY",
+                "risk_level": "HIGH",
+                "status": "BLOCKED",
+                "congestion_factor": "1.00",
+                "weight_limit_tons": "6.00",
+                "bidirectional": True,
+                "version": 2,
+                "authorization": "must-not-persist",
+            }
+        ]
+        args["route_evidence"] = {
+            "algorithm_version": "DIJKSTRA_V1",
+            "road_network_version": 7,
+            "blocked_edge_ids": ["E04"],
+            "original_path": {
+                "objective": "FASTEST",
+                "node_ids": ["N01", "N06"],
+                "edge_ids": ["E04"],
+                "distance_km": "10.00",
+                "estimated_minutes": 20,
+                "risk_cost": "2",
+                "visited_node_count": 6,
+            },
+            "recommended_path": {
+                "objective": "FASTEST",
+                "node_ids": ["N01", "N06"],
+                "edge_ids": ["E01"],
+                "distance_km": "13.20",
+                "estimated_minutes": 24,
+                "risk_cost": "0",
+                "visited_node_count": 8,
+                "scoring_formula": "ROUTE_SCORE_V1",
+            },
+            "candidate_routes": [],
+            "distance_delta_km": "3.20",
+            "eta_delta_minutes": 4,
+            "routing_status": "ROUTED",
+            "road_network_nodes": nodes,
+            "road_network_edges": edges,
+            "authorization": "must-not-persist",
+        }
+
+        result = DispatchService(factory).execute(**args)
+        with factory() as session:
+            stored = {
+                item.evidence_type: item.payload_json
+                for item in session.scalars(select(DispatchEvidence).where(DispatchEvidence.dispatch_id == result.dispatch_id))
+            }
+
+        fleet = stored["FLEET_ALLOCATION"]
+        route = stored["ROUTE_CALCULATION"]
+        assert fleet["pickup_route"]["distance_km"] == "2.80"
+        assert fleet["candidates"][0]["gross_weight_tons"] == "2.40"
+        assert route["original_path"]["distance_km"] == "10.00"
+        assert route["recommended_path"]["visited_node_count"] == 8
+        assert route["distance_delta_km"] == "3.20"
+        assert route["network_nodes"] == [{"node_id": "N01", "name": "中心仓", "x_km": "0.00", "y_km": "0.00", "node_type": "STATION"}]
+        assert route["network_edges"] == [
+            {
+                "edge_id": "E04",
+                "name": "新平路东河桥段",
+                "from_node_id": "N04",
+                "to_node_id": "N05",
+                "distance_km": "2.50",
+                "base_minutes": 5,
+                "road_level": "COUNTY",
+                "risk_level": "HIGH",
+                "status": "BLOCKED",
+                "congestion_factor": "1.00",
+                "weight_limit_tons": "6.00",
+                "bidirectional": True,
+                "version": 2,
+            }
+        ]
+        import json
+
+        assert "authorization" not in json.dumps(stored)
+    finally:
+        engine.dispose()
+        temp.cleanup()
