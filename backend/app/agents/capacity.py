@@ -91,6 +91,8 @@ async def capacity_node(
                 state["route_id"],
                 state["order_id"],
                 vehicle_status=state.get("vehicle_status", "NORMAL"),
+                cargo_weight_kg=Decimal(state["cargo_weight_kg"]) if state.get("cargo_weight_kg") is not None else None,
+                cargo_type=state.get("cargo_type"),
             )
         except CapacityEvaluationError:
             return {

@@ -6,10 +6,13 @@ from hashlib import sha256
 import pytest
 from sqlalchemy import select
 
+from app.capacity.provider import FleetCapacityProvider
+from app.capacity.service import CapacityService
 from app.fleet.service import DijkstraTravelTimeEstimator, FleetAllocationService
 from app.fleet.sqlalchemy_repository import SqlAlchemyFleetRepository
 from app.graph.builder import build_graph
 from app.graph.dependencies import GraphDependencies
+from app.models.fleet_driver import FleetDriver
 from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.road import RoadEdge
@@ -19,6 +22,64 @@ from app.routing.service import RoutingService
 from app.sandtable.service import SandtableContextService
 from app.sandtable.sqlalchemy_repository import SqlAlchemySandtableRepository, seed_new_county_sandtable
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid_snapshot", ["vehicle_maintenance", "driver_off_duty", "insufficient_payload", "capability_mismatch"])
+async def test_sqlite_graph_rejects_invalid_original_vehicle_capacity_snapshot(sqlite_factory, invalid_snapshot: str) -> None:
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        order = session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-005"))
+        vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-008"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-007"))
+        assert order is not None and vehicle is not None and driver is not None
+        if invalid_snapshot == "vehicle_maintenance":
+            vehicle.status = "MAINTENANCE"
+        elif invalid_snapshot == "driver_off_duty":
+            driver.status = "OFF_DUTY"
+        elif invalid_snapshot == "insufficient_payload":
+            vehicle.current_load_kg = Decimal("1300.00")
+        else:
+            order.cargo_type = "COLD_CHAIN"
+        session.commit()
+        order_id = order.id
+
+    sandtable_repository = SqlAlchemySandtableRepository(sqlite_factory)
+    road_repository = SqlAlchemyRoadNetworkRepository(sqlite_factory)
+    fleet_repository = SqlAlchemyFleetRepository(sqlite_factory)
+    graph = build_graph(
+        GraphDependencies(
+            capacity_service=CapacityService(
+                FleetCapacityProvider(fleet_repository),
+                limited_threshold=0.8,
+                unavailable_threshold=1.0,
+            ),
+            sandtable_context_service=SandtableContextService(sandtable_repository),
+            routing_service=RoutingService(
+                None,
+                memory_adoption_threshold=0.75,
+                road_network_provider=road_repository,
+                path_finder=DijkstraPathFinder(),
+            ),
+        )
+    )
+
+    result = await graph.ainvoke(
+        {
+            "task_id": f"sqlite-invalid-capacity-{invalid_snapshot}",
+            "order_id": order_id,
+            "driver_id": "D-007",
+            "vehicle_id": "V-008",
+            "vehicle_status": "NORMAL",
+            "route_id": "xinping-road",
+            "anomaly_type": "ROUTE_RISK",
+            "anomaly_description": "正常配送车辆执行数据库运力校验。",
+        }
+    )
+
+    assert result["capacity_state"]["capacity_status"] == "UNAVAILABLE"
+    assert result["requires_manual_review"] is True
+    assert result.get("recommended_route") is None
+    assert result.get("recommended_path") is None
 
 @pytest.mark.asyncio
 async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_vehicle_weight(sqlite_factory) -> None:
@@ -56,6 +117,11 @@ async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_
     path_finder = DijkstraPathFinder()
     graph = build_graph(
         GraphDependencies(
+            capacity_service=CapacityService(
+                FleetCapacityProvider(fleet_repository),
+                limited_threshold=0.8,
+                unavailable_threshold=1.0,
+            ),
             sandtable_context_service=SandtableContextService(sandtable_repository),
             fleet_allocation_service=FleetAllocationService(
                 fleet_repository,

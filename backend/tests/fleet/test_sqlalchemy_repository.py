@@ -19,7 +19,17 @@ def test_repository_returns_immutable_id_sorted_snapshots_after_session_scope(sq
             ]
         )
         session.commit()
-        snapshots = SqlAlchemyFleetRepository(session).list_candidates("V-001")
+        repository = SqlAlchemyFleetRepository(session)
+        selected = repository.get_vehicle("V-002")
+        missing = repository.get_vehicle("V-404")
+        snapshots = repository.list_candidates("V-001")
+    assert selected is not None
+    assert (selected.vehicle_id, selected.remaining_load_kg, selected.driver.driver_id if selected.driver else None) == (
+        "V-002",
+        Decimal("750.00"),
+        "D-002",
+    )
+    assert missing is None
     assert len(snapshots) == 1
     snapshot = snapshots[0]
     assert (snapshot.vehicle_id, snapshot.remaining_load_kg, snapshot.driver.driver_id if snapshot.driver else None) == (

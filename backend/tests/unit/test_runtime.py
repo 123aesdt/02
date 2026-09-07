@@ -131,6 +131,13 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
         def __init__(self, session):
             captured["fleet_repository"] = session
 
+    class RecordingCapacityProvider:
+        def __init__(self, fleet_repository):
+            captured["capacity_provider"] = (self, fleet_repository)
+
+    class RecordingCapacityService:
+        def __init__(self, provider, **kwargs):
+            captured["capacity_service"] = (provider, kwargs)
     class RecordingRoadRepository:
         def __init__(self, session):
             captured.setdefault("road_repositories", []).append(session)
@@ -145,6 +152,8 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
 
     monkeypatch.setattr(runtime_module, "SqlAlchemySandtableRepository", RecordingSandtableRepository)
     monkeypatch.setattr(runtime_module, "SqlAlchemyFleetRepository", RecordingFleetRepository)
+    monkeypatch.setattr(runtime_module, "FleetCapacityProvider", RecordingCapacityProvider)
+    monkeypatch.setattr(runtime_module, "CapacityService", RecordingCapacityService)
     monkeypatch.setattr(runtime_module, "SqlAlchemyRoadNetworkRepository", RecordingRoadRepository)
     monkeypatch.setattr(runtime_module, "FleetAllocationService", RecordingFleetAllocationService)
     monkeypatch.setattr(runtime_module, "RoutingService", RecordingRoutingService)
@@ -170,6 +179,12 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
 
     build_runtime_graph(settings, object(), object())
 
+    capacity_provider, capacity_repository = captured["capacity_provider"]
+    capacity_service_provider, capacity_thresholds = captured["capacity_service"]
+    fleet_allocation_repository, _ = captured["fleet_allocation"]
+    assert capacity_service_provider is capacity_provider
+    assert capacity_repository is fleet_allocation_repository
+    assert capacity_thresholds == {"limited_threshold": 0.8, "unavailable_threshold": 1.0}
     assert captured["routing"][0] is None
     assert len(captured["road_repositories"]) == 2
     assert "sandtable_repository" in captured

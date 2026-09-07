@@ -1,6 +1,8 @@
 from decimal import Decimal
 
 from app.audit.service import AuditService
+from app.capacity.provider import FleetCapacityProvider
+from app.capacity.service import CapacityService
 from app.core.config import Settings
 from app.core.database import build_session_factory
 from app.dispatch.service import DispatchService
@@ -98,6 +100,7 @@ def build_runtime_graph(
         embedding,
         QdrantMemoryRepository(qdrant_client, "entity_resolution_memory", embedding.vector_dimension),
     )
+    fleet_repository = SqlAlchemyFleetRepository(session_factory)
     dependencies = GraphDependencies(
         entity_memory_service=memory,
         graph_memory_service=build_graph_memory_service(settings, neo4j_driver),
@@ -106,9 +109,14 @@ def build_runtime_graph(
             StaticRouteFallbackProvider(),
             CircuitBreaker(settings.environment_cb_failure_threshold, settings.environment_cb_recovery_seconds),
         ),
+        capacity_service=CapacityService(
+            FleetCapacityProvider(fleet_repository),
+            limited_threshold=settings.capacity_limited_threshold,
+            unavailable_threshold=settings.capacity_unavailable_threshold,
+        ),
         sandtable_context_service=SandtableContextService(SqlAlchemySandtableRepository(session_factory)),
         fleet_allocation_service=FleetAllocationService(
-            SqlAlchemyFleetRepository(session_factory),
+            fleet_repository,
             DijkstraTravelTimeEstimator(SqlAlchemyRoadNetworkRepository(session_factory), DijkstraPathFinder()),
         ),
         routing_service=RoutingService(
