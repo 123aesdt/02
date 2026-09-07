@@ -65,6 +65,24 @@ describe("Real dispatch API adapter", () => {
     await expect(adapter.getTaskResult("TASK-1")).resolves.toMatchObject({ ready: true, dispatch: { target_route_id: "national-102" } });
   });
 
+  it("preserves fleet and route evidence identifiers and decimal strings exactly", async () => {
+    const adapter = new RealDispatchAdapter(createApiClient({
+      baseUrl: "http://api.test", fetchImpl: vi.fn().mockResolvedValue(jsonResponse({
+        task_id: "TASK-1", order_id: 128, ready: true, status: "COMPLETED", dispatch: null, audit: null,
+        vehicle_allocation: { original_vehicle_id: "V-001", target_vehicle_id: "V-005", target_driver_id: "D-003", vehicle_reassigned: true, candidate_vehicles: [{ vehicle_id: "V-005", driver_id: "D-003", pickup_distance_km: "2.80", score: "93.4", exclusion_reasons: [] }], pickup_route: null, scoring_formula: "FLEET_SCORE_V1" },
+        route_plan: { original_path: null, recommended_path: null, candidate_routes: [], blocked_edge_ids: ["E04"], distance_delta_km: "3.20", eta_delta_minutes: 4, visited_node_count: 8, routing_status: "ROUTED", algorithm: "DIJKSTRA_V1", road_network_version: 7, network_nodes: [{ node_id: "N01", name: "中心仓", x_km: "0.00", y_km: "0.00", node_type: "DEPOT" }], network_edges: [] },
+      })),
+    }));
+
+    const result = await adapter.getTaskResult("TASK-1");
+    expect(result.vehicle_allocation?.target_vehicle_id).toBe("V-005");
+    expect(result.vehicle_allocation?.candidate_vehicles[0]?.pickup_distance_km).toBe("2.80");
+    expect(typeof result.vehicle_allocation?.candidate_vehicles[0]?.pickup_distance_km).toBe("string");
+    expect(result.route_plan?.blocked_edge_ids).toEqual(["E04"]);
+    expect(result.route_plan?.network_nodes[0]?.x_km).toBe("0.00");
+    expect(result.route_plan?.distance_delta_km).toBe("3.20");
+    expect(typeof result.route_plan?.distance_delta_km).toBe("string");
+  });
   it("publishes an approved dispatch through the authenticated task endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({
       task_id: "TASK-1",

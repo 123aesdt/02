@@ -196,6 +196,46 @@ describe("Task event lifecycle", () => {
     await act(async () => { root.unmount(); });
   });
 
+  it("restores complete fleet replacement and reroute evidence from the persisted result after refresh", async () => {
+    testRuntime.dataMode = "api";
+    vi.stubGlobal("WebSocket", FakeWebSocket as unknown as typeof WebSocket);
+    taskApi.getTaskStatus.mockResolvedValue({ task_id: "TASK-1", order_id: 128, status: "COMPLETED", started_at: null, completed_at: "2026-09-07T10:00:00Z", created_at: "2026-09-07T09:59:00Z", ready: true, requires_manual_review: false });
+    taskApi.getTaskResult.mockResolvedValue({
+      task_id: "TASK-1", order_id: 128, status: "COMPLETED", ready: true, dispatch: null, audit: null,
+      vehicle_allocation: {
+        original_vehicle_id: "V-001", target_vehicle_id: "V-005", target_driver_id: "D-003", vehicle_reassigned: true, scoring_formula: "FLEET_SCORE_V1",
+        pickup_route: { objective: "FASTEST", node_ids: ["N15", "N04"], edge_ids: ["E20"], distance_km: "2.80", estimated_minutes: 6, risk_cost: "0.10", visited_node_count: 2, scoring_formula: null },
+        candidate_vehicles: [
+          { vehicle_id: "V-001", driver_id: "D-001", vehicle_status: "BROKEN", driver_status: "ON_DUTY", remaining_capacity_kg: "800.00", gross_weight_tons: "2.80", cargo_capability: "COLD_CHAIN", pickup_route: null, pickup_distance_km: null, pickup_eta_minutes: null, score: null, score_components: null, scoring_formula: null, eligible: false, exclusion_reasons: ["ORIGINAL_VEHICLE_EXCLUDED", "VEHICLE_UNAVAILABLE"] },
+          { vehicle_id: "V-005", driver_id: "D-003", vehicle_status: "AVAILABLE", driver_status: "ON_DUTY", remaining_capacity_kg: "900.00", gross_weight_tons: "2.40", cargo_capability: "COLD_CHAIN", pickup_route: null, pickup_distance_km: "2.80", pickup_eta_minutes: 6, score: "93.4", score_components: null, scoring_formula: "FLEET_SCORE_V1", eligible: true, exclusion_reasons: [] },
+        ],
+      },
+      route_plan: {
+        original_path: { objective: "FASTEST", node_ids: ["N01", "N02"], edge_ids: ["E04"], distance_km: "10.00", estimated_minutes: 20, risk_cost: "1.00", visited_node_count: 4, scoring_formula: null },
+        recommended_path: { objective: "FASTEST", node_ids: ["N01", "N03", "N02"], edge_ids: ["E07", "E09"], distance_km: "13.20", estimated_minutes: 24, risk_cost: "0.30", visited_node_count: 8, scoring_formula: "ROUTE_SCORE_V1" },
+        candidate_routes: [], blocked_edge_ids: ["E04"], distance_delta_km: "3.20", eta_delta_minutes: 4, visited_node_count: 8, routing_status: "ROUTED", algorithm: "DIJKSTRA_V1", road_network_version: 7,
+        network_nodes: [{ node_id: "N01", name: "中心仓", x_km: "0.00", y_km: "0.00", node_type: "DEPOT" }, { node_id: "N02", name: "城东站", x_km: "4.00", y_km: "0.00", node_type: "STATION" }, { node_id: "N03", name: "北环口", x_km: "2.00", y_km: "2.00", node_type: "JUNCTION" }],
+        network_edges: [
+          { edge_id: "E04", name: "新平路东河桥段", from_node_id: "N01", to_node_id: "N02", distance_km: "10.00", base_minutes: 20, road_level: "COUNTY", risk_level: "HIGH", status: "BLOCKED", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+          { edge_id: "E07", name: "北环支路", from_node_id: "N01", to_node_id: "N03", distance_km: "6.20", base_minutes: 11, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+          { edge_id: "E09", name: "城东联络线", from_node_id: "N03", to_node_id: "N02", distance_km: "7.00", base_minutes: 13, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+        ],
+      },
+    });
+
+    const { root, container } = await render(<ApiDispatchDetailPage taskId="TASK-1" />);
+    await flush();
+
+    expect(container.textContent).toContain("替代车辆调度计算");
+    expect(container.textContent).toContain("接驳 2.80 公里 · 6 分钟");
+    expect(container.textContent).toContain("新路线规划计算");
+    expect(container.textContent).toContain("+3.20 公里");
+    expect(container.querySelector('[data-edge-id="E04"]')?.getAttribute("data-route-state")).toBe("blocked");
+    expect(container.querySelector('[data-edge-id="E07"]')?.getAttribute("data-route-state")).toBe("recommended");
+    expect(container.querySelectorAll(".pipeline-item")).toHaveLength(8);
+    await act(async () => { root.unmount(); });
+  });
+
   it("lets a reviewer publish an approved route and shows the durable publication receipt", async () => {
     testRuntime.dataMode = "api";
     vi.stubGlobal("WebSocket", FakeWebSocket as unknown as typeof WebSocket);

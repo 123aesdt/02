@@ -29,6 +29,7 @@ it("uses Chinese copy on mock dashboard and business lists", async () => {
   expect(dashboard.textContent).toContain("演示数据");
   expect(dashboard.textContent).toContain("高");
   expect(dashboard.textContent).not.toMatch(/DEMO DATA|LIVE API MODE|Entity Memory|Graph Memory|Static Route Rule|Primary Timeout/);
+  expect(dashboard.querySelectorAll("[data-edge-id]").length).toBeGreaterThan(0);
 
   const anomalies = await render(<AnomaliesPage />);
   expect(anomalies.textContent).toContain("异常工作台");
@@ -46,5 +47,6 @@ it("uses Chinese copy throughout mock dispatch detail", async () => {
   expect(container.textContent).toContain("实体记忆证据");
   expect(container.textContent).toContain("调度结果");
   expect(container.textContent).toContain("暴雨");
+  expect(container.querySelectorAll("[data-edge-id]").length).toBeGreaterThan(0);
   expect(container.textContent).not.toMatch(/ANOMALY CONTEXT|ENVIRONMENT|CAPACITY|ROUTE DECISION|DECISION EXPLANATION|ENTITY MEMORY EVIDENCE|GRAPH MEMORY EVIDENCE|FINAL AUDIT|DISPATCH RESULT|Heavy Rain|Slippery|Static Route Rule|Score|YES|NO/);
 });
