@@ -112,6 +112,7 @@ class DispatchGraphState(TypedDict):
     anomaly_description: str
     vehicle_id: NotRequired[str]
     vehicle_status: NotRequired[VehicleRuntimeStatus]
+    vehicle_weight_tons: NotRequired[str]
     normalized_anomaly: NotRequired[str]
     memory_results: NotRequired[list[MemoryRecallState]]
     graph_memory_facts: NotRequired[list[GraphFactState]]

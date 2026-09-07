@@ -44,6 +44,9 @@ def _path_to_state(path: PathResult | None) -> dict[str, object] | None:
 
 
 def _sandtable_context(state: DispatchGraphState) -> SandtableTaskContext:
+    vehicle_weight = state.get("selected_vehicle_gross_weight_tons") or state.get("vehicle_weight_tons")
+    if vehicle_weight is None:
+        raise ValueError("vehicle_weight_tons is required for offline road-network planning")
     return SandtableTaskContext(
         order_id=state["order_id"],
         order_no=str(state["order_id"]),
@@ -56,7 +59,7 @@ def _sandtable_context(state: DispatchGraphState) -> SandtableTaskContext:
         incident_node_id=state.get("incident_node_id"),
         affected_edge_ids=tuple(state.get("affected_edge_ids", [])),
         road_network_version=state.get("road_network_version", 0),
-        vehicle_weight_tons=Decimal(str(state.get("selected_vehicle_gross_weight_tons") or state.get("vehicle_weight_tons", "2.00"))),
+        vehicle_weight_tons=Decimal(str(vehicle_weight)),
     )
 
 

@@ -29,6 +29,7 @@ def intake_node(state: DispatchGraphState, sandtable_context_service: SandtableC
                 "origin_node_id": context.origin_node_id,
                 "destination_node_id": context.destination_node_id,
                 "vehicle_id": context.current_vehicle_id,
+                "vehicle_weight_tons": format(context.vehicle_weight_tons, "f"),
                 "driver_id": context.current_driver_id or state["driver_id"],
                 "incident_node_id": context.incident_node_id,
                 "affected_edge_ids": list(context.affected_edge_ids),
