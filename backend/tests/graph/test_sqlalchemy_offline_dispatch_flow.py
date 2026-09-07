@@ -70,6 +70,27 @@ async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_
         )
     )
 
+    mismatched_vehicle = await graph.ainvoke(
+        {
+            "task_id": "sqlite-mismatched-vehicle-005",
+            "order_id": order_ids["DEMO-ORDER-005"],
+            "driver_id": "D-007",
+            "vehicle_id": "V-001",
+            "vehicle_status": "NORMAL",
+            "route_id": "xinping-road",
+            "anomaly_type": "ROUTE_RISK",
+            "anomaly_description": "正常配送车辆身份校验。",
+        }
+    )
+    assert (
+        mismatched_vehicle.get("vehicle_id"),
+        mismatched_vehicle.get("vehicle_weight_tons"),
+        mismatched_vehicle.get("requires_manual_review"),
+        mismatched_vehicle.get("error_code"),
+        mismatched_vehicle.get("recommended_route"),
+        mismatched_vehicle.get("recommended_path"),
+    ) == ("V-008", "4.50", True, "VEHICLE_ASSIGNMENT_MISMATCH", None, None)
+
     source_context = sandtable_repository.load(order_ids["DEMO-ORDER-005"])
     normal_vehicle = await graph.ainvoke(
         {

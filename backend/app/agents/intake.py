@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from app.graph.state import DispatchGraphState
-from app.sandtable.service import RoadLocationUnresolved, SandtableContextService
+from app.sandtable.service import RoadLocationUnresolved, SandtableContextService, VehicleAssignmentMismatch
 
 
 def intake_node(state: DispatchGraphState, sandtable_context_service: SandtableContextService | None = None) -> dict[str, object]:
@@ -21,6 +21,16 @@ def intake_node(state: DispatchGraphState, sandtable_context_service: SandtableC
                 "requires_manual_review": True,
                 "error_code": "ROAD_LOCATION_UNRESOLVED",
                 "error_message": "The reported road location could not be resolved uniquely.",
+            }
+        except VehicleAssignmentMismatch as error:
+            return {
+                **patch,
+                "vehicle_id": error.context.current_vehicle_id,
+                "driver_id": error.context.current_driver_id or state["driver_id"],
+                "vehicle_weight_tons": format(error.context.vehicle_weight_tons, "f"),
+                "requires_manual_review": True,
+                "error_code": "VEHICLE_ASSIGNMENT_MISMATCH",
+                "error_message": "请求车辆与订单当前分配车辆不一致，请人工核对订单车辆信息。",
             }
         patch.update(
             {

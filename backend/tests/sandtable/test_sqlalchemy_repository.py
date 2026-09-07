@@ -85,6 +85,24 @@ def test_service_resolves_only_approved_aliases_and_blocks_e04(sqlite_factory) -
             service.resolve(order_id, "ROAD_BLOCKED", "新平路有道路问题", None)
 
 
+def test_service_rejects_request_vehicle_that_differs_from_order_assignment(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        session.commit()
+        service = SandtableContextService(SqlAlchemySandtableRepository(session))
+        order_id = session.scalar(select(Order.id).where(Order.order_no == "DEMO-ORDER-005"))
+
+        with pytest.raises(ValueError):
+            service.resolve(order_id, "ROUTE_RISK", "正常配送车辆身份校验", "V-001")
+
+        context = service.resolve(order_id, "ROUTE_RISK", "正常配送车辆身份校验", "V-008")
+        assert (context.current_vehicle_id, context.current_driver_id, context.vehicle_weight_tons) == (
+            "V-008",
+            "D-007",
+            Decimal("4.50"),
+        )
+
+
 def test_database_seed_keeps_sandtable_and_legacy_orders(sqlite_factory) -> None:
     seed_database(session_factory=sqlite_factory, runtime_profile="test")
     with sqlite_factory() as session:

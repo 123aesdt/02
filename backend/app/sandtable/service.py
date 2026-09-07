@@ -13,6 +13,12 @@ class RoadLocationUnresolved(ValueError):
     pass
 
 
+class VehicleAssignmentMismatch(ValueError):
+    def __init__(self, context: SandtableTaskContext) -> None:
+        super().__init__("请求车辆与订单当前分配车辆不一致")
+        self.context = context
+
+
 def _resolve_exact_alias(description: str, aliases: MappingProxyType) -> str | None:
     matches = [value for alias, value in aliases.items() if alias in description]
     if len(matches) == 1:
@@ -32,7 +38,9 @@ class SandtableContextService:
         vehicle_id: str | None,
     ) -> SandtableTaskContext:
         context = self._provider.load(order_id)
-        resolved_vehicle_id = vehicle_id or _resolve_exact_alias(description, VEHICLE_ALIASES)
+        reported_vehicle_id = vehicle_id or _resolve_exact_alias(description, VEHICLE_ALIASES)
+        if reported_vehicle_id is not None and reported_vehicle_id != context.current_vehicle_id:
+            raise VehicleAssignmentMismatch(context)
         incident_node_id = _resolve_exact_alias(description, NODE_ALIASES)
         if anomaly_type == "ROAD_BLOCKED":
             edge_id = _resolve_exact_alias(description, EDGE_ALIASES)
@@ -41,8 +49,4 @@ class SandtableContextService:
             self._provider.set_edge_status(edge_id, "BLOCKED")
             context = self._provider.load(order_id)
             return replace(context, affected_edge_ids=(edge_id,))
-        return replace(
-            context,
-            current_vehicle_id=resolved_vehicle_id or context.current_vehicle_id,
-            incident_node_id=incident_node_id,
-        )
+        return replace(context, incident_node_id=incident_node_id)

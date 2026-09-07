@@ -22,8 +22,12 @@ class _SandtableProvider:
 
     def load(self, order_id: int) -> SandtableTaskContext:
         contexts = {
-            1: SandtableTaskContext(1, "DEMO-ORDER-001", Decimal("700.00"), "COLD_CHAIN", "N01", "N06", "V-001", "D-001", None, (), 7),
-            5: SandtableTaskContext(5, "DEMO-ORDER-005", Decimal("850.00"), "GENERAL", "N01", "N06", "V-008", "D-007", None, (), 7),
+            1: SandtableTaskContext(
+                1, "DEMO-ORDER-001", Decimal("700.00"), "COLD_CHAIN", "N01", "N06", "V-001", "D-001", None, (), 7, Decimal("2.80")
+            ),
+            5: SandtableTaskContext(
+                5, "DEMO-ORDER-005", Decimal("850.00"), "GENERAL", "N01", "N06", "V-008", "D-007", None, (), 7, Decimal("4.50")
+            ),
         }
         return contexts[order_id]
 
