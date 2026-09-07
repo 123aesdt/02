@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable, Mapping, Sequence
+from decimal import Decimal, InvalidOperation
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,6 +31,10 @@ class AuditService:
             "memory_consistency": True,
             "fallback_consistency": True,
             "dispatch_execution": executed,
+            "vehicle_assignment": True,
+            "capacity_constraint": True,
+            "route_connectivity": True,
+            "blocked_edge_exclusion": True,
         }
 
         status, reason, requires_manual_review = self._evaluate(
@@ -68,10 +73,60 @@ class AuditService:
         if (
             decision == "MANUAL_REVIEW"
             or evidence.get("requires_manual_review") is True
-            or self._text(evidence.get("error_code")) in {"DISPATCH_CONFLICT", "DISPATCH_VERSION_CONFLICT"}
+            or self._text(evidence.get("error_code")) in {"DISPATCH_CONFLICT", "DISPATCH_VERSION_CONFLICT", "VEHICLE_RESERVATION_CONFLICT"}
         ):
             return "REVIEW_REQUIRED", "Dispatch requires manual review.", True
 
+        issue = self._text(evidence.get("identified_issue")) or self._text(
+            evidence.get("anomaly_type")
+        )
+        if issue == "VEHICLE_BREAKDOWN":
+            dispatch = self._mapping(evidence.get("dispatch_result"))
+            original_vehicle_id = self._text(dispatch.get("original_vehicle_id")) or self._text(
+                evidence.get("vehicle_id")
+            )
+            target_vehicle_id = self._text(dispatch.get("target_vehicle_id"))
+            selected_vehicle_id = self._text(evidence.get("selected_vehicle_id"))
+            candidate = self._candidate(evidence.get("candidate_vehicles"), target_vehicle_id)
+            checks["vehicle_assignment"] = (
+                original_vehicle_id is not None
+                and target_vehicle_id is not None
+                and target_vehicle_id != original_vehicle_id
+                and selected_vehicle_id == target_vehicle_id
+                and candidate.get("eligible") is True
+            )
+            cargo_weight = self._decimal(evidence.get("cargo_weight_kg"))
+            remaining_load = self._decimal(candidate.get("remaining_load_kg"))
+            cargo_type = self._text(evidence.get("cargo_type"))
+            cargo_capability = self._text(candidate.get("cargo_capability"))
+            checks["capacity_constraint"] = (
+                cargo_weight is not None
+                and remaining_load is not None
+                and remaining_load >= cargo_weight
+                and (cargo_type != "COLD_CHAIN" or cargo_capability == "COLD_CHAIN")
+            )
+            if not checks["vehicle_assignment"]:
+                return "REJECTED", "Replacement vehicle assignment is inconsistent.", True
+            if not checks["capacity_constraint"]:
+                return "REJECTED", "Replacement vehicle capacity or cargo capability is invalid.", True
+
+        blocked_edge_ids = self._string_list(evidence.get("blocked_edge_ids"))
+        if issue == "ROAD_BLOCKED" or blocked_edge_ids:
+            recommended_path = self._mapping(evidence.get("recommended_path"))
+            path_edge_ids = self._string_list(recommended_path.get("edge_ids"))
+            path_node_ids = self._string_list(recommended_path.get("node_ids"))
+            checks["route_connectivity"] = self._path_connects(
+                path_node_ids,
+                path_edge_ids,
+                evidence.get("road_network_edges"),
+            )
+            checks["blocked_edge_exclusion"] = set(path_edge_ids).isdisjoint(
+                blocked_edge_ids
+            )
+            if not checks["route_connectivity"]:
+                return "REJECTED", "Recommended path is not connected in the road network.", True
+            if not checks["blocked_edge_exclusion"]:
+                return "REJECTED", "Recommended path includes a blocked edge.", True
         if decision == "NO_SAFE_ROUTE" and executed:
             checks["route_consistency"] = False
             return "REJECTED", "No-safe-route decision cannot execute a dispatch.", True
@@ -203,11 +258,102 @@ class AuditService:
             "capacity_status": cls._text(capacity.get("capacity_status")),
             "memory_hit_count": memory_hit_count,
         }
+        if "candidate_vehicles" in evidence:
+            candidate_values = evidence.get("candidate_vehicles")
+            compact["candidate_vehicles"] = [
+                {
+                    "vehicle_id": cls._text(item.get("vehicle_id")),
+                    "score": item.get("score"),
+                    "eligible": item.get("eligible") is True,
+                    "exclusion_reasons": cls._string_list(
+                        item.get("exclusion_reasons")
+                    ),
+                }
+                for item in (
+                    candidate_values[:20]
+                    if isinstance(candidate_values, Sequence)
+                    and not isinstance(candidate_values, str)
+                    else ()
+                )
+                if isinstance(item, Mapping)
+            ]
+        if "recommended_path" in evidence:
+            recommended_path = cls._mapping(evidence.get("recommended_path"))
+            compact["recommended_path"] = {
+                "node_ids": cls._string_list(recommended_path.get("node_ids")),
+                "edge_ids": cls._string_list(recommended_path.get("edge_ids")),
+            }
+        if "blocked_edge_ids" in evidence:
+            compact["blocked_edge_ids"] = cls._string_list(
+                evidence.get("blocked_edge_ids")
+            )
         correlation_id = safe_correlation_id(evidence.get("correlation_id"))
         if correlation_id is not None:
             compact["correlation_id"] = correlation_id
         return compact
 
+    @classmethod
+    def _candidate(
+        cls,
+        value: object,
+        vehicle_id: str | None,
+    ) -> Mapping[str, object]:
+        if vehicle_id is None or not isinstance(value, Sequence) or isinstance(value, str):
+            return {}
+        return next(
+            (
+                item
+                for item in value
+                if isinstance(item, Mapping)
+                and cls._text(item.get("vehicle_id")) == vehicle_id
+            ),
+            {},
+        )
+
+    @staticmethod
+    def _decimal(value: object) -> Decimal | None:
+        try:
+            return Decimal(str(value)) if value is not None else None
+        except (InvalidOperation, ValueError):
+            return None
+
+    @staticmethod
+    def _string_list(value: object) -> list[str]:
+        if not isinstance(value, Sequence) or isinstance(value, str):
+            return []
+        return [item for item in value if isinstance(item, str)]
+
+    @classmethod
+    def _path_connects(
+        cls,
+        node_ids: list[str],
+        edge_ids: list[str],
+        road_edges: object,
+    ) -> bool:
+        if not edge_ids or len(node_ids) != len(edge_ids) + 1:
+            return False
+        if not isinstance(road_edges, Sequence) or isinstance(road_edges, str):
+            return False
+        edges = {
+            cls._text(item.get("edge_id")): item
+            for item in road_edges
+            if isinstance(item, Mapping) and cls._text(item.get("edge_id")) is not None
+        }
+        for index, edge_id in enumerate(edge_ids):
+            edge = edges.get(edge_id)
+            if edge is None:
+                return False
+            start = cls._text(edge.get("from_node_id"))
+            end = cls._text(edge.get("to_node_id"))
+            path_start, path_end = node_ids[index], node_ids[index + 1]
+            forward = (start, end) == (path_start, path_end)
+            reverse = edge.get("bidirectional") is True and (end, start) == (
+                path_start,
+                path_end,
+            )
+            if not forward and not reverse:
+                return False
+        return True
     @staticmethod
     def _entity_id(value: object) -> str | None:
         return value.get("entity_id") if isinstance(value, Mapping) and isinstance(value.get("entity_id"), str) else None

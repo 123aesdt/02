@@ -7,6 +7,10 @@ class AuditChecks(TypedDict):
     memory_consistency: bool
     fallback_consistency: bool
     dispatch_execution: bool
+    vehicle_assignment: bool
+    capacity_constraint: bool
+    route_connectivity: bool
+    blocked_edge_exclusion: bool
 
 
 @dataclass(frozen=True)

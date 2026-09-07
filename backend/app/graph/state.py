@@ -121,6 +121,9 @@ class DispatchResultState(TypedDict):
     dispatch_no: str | None
     status: str
     target_route_id: str | None
+    original_vehicle_id: str | None
+    target_vehicle_id: str | None
+    target_driver_id: str | None
     version: int | None
     executed: bool
 
@@ -130,6 +133,10 @@ class AuditChecksState(TypedDict):
     memory_consistency: bool
     fallback_consistency: bool
     dispatch_execution: bool
+    vehicle_assignment: bool
+    capacity_constraint: bool
+    route_connectivity: bool
+    blocked_edge_exclusion: bool
 
 
 class AuditResultState(TypedDict):

@@ -10,7 +10,7 @@ from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
 from app.models.task import DispatchTask
 from app.security.permissions import Role
-from tests.unit.test_dispatch_service import _service
+from tests.unit.test_dispatch_service import _seed_breakdown_vehicle, _service
 
 PUBLISHED_AT = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
 
@@ -160,6 +160,30 @@ def test_publish_rejects_a_task_without_an_approved_audit() -> None:
         service = module.DispatchPublicationService(factory, clock=lambda: PUBLISHED_AT)
         with pytest.raises(module.PublicationNotApproved):
             service.publish("task-001", principal_for(Role.SUPERVISOR))
+    finally:
+        engine.dispose()
+        temp.cleanup()
+
+def test_publish_reassignment_instruction_contains_plate_driver_pickup_and_route() -> None:
+    module = publication_module()
+    temp, engine, factory = approved_fixture()
+    try:
+        _seed_breakdown_vehicle(factory)
+        with factory() as session:
+            dispatch = session.scalar(select(Dispatch))
+            dispatch.original_vehicle_id = "V-001"
+            dispatch.target_vehicle_id = "V-005"
+            dispatch.target_driver_id = "D-003"
+            dispatch.transfer_node_id = "N04"
+            session.commit()
+        service = module.DispatchPublicationService(factory, clock=lambda: PUBLISHED_AT)
+
+        result = service.publish("task-001", principal_for(Role.SUPERVISOR))
+
+        assert result["route_instruction"] == (
+            "换用车牌 新物冷链-05，由司机 陈师傅（D-003）前往接驳节点 N04，"
+            "随后按路线 national-102 行驶至 B。"
+        )
     finally:
         engine.dispose()
         temp.cleanup()

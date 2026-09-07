@@ -176,6 +176,7 @@ async def test_fixed_scenarios_include_fleet_and_route_scoring_evidence(graph, b
 
     assert selected["score"] in {"93.4", "93.40"}
     assert selected["scoring_formula"] == "FLEET_SCORE_V1"
+    assert selected["cargo_capability"] == "COLD_CHAIN"
     assert selected["score_components"] == {
         "eta_penalty": "9.0",
         "distance_penalty": "5.60",

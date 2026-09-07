@@ -8,13 +8,17 @@ from sqlalchemy.orm import sessionmaker
 from app.agents.dispatch import dispatch_node
 from app.audit.service import AuditService
 from app.dispatch.models import DispatchResult
-from app.dispatch.service import DispatchService
+from app.dispatch.service import DispatchService, VehicleReservationConflict
 from app.graph.builder import build_graph
 from app.graph.dependencies import GraphDependencies
 from app.models.audit import AuditRecord
 from app.models.base import Base
 from app.models.dispatch import Dispatch
+from app.models.dispatch_evidence import DispatchEvidence
+from app.models.fleet_driver import FleetDriver
+from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
+from app.models.road import RoadNode
 from app.models.task import DispatchTask
 
 
@@ -105,7 +109,7 @@ def test_dispatch_service_persists_one_manual_review_draft():
 @pytest.mark.asyncio
 async def test_dispatch_agent_writes_state():
     class Service:
-        def execute(self, *args):
+        def execute(self, *args, **kwargs):
             return DispatchResult(1, "DSP-1", 1, "task-001", "REROUTED", "xinping-road", "national-102", 1, True, "safer", False)
 
     state = {
@@ -209,6 +213,219 @@ async def test_graph_runs_audit_after_dispatch():
             1,
             dispatch.id,
             "APPROVED",
+        )
+    finally:
+        engine.dispose()
+        temp.cleanup()
+
+def _breakdown_execution_args(task_id: str = "task-001") -> dict[str, object]:
+    candidates = [
+        {
+            "vehicle_id": "V-005",
+            "driver_id": "D-003",
+            "eligible": True,
+            "vehicle_status": "AVAILABLE",
+            "remaining_load_kg": "900.00",
+            "cargo_capability": "COLD_CHAIN",
+            "score": "93.4",
+            "exclusion_reasons": [],
+        }
+    ]
+    return {
+        "task_id": task_id,
+        "order_id": 1,
+        "original_route_id": "RTE-ORIGINAL",
+        "target_route_id": "RTE-RECOMMENDED",
+        "decision": "REROUTE",
+        "decision_reason": "替代车辆与路线均满足约束。",
+        "fallback_used": False,
+        "fallback_reason": None,
+        "requires_manual_review": False,
+        "original_vehicle_id": "V-001",
+        "candidate_vehicles": candidates,
+        "transfer_node_id": "N04",
+        "fleet_evidence": {"algorithm_version": "FLEET_SCORE_V1", "candidates": candidates},
+        "route_evidence": {
+            "algorithm_version": "DIJKSTRA_V1",
+            "road_network_version": 7,
+            "recommended_path": {"node_ids": ["N04", "N06"], "edge_ids": ["E04", "E05"]},
+        },
+    }
+
+
+def _seed_breakdown_vehicle(factory) -> None:
+    with factory() as session:
+        session.add_all(
+            [
+                RoadNode(node_id="N04", name="故障点", x_km=5, y_km=2, node_type="INCIDENT_POINT"),
+                RoadNode(node_id="N15", name="维修站", x_km=4, y_km=1, node_type="STATION"),
+                FleetDriver(
+                    driver_id="D-003",
+                    name="陈师傅",
+                    license_class="C1",
+                    status="ON_DUTY",
+                    current_vehicle_id="V-005",
+                    current_node_id="N15",
+                ),
+                FleetVehicle(
+                    vehicle_id="V-005",
+                    plate_no="新物冷链-05",
+                    vehicle_type="REFRIGERATED_VAN",
+                    max_load_kg=1000,
+                    current_load_kg=100,
+                    cargo_capability="COLD_CHAIN",
+                    gross_weight_tons="2.40",
+                    status="AVAILABLE",
+                    current_node_id="N15",
+                    assigned_driver_id="D-003",
+                ),
+            ]
+        )
+        session.commit()
+
+
+def test_dispatch_reserves_replacement_and_persists_two_evidence_rows() -> None:
+    temp, engine, factory = _service()
+    try:
+        _seed_breakdown_vehicle(factory)
+
+        result = DispatchService(factory).execute(**_breakdown_execution_args())
+
+        with factory() as session:
+            vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-005"))
+            dispatch = session.get(Dispatch, result.dispatch_id)
+            evidence = session.scalars(
+                select(DispatchEvidence).where(DispatchEvidence.dispatch_id == dispatch.id)
+            ).all()
+        assert (vehicle.status, dispatch.original_vehicle_id, dispatch.target_vehicle_id) == (
+            "RESERVED",
+            "V-001",
+            "V-005",
+        )
+        assert dispatch.target_driver_id == "D-003"
+        assert dispatch.transfer_node_id == "N04"
+        assert result.target_driver_id == "D-003"
+        assert {item.evidence_type for item in evidence} == {
+            "FLEET_ALLOCATION",
+            "ROUTE_CALCULATION",
+        }
+        assert len(evidence) == 2
+    finally:
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_dispatch_task_replay_returns_persisted_assignment_without_duplicate_side_effects() -> None:
+    temp, engine, factory = _service()
+    try:
+        _seed_breakdown_vehicle(factory)
+        service = DispatchService(factory)
+
+        first = service.execute(**_breakdown_execution_args())
+        replay = service.execute(**_breakdown_execution_args())
+
+        with factory() as session:
+            vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-005"))
+            evidence_count = len(
+                session.scalars(
+                    select(DispatchEvidence).where(DispatchEvidence.dispatch_id == first.dispatch_id)
+                ).all()
+            )
+            dispatch_count = len(session.scalars(select(Dispatch)).all())
+        assert replay == first
+        assert (vehicle.status, vehicle.version) == ("RESERVED", 2)
+        assert evidence_count == 2
+        assert dispatch_count == 1
+    finally:
+        engine.dispose()
+        temp.cleanup()
+
+@pytest.mark.asyncio
+async def test_dispatch_agent_converts_vehicle_reservation_conflict_to_review() -> None:
+    class ConflictingService:
+        def execute(self, *args, **kwargs):
+            raise VehicleReservationConflict
+
+    patch = await dispatch_node(
+        {
+            "task_id": "task-001",
+            "order_id": 1,
+            "route_id": "RTE-ORIGINAL",
+            "recommended_route": "RTE-TARGET",
+            "decision": "REROUTE",
+            "decision_reason": "车辆发生并发预占。",
+            "fallback_used": False,
+            "requires_manual_review": False,
+            "vehicle_id": "V-001",
+            "candidate_vehicles": [],
+            "incident_node_id": "N04",
+        },
+        ConflictingService(),
+    )
+
+    assert patch == {
+        "requires_manual_review": True,
+        "error_code": "VEHICLE_RESERVATION_CONFLICT",
+        "error_message": "Replacement vehicle reservation conflicted with another dispatch.",
+    }
+
+def _seed_second_breakdown_vehicle(factory) -> None:
+    with factory() as session:
+        session.add_all(
+            [
+                FleetDriver(
+                    driver_id="D-004",
+                    name="王师傅",
+                    license_class="C1",
+                    status="ON_DUTY",
+                    current_vehicle_id="V-006",
+                    current_node_id="N15",
+                ),
+                FleetVehicle(
+                    vehicle_id="V-006",
+                    plate_no="新物冷链-06",
+                    vehicle_type="REFRIGERATED_VAN",
+                    max_load_kg=1000,
+                    current_load_kg=100,
+                    cargo_capability="COLD_CHAIN",
+                    gross_weight_tons="2.40",
+                    status="AVAILABLE",
+                    current_node_id="N15",
+                    assigned_driver_id="D-004",
+                ),
+            ]
+        )
+        session.commit()
+
+
+def test_dispatch_preserves_the_supplied_eligible_candidate_order() -> None:
+    temp, engine, factory = _service()
+    try:
+        _seed_breakdown_vehicle(factory)
+        _seed_second_breakdown_vehicle(factory)
+        args = _breakdown_execution_args()
+        args["candidate_vehicles"] = [
+            {
+                "vehicle_id": "V-006",
+                "driver_id": "D-004",
+                "eligible": True,
+                "score": "90.0",
+                "exclusion_reasons": [],
+            },
+            {
+                "vehicle_id": "V-005",
+                "driver_id": "D-003",
+                "eligible": True,
+                "score": "93.4",
+                "exclusion_reasons": [],
+            },
+        ]
+
+        result = DispatchService(factory).execute(**args)
+
+        assert (result.target_vehicle_id, result.target_driver_id) == (
+            "V-006",
+            "D-004",
         )
     finally:
         engine.dispose()

@@ -56,6 +56,7 @@ def _candidate_to_state(candidate: VehicleCandidate) -> dict[str, object]:
         "vehicle_status": candidate.vehicle_status,
         "remaining_load_kg": str(candidate.remaining_load_kg),
         "gross_weight_tons": str(candidate.gross_weight_tons),
+        "cargo_capability": candidate.cargo_capability,
         "pickup_route": _path_to_state(candidate.pickup_route),
         "pickup_distance_km": str(candidate.pickup_distance_km) if candidate.pickup_distance_km is not None else None,
         "pickup_eta_minutes": candidate.pickup_eta_minutes,
