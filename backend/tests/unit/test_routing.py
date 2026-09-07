@@ -253,6 +253,7 @@ def test_route_score_components_are_decimal_and_exactly_rebuild_total_score():
         assert components.risk_penalty == components.normalized_risk * Decimal("25")
         assert candidate.score == (Decimal("100") - components.time_penalty - components.distance_penalty - components.risk_penalty)
 
+
 def test_real_routing_projection_allows_reverse_bidirectional_path_in_audit() -> None:
     from app.audit.service import AuditService
     from app.road_network.dijkstra import DijkstraPathFinder
@@ -330,9 +331,7 @@ def test_real_routing_projection_allows_reverse_bidirectional_path_in_audit() ->
         road_network_snapshot=snapshot,
     )
     assert routing.recommended_path is not None
-    projected_reverse = next(
-        edge for edge in routing.road_network_edges if edge["edge_id"] == "E-REVERSE"
-    )
+    projected_reverse = next(edge for edge in routing.road_network_edges if edge["edge_id"] == "E-REVERSE")
     assert projected_reverse["bidirectional"] is True
 
     result = AuditService(lambda: None).audit(
@@ -357,3 +356,130 @@ def test_real_routing_projection_allows_reverse_bidirectional_path_in_audit() ->
 
     assert result.audit_status == "APPROVED"
     assert result.checks["route_connectivity"] is True
+
+
+def _plan_single_edge_status(
+    status: str,
+    *,
+    weight_limit_tons: Decimal,
+    vehicle_weight_tons: Decimal,
+):
+    from app.road_network.dijkstra import DijkstraPathFinder
+    from app.road_network.models import RoadEdgeSnapshot, RoadNetworkSnapshot, RoadNodeSnapshot
+    from app.routing.models import RoutePlanningContext
+
+    snapshot = RoadNetworkSnapshot(
+        version=9,
+        nodes=(
+            RoadNodeSnapshot("A", "起点", Decimal("0"), Decimal("0"), "DEPOT"),
+            RoadNodeSnapshot("B", "终点", Decimal("1"), Decimal("0"), "CUSTOMER"),
+            RoadNodeSnapshot("C", "阻断起点", Decimal("2"), Decimal("0"), "JUNCTION"),
+            RoadNodeSnapshot("D", "阻断终点", Decimal("3"), Decimal("0"), "JUNCTION"),
+        ),
+        edges=(
+            RoadEdgeSnapshot(
+                "E-STATUS",
+                "状态道路",
+                "A",
+                "B",
+                Decimal("1.00"),
+                2,
+                "COUNTY",
+                "LOW",
+                status,
+                Decimal("1.50"),
+                weight_limit_tons,
+                True,
+                9,
+            ),
+            RoadEdgeSnapshot(
+                "E-BLOCKED",
+                "已阻断道路",
+                "C",
+                "D",
+                Decimal("1.00"),
+                2,
+                "COUNTY",
+                "LOW",
+                "BLOCKED",
+                Decimal("1.00"),
+                Decimal("10.00"),
+                True,
+                9,
+            ),
+        ),
+    )
+    context = RoutePlanningContext(
+        order_id=1,
+        order_no="ORD-STATUS",
+        cargo_weight_kg=Decimal("100.00"),
+        cargo_type="GENERAL",
+        origin_node_id="A",
+        destination_node_id="B",
+        current_vehicle_id="V-001",
+        current_driver_id="D-001",
+        incident_node_id=None,
+        affected_edge_ids=("E-BLOCKED",),
+        road_network_version=9,
+        original_vehicle_weight_tons=vehicle_weight_tons,
+        active_vehicle_weight_tons=vehicle_weight_tons,
+    )
+    return RoutingService(
+        None,
+        memory_adoption_threshold=0.75,
+        path_finder=DijkstraPathFinder(),
+    ).plan(
+        context,
+        _capacity(),
+        ["E-BLOCKED"],
+        [],
+        road_network_snapshot=snapshot,
+    )
+
+
+@pytest.mark.parametrize("status", ["CONGESTED", "RESTRICTED"])
+def test_real_routing_audit_allows_known_non_blocked_edge_status(status: str) -> None:
+    from app.audit.service import AuditService
+
+    routing = _plan_single_edge_status(
+        status,
+        weight_limit_tons=Decimal("2.00"),
+        vehicle_weight_tons=Decimal("2.00"),
+    )
+    assert routing.recommended_path is not None
+    assert routing.recommended_path.edge_ids == ("E-STATUS",)
+
+    result = AuditService(lambda: None).audit(
+        {
+            "identified_issue": "ROAD_BLOCKED",
+            "decision": routing.decision,
+            "recommended_route": routing.recommended_route,
+            "blocked_edge_ids": list(routing.blocked_edge_ids),
+            "recommended_path": {
+                "node_ids": list(routing.recommended_path.node_ids),
+                "edge_ids": list(routing.recommended_path.edge_ids),
+            },
+            "road_network_edges": routing.road_network_edges,
+            "fallback_used": False,
+            "dispatch_result": {
+                "dispatch_id": 1,
+                "target_route_id": routing.recommended_route,
+                "executed": True,
+            },
+        }
+    )
+
+    assert result.audit_status == "APPROVED"
+    assert result.checks["blocked_edge_exclusion"] is True
+
+
+def test_real_routing_rejects_restricted_edge_when_vehicle_exceeds_limit() -> None:
+    routing = _plan_single_edge_status(
+        "RESTRICTED",
+        weight_limit_tons=Decimal("1.99"),
+        vehicle_weight_tons=Decimal("2.00"),
+    )
+
+    assert routing.recommended_path is None
+    assert routing.routing_status == "NO_REACHABLE_ROUTE"
+    assert routing.requires_manual_review is True

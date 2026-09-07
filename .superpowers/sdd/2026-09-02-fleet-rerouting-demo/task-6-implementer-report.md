@@ -119,3 +119,15 @@
 - Alembic heads：仅 `20260907_14 (head)`。
 - 固定 BASE 到测试修复提交的新增行敏感特征扫描：OpenAI 样式密钥、AWS 访问密钥、私钥头、URL 内嵌凭据、JWT 样式令牌均为 0。
 - 12 个跳过均为未配置的 opt-in Redis/MySQL/Qdrant/真实共享内存环境；未声称运行这些外部依赖测试。
+
+## Task 6 关闭复审道路状态修复
+
+- 修复起点 HEAD：`68085ea4ab1150ca37b851e7a7b2f870f169c451`，起点工作树干净；仅处理关闭复审剩余 Important，未进入 Task 7。
+- 评审语义核对：Dijkstra 允许所有非 `BLOCKED` 且不超限重的边；Audit 旧实现却要求路径边必须为 `OPEN`，错误拒绝合法 `CONGESTED` 与 `RESTRICTED`。
+- TDD 红灯：真实 RoutingService→Audit 的 `CONGESTED` 和重量等于限重的 `RESTRICTED` 两例均返回 `REJECTED`，为 `2 failed`；超限 RESTRICTED、缺失/UNKNOWN 状态、未声明 BLOCKED 四个安全边界通过，总计 `2 failed, 4 passed in 1.48s`。
+- 最小实现：Audit 路径状态白名单改为 `OPEN`、`CONGESTED`、`RESTRICTED`；声明阻断或快照 `BLOCKED` 仍拒绝，缺失/未知状态仍因证据不足拒绝。限重继续由 Routing/Dijkstra 硬约束处理。
+- 红灯转绿：同一 6 条道路状态边界为 `6 passed in 1.22s`。
+- 聚焦回归：Audit、Routing、RoadNetwork、离线图、Dispatch、双 Session 并发及 Publication 为 `89 passed, 2 skipped in 26.65s`；2 个跳过均为未配置 MySQL opt-in。
+- 完整 backend pytest 会话 `93426`，真实 exit code `0`：`962 passed, 12 skipped, 768 warnings in 263.83s`。
+- 完整 backend Ruff 在报告前检查为 `All checks passed!`；工作树 `diff --check` exit code 0，功能差异仅 AuditService 与两份行为测试。
+- Windows deny-read ACL 继续使 `apply_patch` 无法读取目标文件；测试追加完整函数块，生产只替换完整审计状态方法块，并立即 `py_compile`/diff；机械格式使用 Ruff。

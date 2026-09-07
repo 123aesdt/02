@@ -518,7 +518,8 @@ class AuditService:
         road_edges: object,
     ) -> bool:
         edges = cls._road_edges_by_id(road_edges)
-        return bool(edge_ids) and all(edge_id in edges and edges[edge_id].get("status") == "OPEN" for edge_id in edge_ids)
+        allowed_statuses = {"OPEN", "CONGESTED", "RESTRICTED"}
+        return bool(edge_ids) and all(edge_id in edges and edges[edge_id].get("status") in allowed_statuses for edge_id in edge_ids)
 
     @classmethod
     def _road_edges_by_id(

@@ -440,3 +440,24 @@ def test_audit_rejects_path_edge_marked_blocked_even_when_declaration_omits_it()
     finally:
         engine.dispose()
         temp.cleanup()
+
+
+@pytest.mark.parametrize("status", [None, "UNKNOWN"])
+def test_audit_rejects_missing_or_unknown_path_edge_status(status: str | None) -> None:
+    temp, engine, factory = _service()
+    try:
+        evidence = _road_block_evidence()
+        road_edges = evidence["road_network_edges"]
+        assert isinstance(road_edges, list) and isinstance(road_edges[1], dict)
+        if status is None:
+            road_edges[1].pop("status")
+        else:
+            road_edges[1]["status"] = status
+
+        result = AuditService(factory).audit(evidence)
+
+        assert result.audit_status == "REJECTED"
+        assert result.checks["blocked_edge_exclusion"] is False
+    finally:
+        engine.dispose()
+        temp.cleanup()
