@@ -5,6 +5,16 @@ from app.road_network.models import PathResult
 
 
 @dataclass(frozen=True)
+class RouteScoreComponents:
+    normalized_minutes: Decimal
+    normalized_distance: Decimal
+    normalized_risk: Decimal
+    time_penalty: Decimal
+    distance_penalty: Decimal
+    risk_penalty: Decimal
+
+
+@dataclass(frozen=True)
 class RouteCandidate:
     route_id: str
     route_name: str
@@ -22,6 +32,7 @@ class RouteCandidate:
     visited_node_count: int | None = None
     risk_cost: Decimal | None = None
     scoring_formula: str | None = None
+    score_components: RouteScoreComponents | None = None
 
 
 @dataclass(frozen=True)

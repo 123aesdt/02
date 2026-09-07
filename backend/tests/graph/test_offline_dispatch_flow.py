@@ -190,6 +190,20 @@ async def test_fixed_scenarios_include_fleet_and_route_scoring_evidence(graph, b
     assert blocked["recommended_path"]["scoring_formula"] == "ROUTE_SCORE_V1"
     assert all(candidate["scoring_formula"] == "ROUTE_SCORE_V1" for candidate in blocked["candidate_routes"])
     assert all(candidate["algorithm_version"] == "DIJKSTRA_V1" for candidate in blocked["candidate_routes"])
+    for candidate in blocked["candidate_routes"]:
+        components = candidate["score_components"]
+        assert set(components) == {
+            "normalized_minutes",
+            "normalized_distance",
+            "normalized_risk",
+            "time_penalty",
+            "distance_penalty",
+            "risk_penalty",
+        }
+        assert all(isinstance(value, str) for value in components.values())
+        assert Decimal(candidate["score"]) == (
+            Decimal("100") - Decimal(components["time_penalty"]) - Decimal(components["distance_penalty"]) - Decimal(components["risk_penalty"])
+        )
 
 
 class _NoReachableRoadProvider:

@@ -1,11 +1,11 @@
 from dataclasses import replace
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 from hashlib import sha256
 
 from app.graph.state import CapacityState, MemoryRecallState
 from app.road_network.models import PathResult, RoadNetworkSnapshot, RouteObjective
 from app.road_network.protocols import PathFinder, RoadNetworkProvider
-from app.routing.models import RouteCandidate, RoutingResult
+from app.routing.models import RouteCandidate, RouteScoreComponents, RoutingResult
 from app.routing.provider import RouteProvider
 from app.sandtable.models import SandtableTaskContext
 
@@ -174,12 +174,22 @@ class RoutingService:
         candidates: list[RouteCandidate] = []
         for path in paths:
             if len(paths) == 1:
-                score = Decimal("100")
+                normalized_minutes = Decimal("0")
+                normalized_distance = Decimal("0")
+                normalized_risk = Decimal("0")
             else:
                 normalized_minutes = Decimal(path.estimated_minutes) / Decimal(max_minutes)
                 normalized_distance = path.distance_km / max_distance
                 normalized_risk = Decimal("0") if max_risk == 0 else path.risk_cost / max_risk
-                score = Decimal("100") - normalized_minutes * Decimal("45") - normalized_distance * Decimal("30") - normalized_risk * Decimal("25")
+            score_components = RouteScoreComponents(
+                normalized_minutes=normalized_minutes,
+                normalized_distance=normalized_distance,
+                normalized_risk=normalized_risk,
+                time_penalty=normalized_minutes * Decimal("45"),
+                distance_penalty=normalized_distance * Decimal("30"),
+                risk_penalty=normalized_risk * Decimal("25"),
+            )
+            score = Decimal("100") - score_components.time_penalty - score_components.distance_penalty - score_components.risk_penalty
             candidates.append(
                 RouteCandidate(
                     route_id=f"RTE-{sha256('|'.join(path.edge_ids).encode()).hexdigest()[:16].upper()}",
@@ -189,7 +199,7 @@ class RoutingService:
                     risk_level=RoutingService._risk_level(path.risk_cost),
                     available=True,
                     reason=None,
-                    score=score.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+                    score=score,
                     node_ids=path.node_ids,
                     edge_ids=path.edge_ids,
                     objective=path.objective.value,
@@ -198,6 +208,7 @@ class RoutingService:
                     road_network_version=road_network_version,
                     visited_node_count=path.visited_node_count,
                     risk_cost=path.risk_cost,
+                    score_components=score_components,
                 )
             )
         return candidates

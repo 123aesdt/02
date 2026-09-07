@@ -8,6 +8,25 @@ from app.routing.service import RoutingService
 from app.sandtable.models import SandtableTaskContext
 
 
+def _route_score_components_to_state(candidate: RouteCandidate) -> dict[str, str] | None:
+    components = candidate.score_components
+    if components is None:
+        return None
+    return {
+        "normalized_minutes": format(components.normalized_minutes, "f"),
+        "normalized_distance": format(components.normalized_distance, "f"),
+        "normalized_risk": format(components.normalized_risk, "f"),
+        "time_penalty": format(components.time_penalty, "f"),
+        "distance_penalty": format(components.distance_penalty, "f"),
+        "risk_penalty": format(components.risk_penalty, "f"),
+    }
+
+
+def _route_score_to_state(score: Decimal) -> str:
+    two_decimal_score = score.quantize(Decimal("0.01"))
+    return format(two_decimal_score if score == two_decimal_score else score, "f")
+
+
 def route_candidate_to_state(candidate: RouteCandidate) -> RouteCandidateState:
     return {
         "route_id": candidate.route_id,
@@ -17,12 +36,13 @@ def route_candidate_to_state(candidate: RouteCandidate) -> RouteCandidateState:
         "risk_level": candidate.risk_level,
         "available": candidate.available,
         "reason": candidate.reason,
-        "score": format(candidate.score, "f"),
+        "score": _route_score_to_state(candidate.score),
         "node_ids": list(candidate.node_ids),
         "edge_ids": list(candidate.edge_ids),
         "objective": candidate.objective,
         "algorithm_version": candidate.algorithm_version,
         "scoring_formula": candidate.scoring_formula,
+        "score_components": _route_score_components_to_state(candidate),
         "road_network_version": candidate.road_network_version,
         "visited_node_count": candidate.visited_node_count,
         "risk_cost": str(candidate.risk_cost) if candidate.risk_cost is not None else None,

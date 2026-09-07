@@ -204,3 +204,51 @@ def test_route_plan_breaks_equal_decimal_scores_by_edge_sequence():
     assert result.recommended_path.edge_ids == ("E-FAST",)
     assert {candidate.score for candidate in result.candidate_routes} == {Decimal("25.00")}
     assert all(isinstance(candidate.distance_km, Decimal) and isinstance(candidate.score, Decimal) for candidate in result.candidate_routes)
+
+
+def test_single_path_route_score_components_are_zero():
+    from app.road_network.models import PathResult, RouteObjective
+
+    candidate = RoutingService._score_paths(
+        [PathResult(RouteObjective.FASTEST, ("A", "B"), ("E-ONLY",), Decimal("2.50"), 5, Decimal("4.00"), 2)],
+        road_network_version=3,
+    )[0]
+
+    components = candidate.score_components
+    assert components is not None
+    assert (
+        components.normalized_minutes,
+        components.normalized_distance,
+        components.normalized_risk,
+        components.time_penalty,
+        components.distance_penalty,
+        components.risk_penalty,
+        candidate.score,
+    ) == (Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"), Decimal("0"), Decimal("100"))
+
+
+def test_route_score_components_are_decimal_and_exactly_rebuild_total_score():
+    from app.road_network.models import PathResult, RouteObjective
+
+    paths = [
+        PathResult(RouteObjective.FASTEST, ("A", "B"), ("E-FAST",), Decimal("10.00"), 10, Decimal("0.00"), 2),
+        PathResult(RouteObjective.SHORTEST, ("A", "C", "B"), ("E-SHORT",), Decimal("5.00"), 20, Decimal("4.00"), 3),
+        PathResult(RouteObjective.SAFEST, ("A", "D", "B"), ("E-SAFE",), Decimal("15.00"), 30, Decimal("12.00"), 4),
+    ]
+
+    for candidate in RoutingService._score_paths(paths, road_network_version=7):
+        components = candidate.score_components
+        assert components is not None
+        values = (
+            components.normalized_minutes,
+            components.normalized_distance,
+            components.normalized_risk,
+            components.time_penalty,
+            components.distance_penalty,
+            components.risk_penalty,
+        )
+        assert all(isinstance(value, Decimal) for value in values)
+        assert components.time_penalty == components.normalized_minutes * Decimal("45")
+        assert components.distance_penalty == components.normalized_distance * Decimal("30")
+        assert components.risk_penalty == components.normalized_risk * Decimal("25")
+        assert candidate.score == (Decimal("100") - components.time_penalty - components.distance_penalty - components.risk_penalty)

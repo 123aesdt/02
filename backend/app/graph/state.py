@@ -47,6 +47,15 @@ class CapacityState(TypedDict):
     provider_name: str
 
 
+class RouteScoreComponentsState(TypedDict):
+    normalized_minutes: str
+    normalized_distance: str
+    normalized_risk: str
+    time_penalty: str
+    distance_penalty: str
+    risk_penalty: str
+
+
 class RouteCandidateState(TypedDict):
     route_id: str
     route_name: str
@@ -64,6 +73,7 @@ class RouteCandidateState(TypedDict):
     visited_node_count: NotRequired[int | None]
     risk_cost: NotRequired[str | None]
     scoring_formula: NotRequired[str | None]
+    score_components: NotRequired[RouteScoreComponentsState | None]
 
 
 class PathState(TypedDict):
