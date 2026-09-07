@@ -8,7 +8,12 @@ from app.fleet.models import (
     FleetVehicleSnapshot,
     VehicleCandidate,
 )
-from app.fleet.protocols import AllocationPreparableTravelTimeEstimator, FleetProvider, TravelTimeEstimator
+from app.fleet.protocols import (
+    AllocationPreparableTravelTimeEstimator,
+    FleetProvider,
+    SnapshotPreparableTravelTimeEstimator,
+    TravelTimeEstimator,
+)
 from app.road_network.models import PathResult, RoadNetworkSnapshot, RouteObjective
 from app.road_network.protocols import PathFinder, RoadNetworkProvider
 
@@ -35,7 +40,10 @@ class DijkstraTravelTimeEstimator:
         return _is_weight_restricted(self._path_finder, self._road_network.snapshot(), from_node_id, to_node_id, vehicle_weight_tons)
 
     def for_allocation(self) -> TravelTimeEstimator:
-        return _PreparedDijkstraTravelTimeEstimator(self._road_network.snapshot(), self._path_finder)
+        return self.for_snapshot(self._road_network.snapshot())
+
+    def for_snapshot(self, snapshot: RoadNetworkSnapshot) -> TravelTimeEstimator:
+        return _PreparedDijkstraTravelTimeEstimator(snapshot, self._path_finder)
 
 
 class _PreparedDijkstraTravelTimeEstimator:
@@ -67,8 +75,13 @@ class FleetAllocationService:
         self._fleet_provider = fleet_provider
         self._travel_time_estimator = travel_time_estimator
 
-    def allocate(self, request: FleetAllocationRequest) -> FleetAllocationResult:
-        estimator = self._prepare_estimator()
+    def allocate(
+        self,
+        request: FleetAllocationRequest,
+        *,
+        road_network_snapshot: RoadNetworkSnapshot | None = None,
+    ) -> FleetAllocationResult:
+        estimator = self._prepare_estimator(road_network_snapshot)
         candidates = tuple(self._evaluate(vehicle, request, estimator) for vehicle in self._fleet_provider.list_candidates(request.original_vehicle_id))
         eligible = sorted(
             (candidate for candidate in candidates if candidate.eligible),
@@ -158,8 +171,12 @@ class FleetAllocationService:
             return False
         return vehicle.driver.license_class in ({"C1", "B2"} if vehicle.vehicle_type in _LIGHT_VEHICLE_TYPES else {"B2"})
 
-    def _prepare_estimator(self) -> TravelTimeEstimator:
+    def _prepare_estimator(self, road_network_snapshot: RoadNetworkSnapshot | None) -> TravelTimeEstimator:
         estimator = self._travel_time_estimator
+        if road_network_snapshot is not None:
+            if not isinstance(estimator, SnapshotPreparableTravelTimeEstimator):
+                raise TypeError("Travel-time estimator does not accept an explicit road-network snapshot.")
+            return estimator.for_snapshot(road_network_snapshot)
         if isinstance(estimator, AllocationPreparableTravelTimeEstimator):
             return estimator.for_allocation()
         return estimator

@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Protocol, runtime_checkable
 
 from app.fleet.models import FleetVehicleSnapshot
-from app.road_network.models import PathResult
+from app.road_network.models import PathResult, RoadNetworkSnapshot
 
 
 class FleetProvider(Protocol):
@@ -16,3 +16,8 @@ class TravelTimeEstimator(Protocol):
 @runtime_checkable
 class AllocationPreparableTravelTimeEstimator(Protocol):
     def for_allocation(self) -> TravelTimeEstimator: ...
+
+
+@runtime_checkable
+class SnapshotPreparableTravelTimeEstimator(Protocol):
+    def for_snapshot(self, snapshot: RoadNetworkSnapshot) -> TravelTimeEstimator: ...

@@ -3,9 +3,9 @@ from decimal import Decimal
 from app.graph.state import DispatchGraphState, RouteCandidateState
 from app.recommendations.service import IssueRecommendationService
 from app.road_network.models import PathResult
-from app.routing.models import RouteCandidate, RoutingResult
+from app.road_network.service import RoadNetworkSnapshotService
+from app.routing.models import RouteCandidate, RoutePlanningContext, RoutingResult
 from app.routing.service import RoutingService
-from app.sandtable.models import SandtableTaskContext
 
 
 def _route_score_components_to_state(candidate: RouteCandidate) -> dict[str, str] | None:
@@ -63,11 +63,12 @@ def _path_to_state(path: PathResult | None) -> dict[str, object] | None:
     }
 
 
-def _sandtable_context(state: DispatchGraphState) -> SandtableTaskContext:
-    vehicle_weight = state.get("selected_vehicle_gross_weight_tons") or state.get("vehicle_weight_tons")
-    if vehicle_weight is None:
-        raise ValueError("vehicle_weight_tons is required for offline road-network planning")
-    return SandtableTaskContext(
+def _planning_context(state: DispatchGraphState) -> RoutePlanningContext:
+    original_vehicle_weight = state.get("original_vehicle_weight_tons") or state.get("vehicle_weight_tons")
+    if original_vehicle_weight is None:
+        raise ValueError("original_vehicle_weight_tons is required for offline road-network planning")
+    active_vehicle_weight = state.get("active_vehicle_weight_tons") or state.get("selected_vehicle_gross_weight_tons") or original_vehicle_weight
+    return RoutePlanningContext(
         order_id=state["order_id"],
         order_no=str(state["order_id"]),
         cargo_weight_kg=Decimal(state.get("cargo_weight_kg", "0")),
@@ -79,7 +80,8 @@ def _sandtable_context(state: DispatchGraphState) -> SandtableTaskContext:
         incident_node_id=state.get("incident_node_id"),
         affected_edge_ids=tuple(state.get("affected_edge_ids", [])),
         road_network_version=state.get("road_network_version", 0),
-        vehicle_weight_tons=Decimal(str(vehicle_weight)),
+        original_vehicle_weight_tons=Decimal(str(original_vehicle_weight)),
+        active_vehicle_weight_tons=Decimal(str(active_vehicle_weight)),
     )
 
 
@@ -122,11 +124,20 @@ async def routing_node(
     state: DispatchGraphState,
     routing_service: RoutingService | None,
     recommendation_service: IssueRecommendationService | None = None,
+    road_network_snapshot_service: RoadNetworkSnapshotService | None = None,
 ) -> dict[str, object]:
     if routing_service is None:
         return {}
     if routing_service.can_plan and state.get("origin_node_id") and state.get("destination_node_id"):
-        result = routing_service.plan(_sandtable_context(state), state["capacity_state"], state.get("affected_edge_ids", []), state.get("memory_results", []))
+        snapshot_state = state.get("road_network_snapshot")
+        snapshot = road_network_snapshot_service.restore(snapshot_state) if road_network_snapshot_service is not None and snapshot_state is not None else None
+        result = routing_service.plan(
+            _planning_context(state),
+            state["capacity_state"],
+            state.get("affected_edge_ids", []),
+            state.get("memory_results", []),
+            road_network_snapshot=snapshot,
+        )
         candidate_routes = [route_candidate_to_state(candidate) for candidate in result.candidate_routes]
         return {
             **_recommendation_patch(state, result, candidate_routes, recommendation_service),
@@ -167,4 +178,9 @@ async def routing_node(
         state.get("environment_risk", "elevated"),
         state["capacity_state"],
     )
-    return _recommendation_patch(state, result, [route_candidate_to_state(candidate) for candidate in result.candidate_routes], recommendation_service)
+    return _recommendation_patch(
+        state,
+        result,
+        [route_candidate_to_state(candidate) for candidate in result.candidate_routes],
+        recommendation_service,
+    )

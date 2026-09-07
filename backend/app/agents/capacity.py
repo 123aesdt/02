@@ -6,6 +6,7 @@ from app.fleet.models import FleetAllocationRequest, VehicleCandidate
 from app.fleet.service import FleetAllocationService
 from app.graph.state import CapacityState, DispatchGraphState
 from app.road_network.models import PathResult
+from app.road_network.service import RoadNetworkSnapshotService
 
 
 def capacity_result_to_state(result: CapacityResult) -> CapacityState:
@@ -70,6 +71,7 @@ async def capacity_node(
     state: DispatchGraphState,
     capacity_service: CapacityService | None,
     fleet_allocation_service: FleetAllocationService | None = None,
+    road_network_snapshot_service: RoadNetworkSnapshotService | None = None,
 ) -> dict[str, object]:
     if capacity_service is None:
         available = state.get("vehicle_status", "NORMAL") == "NORMAL"
@@ -113,6 +115,10 @@ async def capacity_node(
         capacity_state = capacity_result_to_state(result)
 
     if state.get("vehicle_status") in {"BROKEN", "UNAVAILABLE", "MAINTENANCE"} and fleet_allocation_service is not None:
+        snapshot_state = state.get("road_network_snapshot")
+        road_network_snapshot = (
+            road_network_snapshot_service.restore(snapshot_state) if road_network_snapshot_service is not None and snapshot_state is not None else None
+        )
         allocation = fleet_allocation_service.allocate(
             FleetAllocationRequest(
                 original_vehicle_id=state.get("vehicle_id", ""),
@@ -120,7 +126,8 @@ async def capacity_node(
                 cargo_weight_kg=Decimal(state.get("cargo_weight_kg", "0")),
                 cargo_type=state.get("cargo_type", "GENERAL"),
                 destination_node_id=state.get("destination_node_id"),
-            )
+            ),
+            road_network_snapshot=road_network_snapshot,
         )
         candidates = [_candidate_to_state(candidate) for candidate in allocation.candidates]
         if allocation.vehicle_reassigned:
@@ -133,14 +140,14 @@ async def capacity_node(
                     "reason": None,
                 }
             )
+            selected_weight = next(candidate.gross_weight_tons for candidate in allocation.candidates if candidate.vehicle_id == allocation.selected_vehicle_id)
             return {
                 "capacity_state": capacity_state,
                 "candidate_vehicles": candidates,
                 "selected_vehicle_id": allocation.selected_vehicle_id,
                 "selected_driver_id": allocation.selected_driver_id,
-                "selected_vehicle_gross_weight_tons": str(
-                    next(candidate.gross_weight_tons for candidate in allocation.candidates if candidate.vehicle_id == allocation.selected_vehicle_id)
-                ),
+                "selected_vehicle_gross_weight_tons": format(selected_weight, "f"),
+                "active_vehicle_weight_tons": format(selected_weight, "f"),
                 "vehicle_reassigned": True,
                 "pickup_route": _path_to_state(allocation.pickup_route),
                 "requires_manual_review": False,

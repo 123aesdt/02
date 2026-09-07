@@ -1,5 +1,6 @@
 """真实 SQLite 仓储参与的离线调度图组合测试。"""
 
+import json
 from decimal import Decimal
 from hashlib import sha256
 
@@ -17,6 +18,7 @@ from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.road import RoadEdge
 from app.road_network.dijkstra import DijkstraPathFinder
+from app.road_network.service import RoadNetworkSnapshotService
 from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
 from app.routing.service import RoutingService
 from app.sandtable.service import SandtableContextService
@@ -54,6 +56,7 @@ async def test_sqlite_graph_rejects_invalid_original_vehicle_capacity_snapshot(s
                 unavailable_threshold=1.0,
             ),
             sandtable_context_service=SandtableContextService(sandtable_repository),
+            road_network_snapshot_service=RoadNetworkSnapshotService(road_repository),
             routing_service=RoutingService(
                 None,
                 memory_adoption_threshold=0.75,
@@ -80,6 +83,7 @@ async def test_sqlite_graph_rejects_invalid_original_vehicle_capacity_snapshot(s
     assert result["requires_manual_review"] is True
     assert result.get("recommended_route") is None
     assert result.get("recommended_path") is None
+
 
 @pytest.mark.asyncio
 async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_vehicle_weight(sqlite_factory) -> None:
@@ -123,6 +127,7 @@ async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_
                 unavailable_threshold=1.0,
             ),
             sandtable_context_service=SandtableContextService(sandtable_repository),
+            road_network_snapshot_service=RoadNetworkSnapshotService(road_repository),
             fleet_allocation_service=FleetAllocationService(
                 fleet_repository,
                 DijkstraTravelTimeEstimator(road_repository, path_finder),
@@ -173,6 +178,9 @@ async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_
 
     assert source_context.vehicle_weight_tons == Decimal("4.50")
     assert normal_vehicle["vehicle_weight_tons"] == "4.50"
+    assert normal_vehicle["original_vehicle_weight_tons"] == "4.50"
+    assert normal_vehicle["active_vehicle_weight_tons"] == "4.50"
+    json.dumps(normal_vehicle["road_network_snapshot"])
     assert "E-LIMIT-2T" not in normal_vehicle["original_path"]["edge_ids"]
     assert "E-LIMIT-2T" not in normal_vehicle["recommended_path"]["edge_ids"]
     assert all("E-LIMIT-2T" not in candidate["edge_ids"] for candidate in normal_vehicle["candidate_routes"])
@@ -205,6 +213,9 @@ async def test_sqlite_repositories_run_graph_tasks_with_fresh_snapshot_and_real_
     after = road_repository.snapshot()
 
     assert (breakdown["selected_vehicle_id"], breakdown["selected_driver_id"]) == ("V-005", "D-003")
+    assert breakdown["original_vehicle_weight_tons"] == "2.80"
+    assert breakdown["active_vehicle_weight_tons"] == "2.40"
+    assert breakdown["road_network_snapshot"]["version"] == breakdown["road_network_version"]
     assert breakdown["pickup_route"]["edge_ids"] == ["E20"]
     assert breakdown["recommended_path"]["node_ids"][0] == "N04"
     assert breakdown["candidate_vehicles"]

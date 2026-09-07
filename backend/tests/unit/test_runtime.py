@@ -138,9 +138,14 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
     class RecordingCapacityService:
         def __init__(self, provider, **kwargs):
             captured["capacity_service"] = (provider, kwargs)
+
     class RecordingRoadRepository:
         def __init__(self, session):
-            captured.setdefault("road_repositories", []).append(session)
+            captured.setdefault("road_repositories", []).append(self)
+
+    class RecordingSnapshotService:
+        def __init__(self, road_repository):
+            captured["snapshot_repository"] = road_repository
 
     class RecordingFleetAllocationService:
         def __init__(self, fleet_repository, estimator):
@@ -155,6 +160,7 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
     monkeypatch.setattr(runtime_module, "FleetCapacityProvider", RecordingCapacityProvider)
     monkeypatch.setattr(runtime_module, "CapacityService", RecordingCapacityService)
     monkeypatch.setattr(runtime_module, "SqlAlchemyRoadNetworkRepository", RecordingRoadRepository)
+    monkeypatch.setattr(runtime_module, "RoadNetworkSnapshotService", RecordingSnapshotService)
     monkeypatch.setattr(runtime_module, "FleetAllocationService", RecordingFleetAllocationService)
     monkeypatch.setattr(runtime_module, "RoutingService", RecordingRoutingService)
     settings = Settings(
@@ -181,12 +187,16 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
 
     capacity_provider, capacity_repository = captured["capacity_provider"]
     capacity_service_provider, capacity_thresholds = captured["capacity_service"]
-    fleet_allocation_repository, _ = captured["fleet_allocation"]
+    fleet_allocation_repository, estimator = captured["fleet_allocation"]
+    road_repositories = captured["road_repositories"]
     assert capacity_service_provider is capacity_provider
     assert capacity_repository is fleet_allocation_repository
     assert capacity_thresholds == {"limited_threshold": 0.8, "unavailable_threshold": 1.0}
     assert captured["routing"][0] is None
-    assert len(captured["road_repositories"]) == 2
+    assert len(road_repositories) == 1
+    assert captured["snapshot_repository"] is road_repositories[0]
+    assert estimator._road_network is road_repositories[0]
+    assert captured["routing"][1]["road_network_provider"] is road_repositories[0]
     assert "sandtable_repository" in captured
     assert "fleet_repository" in captured
     assert "fleet_allocation" in captured

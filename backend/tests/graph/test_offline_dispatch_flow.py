@@ -11,6 +11,7 @@ from app.graph.builder import build_graph
 from app.graph.dependencies import GraphDependencies
 from app.road_network.dijkstra import DijkstraPathFinder
 from app.road_network.models import RoadEdgeSnapshot, RoadNetworkSnapshot, RoadNodeSnapshot
+from app.road_network.service import RoadNetworkSnapshotService
 from app.sandtable.models import SandtableTaskContext
 from app.sandtable.seed_data import DRIVERS, ROAD_EDGES, ROAD_NODES, VEHICLES
 from app.sandtable.service import SandtableContextService
@@ -22,12 +23,8 @@ class _SandtableProvider:
 
     def load(self, order_id: int) -> SandtableTaskContext:
         contexts = {
-            1: SandtableTaskContext(
-                1, "DEMO-ORDER-001", Decimal("700.00"), "COLD_CHAIN", "N01", "N06", "V-001", "D-001", None, (), 7, Decimal("2.80")
-            ),
-            5: SandtableTaskContext(
-                5, "DEMO-ORDER-005", Decimal("850.00"), "GENERAL", "N01", "N06", "V-008", "D-007", None, (), 7, Decimal("4.50")
-            ),
+            1: SandtableTaskContext(1, "DEMO-ORDER-001", Decimal("700.00"), "COLD_CHAIN", "N01", "N06", "V-001", "D-001", None, (), 7, Decimal("2.80")),
+            5: SandtableTaskContext(5, "DEMO-ORDER-005", Decimal("850.00"), "GENERAL", "N01", "N06", "V-008", "D-007", None, (), 7, Decimal("4.50")),
         }
         return contexts[order_id]
 
@@ -98,6 +95,7 @@ def graph():
         GraphDependencies(
             sandtable_context_service=sandtable_service,
             fleet_allocation_service=FleetAllocationService(_FleetProvider(), DijkstraTravelTimeEstimator(road_provider, path_finder)),
+            road_network_snapshot_service=RoadNetworkSnapshotService(road_provider),
             routing_service=__import__("app.routing.service", fromlist=["RoutingService"]).RoutingService(
                 None, memory_adoption_threshold=0.75, road_network_provider=road_provider, path_finder=path_finder
             ),
@@ -150,6 +148,8 @@ async def test_vehicle_breakdown_reassigns_vehicle_and_continues_to_routing(grap
     assert result["selected_vehicle_id"] == "V-005"
     assert result["selected_driver_id"] == "D-003"
     assert result["selected_vehicle_gross_weight_tons"] == "2.40"
+    assert result["original_vehicle_weight_tons"] == "2.80"
+    assert result["active_vehicle_weight_tons"] == "2.40"
     assert result["vehicle_reassigned"] is True
     assert result["pickup_route"]["edge_ids"] == ["E20"]
     assert result["recommended_path"]["node_ids"][-1] == "N06"
@@ -166,6 +166,7 @@ async def test_road_block_replans_without_e04(graph, blocked_state) -> None:
     assert result["distance_delta_km"] == "3.20"
     assert result["eta_delta_minutes"] == 4
     assert result["routing_algorithm"] == "DIJKSTRA_V1"
+    assert result["original_vehicle_weight_tons"] == result["active_vehicle_weight_tons"] == "4.50"
 
 
 @pytest.mark.asyncio
@@ -239,6 +240,7 @@ def unreachable_graph():
     return build_graph(
         GraphDependencies(
             sandtable_context_service=SandtableContextService(sandtable_provider),
+            road_network_snapshot_service=RoadNetworkSnapshotService(road_provider),
             routing_service=__import__("app.routing.service", fromlist=["RoutingService"]).RoutingService(
                 None,
                 memory_adoption_threshold=0.75,

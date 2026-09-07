@@ -25,6 +25,7 @@ from app.providers.embedding.fake import FakeEmbeddingProvider
 from app.providers.environment import EnvironmentProvider, EnvironmentResult, HttpEnvironmentProvider, StaticRouteFallbackProvider
 from app.publications.service import DispatchPublicationService
 from app.road_network.dijkstra import DijkstraPathFinder
+from app.road_network.service import RoadNetworkSnapshotService
 from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
 from app.routing.service import RoutingService
 from app.runtime_threads.checkpoint_store import RedisRuntimeCheckpointStore
@@ -101,6 +102,7 @@ def build_runtime_graph(
         QdrantMemoryRepository(qdrant_client, "entity_resolution_memory", embedding.vector_dimension),
     )
     fleet_repository = SqlAlchemyFleetRepository(session_factory)
+    road_network_repository = SqlAlchemyRoadNetworkRepository(session_factory)
     dependencies = GraphDependencies(
         entity_memory_service=memory,
         graph_memory_service=build_graph_memory_service(settings, neo4j_driver),
@@ -115,14 +117,15 @@ def build_runtime_graph(
             unavailable_threshold=settings.capacity_unavailable_threshold,
         ),
         sandtable_context_service=SandtableContextService(SqlAlchemySandtableRepository(session_factory)),
+        road_network_snapshot_service=RoadNetworkSnapshotService(road_network_repository),
         fleet_allocation_service=FleetAllocationService(
             fleet_repository,
-            DijkstraTravelTimeEstimator(SqlAlchemyRoadNetworkRepository(session_factory), DijkstraPathFinder()),
+            DijkstraTravelTimeEstimator(road_network_repository, DijkstraPathFinder()),
         ),
         routing_service=RoutingService(
             None,
             memory_adoption_threshold=settings.memory_adoption_threshold,
-            road_network_provider=SqlAlchemyRoadNetworkRepository(session_factory),
+            road_network_provider=road_network_repository,
             path_finder=DijkstraPathFinder(),
         ),
         dispatch_service=DispatchService(session_factory),
@@ -147,9 +150,7 @@ def build_shared_memory_service(
 ) -> SharedMemoryMutationService:
     embedding = FakeEmbeddingProvider(dimension=settings.embedding_dimension)
     return SharedMemoryMutationService(
-        repository=SqlAlchemyMemoryControlRepository(
-            build_session_factory(settings.database_url)
-        ),
+        repository=SqlAlchemyMemoryControlRepository(build_session_factory(settings.database_url)),
         lock=MemoryMutationLock(
             redis_client,
             ttl_ms=settings.memory_mutation_lock_ttl_ms,

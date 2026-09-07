@@ -76,6 +76,36 @@ class RouteCandidateState(TypedDict):
     score_components: NotRequired[RouteScoreComponentsState | None]
 
 
+class RoadNodeSnapshotState(TypedDict):
+    node_id: str
+    name: str
+    x_km: str
+    y_km: str
+    node_type: str
+
+
+class RoadEdgeSnapshotState(TypedDict):
+    edge_id: str
+    name: str
+    from_node_id: str
+    to_node_id: str
+    distance_km: str
+    base_minutes: int
+    road_level: str
+    risk_level: str
+    status: str
+    congestion_factor: str
+    weight_limit_tons: str
+    bidirectional: bool
+    version: int
+
+
+class RoadNetworkSnapshotState(TypedDict):
+    version: int
+    nodes: list[RoadNodeSnapshotState]
+    edges: list[RoadEdgeSnapshotState]
+
+
 class PathState(TypedDict):
     objective: str
     node_ids: list[str]
@@ -123,6 +153,8 @@ class DispatchGraphState(TypedDict):
     vehicle_id: NotRequired[str]
     vehicle_status: NotRequired[VehicleRuntimeStatus]
     vehicle_weight_tons: NotRequired[str]
+    original_vehicle_weight_tons: NotRequired[str]
+    active_vehicle_weight_tons: NotRequired[str]
     normalized_anomaly: NotRequired[str]
     memory_results: NotRequired[list[MemoryRecallState]]
     graph_memory_facts: NotRequired[list[GraphFactState]]
@@ -154,6 +186,7 @@ class DispatchGraphState(TypedDict):
     routing_algorithm: NotRequired[str]
     routing_status: NotRequired[str]
     road_network_version: NotRequired[int]
+    road_network_snapshot: NotRequired[RoadNetworkSnapshotState]
     distance_delta_km: NotRequired[str]
     eta_delta_minutes: NotRequired[int]
     road_network_nodes: NotRequired[list[dict[str, object]]]

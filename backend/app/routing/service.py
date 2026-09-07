@@ -5,7 +5,7 @@ from hashlib import sha256
 from app.graph.state import CapacityState, MemoryRecallState
 from app.road_network.models import PathResult, RoadNetworkSnapshot, RouteObjective
 from app.road_network.protocols import PathFinder, RoadNetworkProvider
-from app.routing.models import RouteCandidate, RouteScoreComponents, RoutingResult
+from app.routing.models import RouteCandidate, RoutePlanningContext, RouteScoreComponents, RoutingResult
 from app.routing.provider import RouteProvider
 from app.sandtable.models import SandtableTaskContext
 
@@ -63,18 +63,29 @@ class RoutingService:
 
     def plan(
         self,
-        context: SandtableTaskContext,
+        context: RoutePlanningContext | SandtableTaskContext,
         capacity_state: CapacityState,
         affected_edge_ids: list[str],
         memory_results: list[MemoryRecallState],
+        *,
+        road_network_snapshot: RoadNetworkSnapshot | None = None,
     ) -> RoutingResult:
-        if not self.can_plan:
+        if self._path_finder is None or (road_network_snapshot is None and self._road_network_provider is None):
             return RoutingResult([], None, "MANUAL_REVIEW", "Road network planning is not configured.", False, None, "MANUAL_REVIEW", True)
         if capacity_state["capacity_status"] in {"UNAVAILABLE", "UNKNOWN"}:
             return RoutingResult([], None, "MANUAL_REVIEW", "No vehicle is available for route planning.", False, None, "MANUAL_REVIEW", True)
 
-        snapshot = self._road_network_provider.snapshot()
-        vehicle_weight_tons = context.vehicle_weight_tons
+        if road_network_snapshot is None:
+            assert self._road_network_provider is not None
+            snapshot = self._road_network_provider.snapshot()
+        else:
+            snapshot = road_network_snapshot
+        if isinstance(context, RoutePlanningContext):
+            original_vehicle_weight_tons = context.original_vehicle_weight_tons
+            active_vehicle_weight_tons = context.active_vehicle_weight_tons
+        else:
+            original_vehicle_weight_tons = context.vehicle_weight_tons
+            active_vehicle_weight_tons = context.vehicle_weight_tons
         start_node_id = context.incident_node_id or context.origin_node_id
         blocked = tuple(sorted(set(affected_edge_ids)))
         original_snapshot = RoadNetworkSnapshot(
@@ -83,12 +94,25 @@ class RoutingService:
             tuple(replace(edge, status="OPEN") if edge.edge_id in blocked else edge for edge in snapshot.edges),
         )
         original_path = self._path_finder.find(
-            original_snapshot, context.origin_node_id, context.destination_node_id, RouteObjective.FASTEST, vehicle_weight_tons
+            original_snapshot,
+            context.origin_node_id,
+            context.destination_node_id,
+            RouteObjective.FASTEST,
+            original_vehicle_weight_tons,
         )
         paths = [
             path
             for objective in RouteObjective
-            if (path := self._path_finder.find(snapshot, start_node_id, context.destination_node_id, objective, vehicle_weight_tons, frozenset(blocked)))
+            if (
+                path := self._path_finder.find(
+                    snapshot,
+                    start_node_id,
+                    context.destination_node_id,
+                    objective,
+                    active_vehicle_weight_tons,
+                    frozenset(blocked),
+                )
+            )
             is not None
         ]
         by_edges: dict[tuple[str, ...], PathResult] = {}
