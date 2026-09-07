@@ -252,3 +252,108 @@ def test_route_score_components_are_decimal_and_exactly_rebuild_total_score():
         assert components.distance_penalty == components.normalized_distance * Decimal("30")
         assert components.risk_penalty == components.normalized_risk * Decimal("25")
         assert candidate.score == (Decimal("100") - components.time_penalty - components.distance_penalty - components.risk_penalty)
+
+def test_real_routing_projection_allows_reverse_bidirectional_path_in_audit() -> None:
+    from app.audit.service import AuditService
+    from app.road_network.dijkstra import DijkstraPathFinder
+    from app.road_network.models import (
+        RoadEdgeSnapshot,
+        RoadNetworkSnapshot,
+        RoadNodeSnapshot,
+    )
+    from app.routing.models import RoutePlanningContext
+
+    snapshot = RoadNetworkSnapshot(
+        version=7,
+        nodes=(
+            RoadNodeSnapshot("A", "甲", Decimal("0"), Decimal("0"), "DEPOT"),
+            RoadNodeSnapshot("B", "乙", Decimal("1"), Decimal("0"), "CUSTOMER"),
+            RoadNodeSnapshot("C", "丙", Decimal("2"), Decimal("0"), "JUNCTION"),
+        ),
+        edges=(
+            RoadEdgeSnapshot(
+                "E-REVERSE",
+                "双向道路",
+                "A",
+                "B",
+                Decimal("1.00"),
+                2,
+                "COUNTY",
+                "LOW",
+                "OPEN",
+                Decimal("1.00"),
+                Decimal("10.00"),
+                True,
+                7,
+            ),
+            RoadEdgeSnapshot(
+                "E-BLOCKED",
+                "已阻断道路",
+                "B",
+                "C",
+                Decimal("1.00"),
+                2,
+                "COUNTY",
+                "LOW",
+                "BLOCKED",
+                Decimal("1.00"),
+                Decimal("10.00"),
+                True,
+                7,
+            ),
+        ),
+    )
+    context = RoutePlanningContext(
+        order_id=1,
+        order_no="ORD-REVERSE",
+        cargo_weight_kg=Decimal("100.00"),
+        cargo_type="GENERAL",
+        origin_node_id="B",
+        destination_node_id="A",
+        current_vehicle_id="V-001",
+        current_driver_id="D-001",
+        incident_node_id=None,
+        affected_edge_ids=("E-BLOCKED",),
+        road_network_version=7,
+        original_vehicle_weight_tons=Decimal("2.00"),
+        active_vehicle_weight_tons=Decimal("2.00"),
+    )
+    routing = RoutingService(
+        None,
+        memory_adoption_threshold=0.75,
+        path_finder=DijkstraPathFinder(),
+    ).plan(
+        context,
+        _capacity(),
+        ["E-BLOCKED"],
+        [],
+        road_network_snapshot=snapshot,
+    )
+    assert routing.recommended_path is not None
+    projected_reverse = next(
+        edge for edge in routing.road_network_edges if edge["edge_id"] == "E-REVERSE"
+    )
+    assert projected_reverse["bidirectional"] is True
+
+    result = AuditService(lambda: None).audit(
+        {
+            "identified_issue": "ROAD_BLOCKED",
+            "decision": "REROUTE",
+            "recommended_route": routing.recommended_route,
+            "blocked_edge_ids": list(routing.blocked_edge_ids),
+            "recommended_path": {
+                "node_ids": list(routing.recommended_path.node_ids),
+                "edge_ids": list(routing.recommended_path.edge_ids),
+            },
+            "road_network_edges": routing.road_network_edges,
+            "fallback_used": False,
+            "dispatch_result": {
+                "dispatch_id": 1,
+                "target_route_id": routing.recommended_route,
+                "executed": True,
+            },
+        }
+    )
+
+    assert result.audit_status == "APPROVED"
+    assert result.checks["route_connectivity"] is True

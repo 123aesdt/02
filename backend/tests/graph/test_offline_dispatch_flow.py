@@ -260,3 +260,27 @@ async def test_unreachable_graph_returns_stable_route_error(unreachable_graph, b
     assert result["error_code"] == "NO_REACHABLE_ROUTE"
     assert result["error_message"] == "排除受影响道路后不存在可达配送路线，请人工复核。"
     assert result["requires_manual_review"] is True
+
+@pytest.mark.asyncio
+async def test_capacity_candidate_projection_contains_independent_audit_facts(
+    graph,
+    breakdown_state,
+) -> None:
+    result = await graph.ainvoke(breakdown_state)
+    selected = next(
+        candidate
+        for candidate in result["candidate_vehicles"]
+        if candidate["vehicle_id"] == result["selected_vehicle_id"]
+    )
+
+    assert selected["vehicle_status"] == "AVAILABLE"
+    assert selected["driver_status"] == "ON_DUTY"
+    assert selected["remaining_capacity_kg"] == "900.00"
+    assert selected["score_components"] == {
+        "eta_penalty": "9.0",
+        "distance_penalty": "5.60",
+        "load_penalty": "2.0",
+        "road_risk_penalty": "0",
+        "same_station_bonus": "0",
+        "cargo_exact_match_bonus": "10",
+    }

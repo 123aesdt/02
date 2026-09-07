@@ -50,23 +50,25 @@ def _score_components_to_state(candidate: VehicleCandidate) -> dict[str, str] | 
 
 
 def _candidate_to_state(candidate: VehicleCandidate) -> dict[str, object]:
+    remaining_capacity = format(candidate.remaining_load_kg, "f")
     return {
         "vehicle_id": candidate.vehicle_id,
         "driver_id": candidate.driver_id,
         "vehicle_status": candidate.vehicle_status,
-        "remaining_load_kg": str(candidate.remaining_load_kg),
-        "gross_weight_tons": str(candidate.gross_weight_tons),
+        "driver_status": candidate.driver_status,
+        "remaining_load_kg": remaining_capacity,
+        "remaining_capacity_kg": remaining_capacity,
+        "gross_weight_tons": format(candidate.gross_weight_tons, "f"),
         "cargo_capability": candidate.cargo_capability,
         "pickup_route": _path_to_state(candidate.pickup_route),
-        "pickup_distance_km": str(candidate.pickup_distance_km) if candidate.pickup_distance_km is not None else None,
+        "pickup_distance_km": format(candidate.pickup_distance_km, "f") if candidate.pickup_distance_km is not None else None,
         "pickup_eta_minutes": candidate.pickup_eta_minutes,
-        "score": str(candidate.score) if candidate.score is not None else None,
+        "score": format(candidate.score, "f") if candidate.score is not None else None,
         "score_components": _score_components_to_state(candidate),
         "scoring_formula": "FLEET_SCORE_V1",
         "eligible": candidate.eligible,
         "exclusion_reasons": list(candidate.exclusion_reasons),
     }
-
 
 async def capacity_node(
     state: DispatchGraphState,

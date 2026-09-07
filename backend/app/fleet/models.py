@@ -73,7 +73,7 @@ class VehicleCandidate:
     exclusion_reasons: tuple[str, ...]
     gross_weight_tons: Decimal = Decimal("0.00")
     cargo_capability: str = ""
-
+    driver_status: str | None = None
 
 @dataclass(frozen=True, slots=True)
 class FleetAllocationResult:

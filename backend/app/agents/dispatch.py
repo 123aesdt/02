@@ -50,7 +50,10 @@ async def dispatch_node(
                 "algorithm_version": state.get("routing_algorithm", "DIJKSTRA_V1"),
                 "road_network_version": state.get("road_network_version"),
                 "blocked_edge_ids": state.get("blocked_edge_ids", []),
+                "original_path": state.get("original_path"),
                 "recommended_path": state.get("recommended_path"),
+                "pickup_route": state.get("pickup_route"),
+                "road_network_edges": state.get("road_network_edges", []),
                 "candidate_routes": state.get("candidate_routes", []),
             },
         )

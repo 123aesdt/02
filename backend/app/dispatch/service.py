@@ -167,6 +167,7 @@ class DispatchService:
                         ),
                         payload_json=self._compact_fleet_evidence(
                             candidate_vehicles,
+                            original_vehicle_id,
                             target_vehicle_id,
                         ),
                     ),
@@ -179,6 +180,7 @@ class DispatchService:
                         ),
                         payload_json=self._compact_route_evidence(
                             route_evidence,
+                            original_route_id,
                             target_route_id,
                         ),
                         road_network_version=self._integer(
@@ -306,56 +308,157 @@ class DispatchService:
     def _compact_fleet_evidence(
         cls,
         candidates: Sequence[Mapping[str, object]],
+        original_vehicle_id: str | None,
         selected_vehicle_id: str | None,
     ) -> dict[str, Any]:
+        selected = next(
+            (
+                candidate
+                for candidate in candidates
+                if cls._text(candidate, "vehicle_id") == selected_vehicle_id
+            ),
+            None,
+        )
         return {
-            "selected_vehicle_id": selected_vehicle_id,
+            "original_vehicle_id": original_vehicle_id,
+            "target_vehicle_id": selected_vehicle_id,
+            "target_driver_id": cls._text(selected, "driver_id"),
+            "selected_candidate": (
+                cls._compact_selected_candidate(selected)
+                if selected is not None
+                else None
+            ),
             "candidates": [
                 {
                     "vehicle_id": cls._text(candidate, "vehicle_id"),
-                    "driver_id": cls._text(candidate, "driver_id"),
-                    "score": candidate.get("score"),
-                    "eligible": candidate.get("eligible") is True,
-                    "exclusion_reasons": [
-                        reason
-                        for reason in candidate.get("exclusion_reasons", [])
-                        if isinstance(reason, str)
-                    ],
+                    "score": cls._number_text(candidate.get("score")),
+                    "exclusion_reasons": cls._string_list(
+                        candidate.get("exclusion_reasons")
+                    ),
                 }
                 for candidate in candidates
             ],
         }
 
     @classmethod
+    def _compact_selected_candidate(
+        cls,
+        candidate: Mapping[str, object],
+    ) -> dict[str, object]:
+        remaining_capacity = candidate.get("remaining_capacity_kg")
+        if remaining_capacity is None:
+            remaining_capacity = candidate.get("remaining_load_kg")
+        score_components = candidate.get("score_components")
+        components = score_components if isinstance(score_components, Mapping) else {}
+        allowed_component_keys = (
+            "eta_penalty",
+            "distance_penalty",
+            "load_penalty",
+            "road_risk_penalty",
+            "same_station_bonus",
+            "cargo_exact_match_bonus",
+        )
+        return {
+            "vehicle_id": cls._text(candidate, "vehicle_id"),
+            "driver_id": cls._text(candidate, "driver_id"),
+            "vehicle_status": cls._text(candidate, "vehicle_status"),
+            "driver_status": cls._text(candidate, "driver_status"),
+            "remaining_capacity_kg": cls._number_text(remaining_capacity),
+            "cargo_capability": cls._text(candidate, "cargo_capability"),
+            "score": cls._number_text(candidate.get("score")),
+            "score_components": {
+                key: cls._number_text(components.get(key))
+                for key in allowed_component_keys
+                if components.get(key) is not None
+            },
+            "eligible": candidate.get("eligible") is True,
+            "exclusion_reasons": cls._string_list(
+                candidate.get("exclusion_reasons")
+            ),
+        }
+
+    @classmethod
     def _compact_route_evidence(
         cls,
         evidence: Mapping[str, object] | None,
+        original_route_id: str,
         target_route_id: str | None,
     ) -> dict[str, Any]:
         source = evidence or {}
-        recommended = source.get("recommended_path")
-        recommended_path = recommended if isinstance(recommended, Mapping) else {}
+        original_path = cls._compact_path(source.get("original_path"))
+        recommended_path = cls._compact_path(source.get("recommended_path"))
+        pickup_path = cls._compact_path(
+            source.get("pickup_path")
+            if source.get("pickup_path") is not None
+            else source.get("pickup_route")
+        )
+        blocked_edge_ids = cls._string_list(source.get("blocked_edge_ids"))
+        relevant_edge_ids = set(blocked_edge_ids)
+        for path in (original_path, recommended_path, pickup_path):
+            relevant_edge_ids.update(path["edge_ids"])
         routes = source.get("candidate_routes")
-        candidate_routes = routes if isinstance(routes, Sequence) and not isinstance(routes, str) else ()
+        candidate_routes = (
+            routes
+            if isinstance(routes, Sequence) and not isinstance(routes, str)
+            else ()
+        )
         return {
+            "original_route_id": original_route_id,
             "target_route_id": target_route_id,
-            "blocked_edge_ids": cls._string_list(source.get("blocked_edge_ids")),
-            "recommended_path": {
-                "node_ids": cls._string_list(recommended_path.get("node_ids")),
-                "edge_ids": cls._string_list(recommended_path.get("edge_ids")),
-            },
+            "original_path": original_path,
+            "recommended_path": recommended_path,
+            "pickup_path": pickup_path,
+            "blocked_edge_ids": blocked_edge_ids,
+            "relevant_edges": cls._compact_relevant_edges(
+                source.get("road_network_edges"),
+                relevant_edge_ids,
+            ),
             "candidate_routes": [
                 {
                     "route_id": cls._text(route, "route_id"),
                     "node_ids": cls._string_list(route.get("node_ids")),
                     "edge_ids": cls._string_list(route.get("edge_ids")),
-                    "score": route.get("score"),
+                    "score": cls._number_text(route.get("score")),
                 }
                 for route in candidate_routes
                 if isinstance(route, Mapping)
             ],
         }
 
+    @classmethod
+    def _compact_path(cls, value: object) -> dict[str, list[str]]:
+        path = value if isinstance(value, Mapping) else {}
+        return {
+            "node_ids": cls._string_list(path.get("node_ids")),
+            "edge_ids": cls._string_list(path.get("edge_ids")),
+        }
+
+    @classmethod
+    def _compact_relevant_edges(
+        cls,
+        value: object,
+        relevant_edge_ids: set[str],
+    ) -> list[dict[str, object]]:
+        if not isinstance(value, Sequence) or isinstance(value, str):
+            return []
+        return [
+            {
+                "edge_id": edge_id,
+                "from_node_id": cls._text(edge, "from_node_id"),
+                "to_node_id": cls._text(edge, "to_node_id"),
+                "status": cls._text(edge, "status"),
+                "bidirectional": edge.get("bidirectional") is True,
+            }
+            for edge in value
+            if isinstance(edge, Mapping)
+            and (edge_id := cls._text(edge, "edge_id")) in relevant_edge_ids
+        ]
+
+    @staticmethod
+    def _number_text(value: object) -> str | None:
+        if value is None:
+            return None
+        return value if isinstance(value, str) else str(value)
     @staticmethod
     def _string_list(value: object) -> list[str]:
         if not isinstance(value, Sequence) or isinstance(value, str):

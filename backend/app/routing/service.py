@@ -259,10 +259,11 @@ class RoutingService:
                 "name": edge.name,
                 "from_node_id": edge.from_node_id,
                 "to_node_id": edge.to_node_id,
-                "distance_km": str(edge.distance_km),
+                "distance_km": format(edge.distance_km, "f"),
                 "base_minutes": edge.base_minutes,
                 "risk_level": edge.risk_level,
                 "status": edge.status,
+                "bidirectional": edge.bidirectional,
             }
             for edge in snapshot.edges
         ]

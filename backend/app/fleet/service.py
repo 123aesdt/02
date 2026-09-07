@@ -144,6 +144,7 @@ class FleetAllocationService:
             (),
             vehicle.gross_weight_tons,
             vehicle.cargo_capability,
+            driver_status=vehicle.driver.status if vehicle.driver else None,
         )
 
     @staticmethod
@@ -214,6 +215,7 @@ class FleetAllocationService:
             tuple(reasons),
             vehicle.gross_weight_tons,
             vehicle.cargo_capability,
+            driver_status=vehicle.driver.status if vehicle.driver else None,
         )
 
 

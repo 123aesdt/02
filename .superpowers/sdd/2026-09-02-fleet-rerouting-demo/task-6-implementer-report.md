@@ -88,3 +88,20 @@
 - MySQL 状态：本机未设置 `COUNTYFLOW_MYSQL_INTEGRATION_DOCKER_ENV`，新增 MySQL 唯一约束往返与同 task 并发测试均如实跳过；未声称运行 MySQL。
 - Important #1 批次 Ruff：`All checks passed!`。
 - Important #1 暂存差异 `diff --check`：exit code 0；敏感特征扫描五类均为 0。
+
+## 独立审查 Important #2–#5 修复批次
+
+- 修复起点：`c47db72c0c2d4441bdc4bf7f9466a87ad0df8abb`，起点工作树干净；本批未进入 Task 7。
+- TDD 红灯：车辆/司机独立事实、未声明阻塞边、真实反向边和生产候选投影首轮为 `8 failed in 3.68s`；持久证据重放单测首轮以缺失 `selected_candidate` 的 `KeyError` 失败。
+- 车辆审计不再只信 `eligible`：同时校验预占前车辆为 `AVAILABLE`、司机为 `ON_DUTY`/`AVAILABLE`、排除原因为空、运力与货类匹配，并校验候选、图状态和持久 Dispatch 的车辆/司机 ID 三方一致。
+- 路线审计同时校验声明阻断边和紧凑路网快照中的 `status`；推荐路径上任一边为 `BLOCKED` 均拒绝。RoutingService 真实投影补齐 `bidirectional`，真实 Dijkstra 反向路径可由 AuditService 审核通过。
+- Task 4 生产候选链路从 `FleetVehicleSnapshot` 传递 `vehicle_status`、`driver_status`、精确字符串 `remaining_capacity_kg` 和评分分量；Decimal 边界未转为浮点。
+- DispatchEvidence 的车队证据只对实际成功候选保存完整审计白名单，其他候选只保存 ID、score 和 reasons；路线证据仅保存原路线、推荐路线、接驳路径、阻断边及这些路径/阻断相关边。
+- AuditRecord 保存重放所需的货物重量/类型、实际 Dispatch 原/目标车辆与司机、所选候选完整校验事实、路径 ID、阻断 ID 和相关边；未保存原始请求、授权字段或整张路网。
+- 9 条审查探针绿灯：车辆/司机、阻断状态、真实反向边和生产投影 `8 passed in 3.35s`；持久证据重放及四类篡改拒绝 `1 passed in 2.06s`。
+- 相关回归：项目 `.venv` 下 `119 passed, 4 skipped in 29.19s`，覆盖 Fleet、RoadNetwork、Capacity、Routing、离线图、真实 SQL 图、Dispatch、并发、Audit、Publication 和相关迁移；4 个跳过均为未配置的 opt-in MySQL。
+- 格式化后关键回归：`50 passed in 14.87s`；完整 backend Ruff：`All checks passed!`。
+- 系统 Python 曾在收集迁移测试时命中不完整同名 Alembic 包，报 `ModuleNotFoundError: alembic.migration`；改用项目 `.venv` 后相关迁移与回归通过，此项不是产品代码失败。
+- Windows deny-read ACL 仍使 `apply_patch` 无法读取目标文件；按约束仅用完整函数/方法块 PowerShell 写入并立即 `py_compile`/diff，机械格式使用 Ruff。
+
+- 提交前最终相关回归：`119 passed, 4 skipped in 29.69s`；未启动完整后端全量，按协调要求留待五项审查修复汇总后统一执行。
