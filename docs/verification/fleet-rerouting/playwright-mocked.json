@@ -72,7 +72,7 @@
       "line": 0,
       "specs": [
         {
-          "title": "网络拦截 UI 回归：车辆故障后展示其他车辆与司机调度，刷新后证据不变",
+          "title": "网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工查看，刷新重登仍一致",
           "ok": true,
           "tags": [],
           "tests": [
@@ -87,12 +87,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 2226,
+                  "duration": 1988,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-08T00:26:04.916Z",
+                  "startTime": "2026-09-08T02:38:41.170Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -100,13 +100,13 @@
               "status": "expected"
             }
           ],
-          "id": "b8ee7217811f6a4a9e53-4461c1684838376a044f",
+          "id": "b8ee7217811f6a4a9e53-7c6c6fff63a1da22256f",
           "file": "offline-fleet-rerouting.spec.ts",
-          "line": 254,
+          "line": 442,
           "column": 1
         },
         {
-          "title": "网络拦截 UI 回归：道路堵塞后展示 Dijkstra 新路线，刷新后证据不变",
+          "title": "网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工查看，刷新重登仍一致",
           "ok": true,
           "tags": [],
           "tests": [
@@ -121,12 +121,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1620,
+                  "duration": 1846,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-08T00:26:07.351Z",
+                  "startTime": "2026-09-08T02:38:43.356Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -134,9 +134,9 @@
               "status": "expected"
             }
           ],
-          "id": "b8ee7217811f6a4a9e53-1ca6282af5ffd3b7d2bc",
+          "id": "b8ee7217811f6a4a9e53-2372058003f364e92875",
           "file": "offline-fleet-rerouting.spec.ts",
-          "line": 279,
+          "line": 460,
           "column": 1
         }
       ]
@@ -144,8 +144,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-08T00:26:04.485Z",
-    "duration": 4742.4529999999995,
+    "startTime": "2026-09-08T02:38:40.745Z",
+    "duration": 4670.201,
     "expected": 2,
     "skipped": 0,
     "unexpected": 0,

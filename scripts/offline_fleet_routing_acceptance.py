@@ -146,6 +146,8 @@ def _verify_breakdown(result: dict[str, Any]) -> dict[str, Any]:
     _expect(allocation.get("target_vehicle_id"), "V-005", "接替车辆")
     _expect(allocation.get("target_driver_id"), "D-003", "接替司机")
     pickup = _object(allocation.get("pickup_route"), "接驳路线")
+    _expect(pickup.get("objective"), "FASTEST", "接驳目标")
+    _expect(pickup.get("node_ids"), ["N15", "N04"], "接驳节点")
     _expect(pickup.get("edge_ids"), ["E20"], "接驳道路")
     _expect(pickup.get("distance_km"), "2.80", "接驳距离")
     _expect(pickup.get("estimated_minutes"), 6, "接驳耗时")
@@ -166,7 +168,17 @@ def _verify_breakdown(result: dict[str, Any]) -> dict[str, Any]:
     _expect(selected_candidate.get("pickup_distance_km"), "2.80", "V-005 接驳距离")
     _expect(selected_candidate.get("pickup_eta_minutes"), 6, "V-005 接驳耗时")
     selected_pickup = _object(selected_candidate.get("pickup_route"), "V-005 接驳路线")
-    _expect(selected_pickup.get("edge_ids"), ["E20"], "V-005 接驳道路")
+    for field in (
+        "objective",
+        "node_ids",
+        "edge_ids",
+        "distance_km",
+        "estimated_minutes",
+        "risk_cost",
+        "visited_node_count",
+        "scoring_formula",
+    ):
+        _expect(selected_pickup.get(field), pickup.get(field), f"V-005 接驳路线 {field}")
     _expect(selected_candidate.get("exclusion_reasons"), [], "V-005 排除原因")
     v001_reasons = set(_list(by_id["V-001"].get("exclusion_reasons"), "V-001 排除原因"))
     if not {"ORIGINAL_VEHICLE_EXCLUDED", "VEHICLE_UNAVAILABLE"}.issubset(v001_reasons):

@@ -285,7 +285,7 @@ function visibleResult(taskId: string, published: boolean, canReview: boolean) {
   if (published || canReview) return result;
   return {
     ...result,
-    dispatch: result.dispatch ? { ...result.dispatch, target_route_id: null } : null,
+    dispatch: result.dispatch ? { ...result.dispatch, target_route_id: null, decision_reason: null } : null,
     vehicle_allocation: null,
     route_plan: null,
   };
@@ -394,20 +394,12 @@ async function publishAsSupervisor(page: Page, taskId: string) {
   await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
 }
 
-test.beforeEach(async ({ page }) => {
-  fs.mkdirSync(screenshotDir, { recursive: true });
-  await installOfflineApi(page);
-  await authenticatePage(page, "EMPLOYEE", "/my-tasks");
-});
+async function expectUnpublishedDecisionRedacted(page: Page) {
+  await expect(page.locator(".route-decision")).toContainText("待主管发布");
+  await expect(page.locator(".route-decision")).not.toContainText("离线县域沙盘完成确定性计算");
+}
 
-test("网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工查看，刷新重登仍一致", async ({ page }) => {
-  const taskId = taskByAnomaly.VEHICLE_BREAKDOWN;
-  await submitVisibleIssue(page, "SOURCE-DEMO-001", "VEHICLE_BREAKDOWN");
-  await expect(page.getByRole("heading", { name: "调度路线待发布" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "替代车辆调度计算" })).toHaveCount(0);
-
-  await publishAsSupervisor(page, taskId);
-  await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
+async function expectPublishedVehicleEvidence(page: Page) {
   await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "替代车辆调度计算" })).toBeVisible();
   await expect(page.getByLabel("故障车辆到接替车辆")).toContainText("V-001");
@@ -418,32 +410,13 @@ test("网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工�
   await expect(page.locator(".fleet-candidate-table tbody tr")).toHaveCount(12);
   await expect(page.getByLabel("V-001 候选车辆")).toContainText("原故障车辆不参与候选");
   await expect(page.getByLabel("V-005 候选车辆").locator('[data-field="remaining-capacity"]')).toContainText("900.00 千克");
+  await expect(page.getByLabel("V-006 候选车辆")).toContainText("维护中");
   await expect(page.getByLabel("V-006 候选车辆")).toContainText("车辆当前不可用");
   await expect(page.getByLabel("V-006 候选车辆")).toContainText("司机当前不可用");
+}
 
-  await page.reload();
-  await expect(page.getByRole("heading", { name: "需要登录" })).toBeVisible();
-  await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
-  await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
-  await expect(page.getByLabel("故障车辆到接替车辆")).toContainText("V-001");
-  await expect(page.getByLabel("故障车辆到接替车辆")).toContainText("V-005");
-  await expect(page.getByLabel("故障车辆到接替车辆")).toContainText("D-003");
-  await expect(page.locator(".fleet-candidate-table tbody tr")).toHaveCount(12);
-  await expect(page.getByLabel("V-005 候选车辆").locator('[data-field="remaining-capacity"]')).toContainText("900.00 千克");
-  await expect(page.getByLabel("V-006 候选车辆")).toContainText("车辆当前不可用");
-  await page.screenshot({ path: path.join(screenshotDir, "vehicle-breakdown-candidates.png"), fullPage: true });
-});
-
-test("网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工查看，刷新重登仍一致", async ({ page }) => {
-  const taskId = taskByAnomaly.ROAD_BLOCKED;
-  await submitVisibleIssue(page, "SOURCE-DEMO-005", "ROAD_BLOCKED");
-  let panel = page.locator(".route-plan-result-panel");
-  await expect(page.getByRole("heading", { name: "调度路线待发布" })).toBeVisible();
-  await expect(panel).toHaveCount(0);
-
-  await publishAsSupervisor(page, taskId);
-  await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
-  panel = page.locator(".route-plan-result-panel");
+async function expectPublishedRouteEvidence(page: Page) {
+  const panel = page.locator(".route-plan-result-panel");
   await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
   await expect(panel.getByRole("heading", { name: "新路线规划计算" })).toBeVisible();
   await expect(panel).toContainText("Dijkstra（DIJKSTRA_V1）");
@@ -458,19 +431,46 @@ test("网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工�
   await expect(panel.locator('[data-edge-id="E07"]')).toHaveAttribute("data-route-state", "recommended");
   await expect(panel.locator(".network-node")).toHaveCount(18);
   await expect(panel.locator(".road-edge")).toHaveCount(26);
+}
+
+test.beforeEach(async ({ page }) => {
+  fs.mkdirSync(screenshotDir, { recursive: true });
+  await installOfflineApi(page);
+  await authenticatePage(page, "EMPLOYEE", "/my-tasks");
+});
+
+test("网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工查看，刷新重登仍一致", async ({ page }) => {
+  const taskId = taskByAnomaly.VEHICLE_BREAKDOWN;
+  await submitVisibleIssue(page, "SOURCE-DEMO-001", "VEHICLE_BREAKDOWN");
+  await expect(page.getByRole("heading", { name: "调度路线待发布" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "替代车辆调度计算" })).toHaveCount(0);
+  await expectUnpublishedDecisionRedacted(page);
+
+  await publishAsSupervisor(page, taskId);
+  await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
+  await expectPublishedVehicleEvidence(page);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "需要登录" })).toBeVisible();
   await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
-  panel = page.locator(".route-plan-result-panel");
-  await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
-  await expect(panel).toContainText("Dijkstra（DIJKSTRA_V1）");
-  await expect(panel).toContainText("网络版本 8");
-  await expect(panel).toContainText("N01 → N02 → N07 → N08 → N09 → N06");
-  await expect(panel).toContainText("E01 → E06 → E07 → E08 → E09");
-  await expect(panel.locator('[data-edge-id="E04"]')).toHaveAttribute("data-route-state", "blocked");
-  await expect(panel.locator('[data-edge-id="E07"]')).toHaveAttribute("data-route-state", "recommended");
-  await expect(panel.locator(".network-node")).toHaveCount(18);
-  await expect(panel.locator(".road-edge")).toHaveCount(26);
+  await expectPublishedVehicleEvidence(page);
+  await page.screenshot({ path: path.join(screenshotDir, "vehicle-breakdown-candidates.png"), fullPage: true });
+});
+
+test("网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工查看，刷新重登仍一致", async ({ page }) => {
+  const taskId = taskByAnomaly.ROAD_BLOCKED;
+  await submitVisibleIssue(page, "SOURCE-DEMO-005", "ROAD_BLOCKED");
+  await expect(page.getByRole("heading", { name: "调度路线待发布" })).toBeVisible();
+  await expect(page.locator(".route-plan-result-panel")).toHaveCount(0);
+  await expectUnpublishedDecisionRedacted(page);
+
+  await publishAsSupervisor(page, taskId);
+  await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
+  await expectPublishedRouteEvidence(page);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "需要登录" })).toBeVisible();
+  await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
+  await expectPublishedRouteEvidence(page);
   await page.screenshot({ path: path.join(screenshotDir, "road-blocked-reroute.png"), fullPage: true });
 });
