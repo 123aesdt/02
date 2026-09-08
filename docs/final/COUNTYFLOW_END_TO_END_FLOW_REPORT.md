@@ -207,7 +207,7 @@ stateDiagram-v2
 
 道路堵塞链路会把 `E04` 纳入排除集合，并在同一份 18 节点、26 边的带版本道路快照上执行 `DIJKSTRA_V1`。`DEMO-ORDER-005` 的原路线 `E01→E02→E03→E04→E05` 为 10.00 公里、20 分钟；新路线 `E01→E06→E07→E08→E09` 为 13.20 公里、24 分钟，因此增加 3.20 公里和 4 分钟，且新路线不含 `E04`。
 
-Result API 返回候选车辆、入选身份、接驳路线、原/新路线、算法、道路版本以及完整路网；前端用返回坐标绘制 SVG，并在刷新后重新读取持久证据。2026-09-08 的网络拦截 Playwright 回归 2/2 通过；真实公开 API + Redis Streams + Worker + MySQL/Redis 事后断言因当前工作区缺少 `.docker.env` 而 `BLOCKED BY ENVIRONMENT`，两类证据不得混称。
+Result API 只向具有 `dispatch:review` 权限的主管或已发布任务的接收员工返回候选车辆、入选身份、接驳路线、原/新路线、算法、道路版本和完整路网；未发布员工看到的 `vehicle_allocation` 与 `route_plan` 均为 `null`。前端用返回坐标绘制 SVG。2026-09-08 的网络拦截 Playwright fresh 回归 2/2 通过，流程为员工先验证未发布证据不可见、主管发布、员工查看完整证据、刷新后重新登录仍可见；夹具逐项固化真实种子和算法输出，堵塞后的网络版本为 8，新路径节点为 `N01→N02→N07→N08→N09→N06`。真实公开 API + Redis Streams + Worker + MySQL/Redis 事后断言因当前工作区缺少 `.docker.env` 而 `BLOCKED BY ENVIRONMENT`，两类证据不得混称。
 
 ## 8. Memory 协同流程
 

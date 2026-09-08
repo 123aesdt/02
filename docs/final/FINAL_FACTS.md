@@ -567,13 +567,13 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 
 - 固定新平县沙盘数据为 8 个站点、18 个道路节点、26 条道路边、10 名司机、12 辆车辆和 12 张运单；数据全部由仓库生成，不接入高德、实时路况或真实车辆系统。
 - `DEMO-ORDER-001` 车辆故障的确定性结果为 `V-001 → V-005`、司机 `D-003`、接驳边 `E20`、2.80 公里、6 分钟、评分 93.4；候选集合包含 12 辆车，每个不合格候选都保留排除原因。
-- `DEMO-ORDER-005` 道路堵塞的原路线为 `E01,E02,E03,E04,E05`（10.00 公里、20 分钟），Dijkstra（`DIJKSTRA_V1`）重算路线为 `E01,E06,E07,E08,E09`（13.20 公里、24 分钟）；新路线排除 `E04`，差值为 3.20 公里和 4 分钟；结果会持久化实际道路网络版本，本轮网络拦截 UI fixture 使用版本 7。
-- Task 1–8 聚焦后端：165 passed、4 skipped；Ruff：exit 0。
-- 后端全量：直接 pytest 使用工作区唯一 `--basetemp`，982 passed、12 skipped、866 warnings，exit 0。12 个 skip 均为未启用的 opt-in MySQL/Redis/共享内存真实依赖测试。
+- `DEMO-ORDER-005` 道路堵塞的原路线为 `E01,E02,E03,E04,E05`（10.00 公里、20 分钟），Dijkstra（`DIJKSTRA_V1`）重算路线为 `E01,E06,E07,E08,E09`（13.20 公里、24 分钟）；新路线排除 `E04`，差值为 3.20 公里和 4 分钟；网络拦截 UI fixture 忠实固化沙盘从版本 7 阻断 `E04` 后的版本 8，`E04.version=8`，其他道路仍为版本 7。
+- Task 1–8 主计划精确聚焦后端命令：`$env:PYTHONPATH = (Resolve-Path -LiteralPath 'backend').Path; & '.\.venv\Scripts\python.exe' -m pytest backend/tests/migrations/test_offline_fleet_routing_migration.py backend/tests/sandtable backend/tests/road_network backend/tests/fleet backend/tests/graph/test_offline_dispatch_flow.py backend/tests/concurrency/test_vehicle_reservation.py backend/tests/api/test_task_events.py backend/tests/api/test_dispatch_tasks.py -q --basetemp='backend/.pytest-runtime/task9-review-fix-focused-recorded'`；本次审查修复新鲜结果为 96 passed、4 skipped、252 warnings、57.67 秒，exit 0；Ruff 同样 exit 0。
+- 后端全量 982 passed、12 skipped、866 warnings、exit 0 是 Task 9 初次实现时的既有验证，本次审查修复没有重复运行这套约五分钟全量。12 个 skip 均为未启用的 opt-in MySQL/Redis/共享内存真实依赖测试。
 - 前端全量：54 files、250 tests passed；ESLint exit 0（0 errors、2 个既有 Fast Refresh warnings）；构建 exit 0、1919 modules transformed，主 JS 512.09 kB（gzip 150.14 kB）。
-- 网络拦截 Playwright UI 回归：2/2 passed；覆盖可见异常上报、`V-001 → V-005`/`D-003`/候选原因、E04 红色、E07 绿色、增量与 Dijkstra 过程，并在刷新后重新验证持久 Result 形态。该证据是确定性 UI 回归，不是实时服务或真实 Docker 浏览器验收。
+- 网络拦截 Playwright UI 回归 fresh 运行：2/2 passed、5.7 秒；两个场景都先验证未发布员工 Result 的 `vehicle_allocation`/`route_plan` 不展示，再切换王主管执行发布，切回员工后核对完整证据，并在刷新、重新登录后复核已发布证据。车辆夹具逐项匹配固定沙盘（包括 V-005 剩余 900 kg、V-006 维护/休班/冷链不匹配），路线节点序列为 `N01→N02→N07→N08→N09→N06`。该证据是确定性 UI 权限与展示回归，不是实时服务或真实 Docker 浏览器验收。
 - `scripts/test-offline-fleet-routing.ps1` 于 2026-09-08 实际退出 2：`[BLOCKED BY ENVIRONMENT] 缺少 .docker.env，无法启动真实依赖验收。` 因此本轮没有声称公开 API → Redis Streams → Worker → MySQL 的真实双场景链已经重新通过。
-- 全量后端首次按 `scripts/test.ps1` 运行时，默认系统临时目录因 Windows ACL 产生 1 个 setup error；随后用工作区 `--basetemp` 的直接 pytest 获得上述可信 exit 0。现有包装脚本没有传播 pytest 非零退出码，不能把首次外层 0 当作通过证据。
+- Task 9 初次实现的全量后端首次按 `scripts/test.ps1` 运行时，默认系统临时目录因 Windows ACL 产生 1 个 setup error；随后用工作区 `--basetemp` 的直接 pytest 获得 982/12 的可信 exit 0。现有包装脚本没有传播 pytest 非零退出码，不能把首次外层 0 当作通过证据；本次审查修复没有重跑该全量。
 
 ## 22. 历史集成、并发与性能证据
 

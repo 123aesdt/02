@@ -30,6 +30,53 @@ def _list(value: Any, label: str) -> list[Any]:
     return value
 
 
+def _exact_unique_map(
+    values: Any,
+    *,
+    id_key: str,
+    expected_ids: set[str],
+    label: str,
+) -> dict[str, dict[str, Any]]:
+    items = _list(values, label)
+    mapped: dict[str, dict[str, Any]] = {}
+    duplicates: list[str] = []
+    for index, value in enumerate(items):
+        item = _object(value, f"{label}[{index}]")
+        item_id = item.get(id_key)
+        if not isinstance(item_id, str) or not item_id:
+            raise AssertionError(f"{label}[{index}].{id_key} 应为非空字符串")
+        if item_id in mapped:
+            duplicates.append(item_id)
+        mapped[item_id] = item
+    if duplicates:
+        raise AssertionError(f"{label} 存在重复 {id_key}：{sorted(set(duplicates))}")
+    _expect(set(mapped), expected_ids, f"{label} ID 集合")
+    return mapped
+
+
+def _verify_path_topology(
+    path: dict[str, Any],
+    *,
+    expected_nodes: list[str],
+    expected_edges: list[str],
+    edges_by_id: dict[str, dict[str, Any]],
+    label: str,
+) -> None:
+    node_ids = _list(path.get("node_ids"), f"{label}节点序列")
+    edge_ids = _list(path.get("edge_ids"), f"{label}道路序列")
+    _expect(node_ids, expected_nodes, f"{label}节点序列")
+    _expect(edge_ids, expected_edges, f"{label}道路序列")
+    _expect(len(node_ids), len(edge_ids) + 1, f"{label}节点/道路数量关系")
+    for index, edge_id in enumerate(edge_ids):
+        edge = edges_by_id[edge_id]
+        endpoints = {edge.get("from_node_id"), edge.get("to_node_id")}
+        if endpoints != {node_ids[index], node_ids[index + 1]}:
+            raise AssertionError(
+                f"{label}拓扑不连续：{edge_id} 不能连接 "
+                f"{node_ids[index]} -> {node_ids[index + 1]}"
+            )
+
+
 async def _json(response: httpx.Response, label: str, expected_status: int = 200) -> dict[str, Any]:
     if response.status_code != expected_status:
         raise AssertionError(f"{label} 返回 HTTP {response.status_code}：{response.text[:300]}")
@@ -102,16 +149,40 @@ def _verify_breakdown(result: dict[str, Any]) -> dict[str, Any]:
     _expect(pickup.get("edge_ids"), ["E20"], "接驳道路")
     _expect(pickup.get("distance_km"), "2.80", "接驳距离")
     _expect(pickup.get("estimated_minutes"), 6, "接驳耗时")
-    candidates = _list(allocation.get("candidate_vehicles"), "候选车辆")
-    _expect(len(candidates), 12, "候选车辆总数")
-    by_id = {str(item.get("vehicle_id")): _object(item, "候选车辆项") for item in candidates}
-    _expect(by_id["V-005"].get("score"), "93.4", "V-005 总分")
-    unexplained = [
-        vehicle_id
-        for vehicle_id, item in by_id.items()
-        if item.get("eligible") is not True and not _list(item.get("exclusion_reasons"), f"{vehicle_id} 排除原因")
-    ]
-    _expect(unexplained, [], "全部未入选车辆均有排除原因")
+    by_id = _exact_unique_map(
+        allocation.get("candidate_vehicles"),
+        id_key="vehicle_id",
+        expected_ids={f"V-{index:03d}" for index in range(1, 13)},
+        label="候选车辆",
+    )
+    candidates = list(by_id.values())
+    selected = [item for item in candidates if item.get("vehicle_id") == allocation.get("target_vehicle_id")]
+    _expect(len(selected), 1, "入选车辆在候选集合中的唯一性")
+    selected_candidate = by_id["V-005"]
+    _expect(selected_candidate.get("driver_id"), "D-003", "V-005 候选司机")
+    _expect(selected_candidate.get("eligible"), True, "V-005 合格状态")
+    _expect(selected_candidate.get("score"), "93.4", "V-005 总分")
+    _expect(selected_candidate.get("scoring_formula"), "FLEET_SCORE_V1", "V-005 评分公式")
+    _expect(selected_candidate.get("pickup_distance_km"), "2.80", "V-005 接驳距离")
+    _expect(selected_candidate.get("pickup_eta_minutes"), 6, "V-005 接驳耗时")
+    selected_pickup = _object(selected_candidate.get("pickup_route"), "V-005 接驳路线")
+    _expect(selected_pickup.get("edge_ids"), ["E20"], "V-005 接驳道路")
+    _expect(selected_candidate.get("exclusion_reasons"), [], "V-005 排除原因")
+    v001_reasons = set(_list(by_id["V-001"].get("exclusion_reasons"), "V-001 排除原因"))
+    if not {"ORIGINAL_VEHICLE_EXCLUDED", "VEHICLE_UNAVAILABLE"}.issubset(v001_reasons):
+        raise AssertionError("V-001 缺少原故障车辆排除解释")
+    for vehicle_id, item in by_id.items():
+        eligible = item.get("eligible")
+        if not isinstance(eligible, bool):
+            raise TypeError(f"{vehicle_id}.eligible 应为布尔值")
+        reasons = _list(item.get("exclusion_reasons"), f"{vehicle_id} 排除原因")
+        if eligible:
+            _expect(reasons, [], f"{vehicle_id} 合格候选不得有排除原因")
+            for field in ("driver_id", "pickup_route", "pickup_distance_km", "pickup_eta_minutes", "score"):
+                if item.get(field) is None:
+                    raise AssertionError(f"{vehicle_id} 合格候选缺少 {field}")
+        elif not reasons:
+            raise AssertionError(f"{vehicle_id} 不合格候选缺少排除原因")
     return {"task_id": result["task_id"], "candidate_count": len(candidates), "selected_score": "93.4"}
 
 
@@ -119,8 +190,7 @@ def _verify_blocked(result: dict[str, Any]) -> dict[str, Any]:
     route = _object(result.get("route_plan"), "路线重算证据")
     original = _object(route.get("original_path"), "原路线")
     recommended = _object(route.get("recommended_path"), "新路线")
-    _expect(original.get("edge_ids"), ["E01", "E02", "E03", "E04", "E05"], "原道路序列")
-    _expect(recommended.get("edge_ids"), ["E01", "E06", "E07", "E08", "E09"], "新道路序列")
+
     if "E04" in _list(recommended.get("edge_ids"), "新道路序列"):
         raise AssertionError("新路线仍包含堵塞边 E04")
     _expect(route.get("blocked_edge_ids"), ["E04"], "堵塞边")
@@ -130,8 +200,36 @@ def _verify_blocked(result: dict[str, Any]) -> dict[str, Any]:
     network_version = route.get("road_network_version")
     if not isinstance(network_version, int) or isinstance(network_version, bool) or network_version < 1:
         raise AssertionError("道路网络版本应为正整数")
-    _expect(len(_list(route.get("network_nodes"), "道路节点")), 18, "道路节点数")
-    _expect(len(_list(route.get("network_edges"), "道路边")), 26, "道路边数")
+    nodes_by_id = _exact_unique_map(
+        route.get("network_nodes"),
+        id_key="node_id",
+        expected_ids={f"N{index:02d}" for index in range(1, 19)},
+        label="道路节点",
+    )
+    edges_by_id = _exact_unique_map(
+        route.get("network_edges"),
+        id_key="edge_id",
+        expected_ids={f"E{index:02d}" for index in range(1, 27)},
+        label="道路边",
+    )
+    for edge_id, edge in edges_by_id.items():
+        if edge.get("from_node_id") not in nodes_by_id or edge.get("to_node_id") not in nodes_by_id:
+            raise AssertionError(f"{edge_id} 引用了不存在的道路节点")
+    _verify_path_topology(
+        original,
+        expected_nodes=["N01", "N02", "N03", "N04", "N05", "N06"],
+        expected_edges=["E01", "E02", "E03", "E04", "E05"],
+        edges_by_id=edges_by_id,
+        label="原路线",
+    )
+    _verify_path_topology(
+        recommended,
+        expected_nodes=["N01", "N02", "N07", "N08", "N09", "N06"],
+        expected_edges=["E01", "E06", "E07", "E08", "E09"],
+        edges_by_id=edges_by_id,
+        label="新路线",
+    )
+    _expect(edges_by_id["E04"].get("status"), "BLOCKED", "堵塞道路状态")
     return {
         "task_id": result["task_id"],
         "algorithm": "DIJKSTRA_V1",
