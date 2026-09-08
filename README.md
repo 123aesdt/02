@@ -27,6 +27,15 @@ Frontend
 
 八 Agent 顺序为 Intake、Entity Memory、Graph Memory、Environment、Capacity、Routing、Dispatch、Audit。FastAPI 只负责接单、只读 Runtime Thread 查询和 WebSocket，不在请求中同步执行完整 Graph。
 
+## 新平县离线虚拟沙盘
+
+教师反馈对应的演示完全使用仓库生成的虚拟数据，不接入高德、实时路况或真实车辆系统。固定沙盘包含 8 个站点、18 个道路节点、26 条道路边、10 名司机、12 辆车辆和 12 张运单。
+
+- 车辆故障：`DEMO-ORDER-001` 的 `V-001` 故障后，系统从 12 辆候选车中计算并选择 `V-005` 与司机 `D-003`，接驳边为 `E20`，接驳 2.80 公里、6 分钟，评分 93.4；所有未入选车辆保留排除原因。
+- 道路堵塞：`DEMO-ORDER-005` 的 `E04` 阻断后，Dijkstra（`DIJKSTRA_V1`，结果携带道路网络版本）把原路线 `E01→E02→E03→E04→E05` 重算为 `E01→E06→E07→E08→E09`，新路线不含 `E04`，里程增加 3.20 公里、耗时增加 4 分钟。
+
+真实异步栈验收入口为 `scripts/test-offline-fleet-routing.ps1`，它只通过公开 API 提交/查询业务任务，再用 MySQL/Redis 做事后一致性断言。2026-09-08 当前工作区缺少被忽略的 `.docker.env`，该真实栈验收状态为 `BLOCKED BY ENVIRONMENT`；网络拦截的 Playwright UI 回归 2/2 通过，只证明浏览器提交、展示和刷新恢复，不替代真实服务验收。
+
 ## Quick Start
 
 Windows 双击 [一键启动.bat](./一键启动.bat)。Local 模式启动：
@@ -66,8 +75,8 @@ Windows 双击 [一键启动完整版.bat](./一键启动完整版.bat)。该入
 
 ## Current Test Baseline
 
-- Backend：Ruff PASS；完整收集 703 项，696 PASS、7 个显式 opt-in Real Store 测试由 Docker 专项门禁覆盖。
-- Frontend：lint PASS（0 errors，2 个 Fast Refresh 结构 warning）；38 个 Vitest 文件、142 项测试 PASS；TypeScript 和 production build PASS。
+- Backend：2026-09-08 Ruff PASS；直接 pytest 使用工作区 `--basetemp` 完整收集 994 项，982 PASS、12 个显式 opt-in Real Store 测试因当前环境未启用而跳过。
+- Frontend：2026-09-08 lint PASS（0 errors，2 个既有 Fast Refresh 结构 warning）；54 个 Vitest 文件、250 项测试 PASS；TypeScript 和 production build PASS。
 - Windows 总门禁：`powershell -ExecutionPolicy Bypass -File scripts/check.ps1`。
 
 V2-G2 当前安全验收：100 个聚焦后端安全测试、18 个聚焦前端鉴权测试、无手工令牌登录与 5/5 角色浏览器场景、7/7 已认证业务浏览器回归均 PASS；认证开启的 50-user/60-second Locust 为 QPS 278.998、P95 270ms、意外错误率 0%。最终矩阵见 `docs/verification/v2-g2/v2-g2-final-acceptance.md`。

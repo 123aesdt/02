@@ -129,4 +129,6 @@ $pendingOutput = @(& $dockerCommand compose --env-file $envFile exec -T redis re
 if ($LASTEXITCODE -ne 0) { Stop-DockerTest 'Redis pending inspection failed。' }
 $pendingValues = @($pendingOutput | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -match '^\d+$' })
 if ($pendingValues.Count -lt 1 -or $pendingValues[0] -ne '0') { Stop-DockerTest 'Redis task stream still contains pending messages。' }
+& (Join-Path $projectRoot 'scripts\test-offline-fleet-routing.ps1')
+if ($LASTEXITCODE -ne 0) { Stop-DockerTest '离线车辆接替与道路绕行双场景验收失败。' }
 Write-Host '[OK] Docker Redis/MySQL/Qdrant/Neo4j/eight-agent/worker E2E passed with Pending=0.' -ForegroundColor Green
