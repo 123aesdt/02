@@ -46,7 +46,7 @@ services:
     volumes:
       - countyflow_qdrant:/qdrant/storage
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:6333/collections"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && printf 'GET /collections HTTP/1.0\\r\\n\\r\\n' >&3 && read -r status <&3 && [[ $$status == *' 200 '* ]]"]
       interval: 5s
       timeout: 5s
       retries: 30

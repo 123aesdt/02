@@ -56,19 +56,12 @@ function Initialize-BuildImages([string]$DockerCommand) {
         'grafana/grafana:12.1.0'
     )
     Write-Host '[准备] 正在准备 Docker 基础镜像……' -ForegroundColor Yellow
-    foreach ($image in $images) {
-        Write-Host "[准备] 正在检查 $image……" -ForegroundColor Yellow
-        try {
-            & $DockerCommand pull $image *> $null
-            $pullExitCode = $LASTEXITCODE
-        } catch {
-            $pullExitCode = 1
-        }
-        if ($pullExitCode -ne 0) {
-            Stop-FullRuntime "基础镜像拉取失败（$image）。请检查网络或代理后重试。"
-        }
+    $preparer = Join-Path $PSScriptRoot 'ensure-docker-images.ps1'
+    try {
+        & $preparer -DockerCommand $DockerCommand -Images $images
+    } catch {
+        Stop-FullRuntime "基础镜像拉取失败：$($_.Exception.Message)"
     }
-    Write-Host '[准备] Docker 基础镜像已就绪。' -ForegroundColor Green
 }
 
 function Wait-Http([string]$Url, [int]$Attempts = 60) {
