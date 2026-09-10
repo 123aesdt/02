@@ -28,7 +28,7 @@ def test_vehicle_operations_models_register_durable_tables_and_versions():
         "status_changed_at",
         "available_after",
         "maintenance_order_no",
-    } <= set(FleetVehicle.__table__.columns)
+    } <= set(FleetVehicle.__table__.columns.keys())
     assert FleetVehicle.__mapper__.version_id_col is FleetVehicle.__table__.c.version
 
     assert RescueUnit.__mapper__.version_id_col is RescueUnit.__table__.c.version

@@ -14,7 +14,6 @@ from app.vehicle_operations.models import (
     require_vehicle_transition,
 )
 
-
 NOW = datetime(2026, 9, 10, 10, 0, tzinfo=UTC)
 
 

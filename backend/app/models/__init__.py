@@ -13,6 +13,14 @@ from app.models.runtime_thread import RuntimeThread, RuntimeThreadEvent
 from app.models.shared_memory import MemoryEvidence, MemoryMutation, MemoryMutationAttempt, SharedMemoryFact
 from app.models.station import LogisticsStation
 from app.models.task import DispatchTask
+from app.models.vehicle_operation import (
+    DomainOutbox,
+    MaintenanceBay,
+    MaintenanceOrder,
+    RescueMission,
+    RescueUnit,
+    VehicleStatusHistory,
+)
 
 __all__ = [
     "Anomaly",
@@ -22,18 +30,24 @@ __all__ = [
     "DispatchEvidence",
     "DispatchPublication",
     "DispatchTask",
+    "DomainOutbox",
     "FleetDriver",
     "FleetVehicle",
     "LogisticsStation",
+    "MaintenanceBay",
+    "MaintenanceOrder",
     "MemoryEvidence",
     "MemoryMutation",
     "MemoryMutationAttempt",
     "Order",
     "RoadEdge",
     "RoadNode",
+    "RescueMission",
+    "RescueUnit",
     "RuntimeThread",
     "RuntimeThreadEvent",
     "RuntimeOverride",
     "RuntimeOverrideAttempt",
     "SharedMemoryFact",
+    "VehicleStatusHistory",
 ]

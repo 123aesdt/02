@@ -1,6 +1,7 @@
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Index, Numeric, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -23,6 +24,11 @@ class FleetVehicle(TimestampMixin, Base):
     cargo_capability: Mapped[str] = mapped_column(String(32), nullable=False)
     gross_weight_tons: Mapped[Decimal] = mapped_column(Numeric(6, 2, asdecimal=True), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
+    fault_code: Mapped[str | None] = mapped_column(String(64))
+    status_reason: Mapped[str | None] = mapped_column(String(255))
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    available_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    maintenance_order_no: Mapped[str | None] = mapped_column(String(64))
     current_node_id: Mapped[str] = mapped_column(String(64), ForeignKey("road_nodes.node_id", ondelete="RESTRICT"), nullable=False)
     assigned_driver_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("fleet_drivers.driver_id", ondelete="RESTRICT"))
     version: Mapped[int] = mapped_column(nullable=False, default=1)
