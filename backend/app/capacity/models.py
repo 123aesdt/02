@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 
 @dataclass(frozen=True)
@@ -8,6 +9,8 @@ class CapacitySnapshot:
     load_ratio: float
     station_load_ratio: float | None
     provider_name: str
+    remaining_load_kg: Decimal | None = None
+    cargo_capability: str | None = None
 
 
 @dataclass(frozen=True)

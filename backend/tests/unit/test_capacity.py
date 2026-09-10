@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 from app.capacity.models import CapacityResult, CapacitySnapshot
@@ -70,3 +72,56 @@ async def test_broken_vehicle_excluded_by_capacity(vehicle_status: str):
     )
 
     assert (result.vehicle_available, result.capacity_status) == (False, "UNAVAILABLE")
+
+@pytest.mark.asyncio
+async def test_capacity_service_rejects_insufficient_remaining_payload():
+    result = await _service(
+        CapacitySnapshot(
+            True,
+            True,
+            0.35,
+            None,
+            "fleet_capacity",
+            remaining_load_kg=Decimal("800.00"),
+            cargo_capability="GENERAL",
+        )
+    ).evaluate(
+        "driver-li",
+        "vehicle-001",
+        "xinping-road",
+        1,
+        cargo_weight_kg=Decimal("850.00"),
+        cargo_type="GENERAL",
+    )
+
+    assert (result.capacity_status, result.reason) == (
+        "UNAVAILABLE",
+        "Assigned vehicle has insufficient remaining payload.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_capacity_service_rejects_cold_chain_capability_mismatch():
+    result = await _service(
+        CapacitySnapshot(
+            True,
+            True,
+            0.35,
+            None,
+            "fleet_capacity",
+            remaining_load_kg=Decimal("1300.00"),
+            cargo_capability="GENERAL",
+        )
+    ).evaluate(
+        "driver-li",
+        "vehicle-001",
+        "xinping-road",
+        1,
+        cargo_weight_kg=Decimal("850.00"),
+        cargo_type="COLD_CHAIN",
+    )
+
+    assert (result.capacity_status, result.reason) == (
+        "UNAVAILABLE",
+        "Assigned vehicle lacks the required cargo capability.",
+    )

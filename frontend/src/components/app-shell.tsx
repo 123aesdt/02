@@ -28,6 +28,7 @@ const pageTitles: Record<string, string> = {
   "/operations": "运行中心",
   "/audit": "审计中心",
   "/overview": "系统总览",
+  "/fleet-live-map": "车辆态势地图",
   "/my-tasks": "我的任务",
   "/report-issue": "提出配送问题",
   "/team-tasks": "团队任务",

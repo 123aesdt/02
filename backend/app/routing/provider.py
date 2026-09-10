@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Protocol
 
 from app.routing.models import RouteCandidate
@@ -18,9 +19,9 @@ class InMemoryRouteProvider:
     def default_catalog(cls) -> "InMemoryRouteProvider":
         return cls(
             [
-                RouteCandidate("xinping-road", "新平路", 10.0, 20, "low", True, None, 0.0),
-                RouteCandidate("national-102", "102国道", 13.0, 26, "low", True, None, 0.0),
-                RouteCandidate("county-308", "308县道", 15.0, 30, "medium", True, None, 0.0),
+                RouteCandidate("xinping-road", "新平路", Decimal("10.0"), 20, "low", True, None, Decimal("0.0")),
+                RouteCandidate("national-102", "102国道", Decimal("13.0"), 26, "low", True, None, Decimal("0.0")),
+                RouteCandidate("county-308", "308县道", Decimal("15.0"), 30, "medium", True, None, Decimal("0.0")),
             ],
             {"新平路": "xinping-road", "102国道": "national-102", "308县道": "county-308"},
         )

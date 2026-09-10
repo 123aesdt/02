@@ -1,15 +1,28 @@
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from pydantic import ValidationError
 from sqlalchemy import select
 
-from app.api.v1.schemas import CreateDispatchTaskRequest
+from app.api.v1.schemas import (
+    CreateDispatchTaskRequest,
+    PathResponse,
+    RoadEdgeResponse,
+    RoadNodeResponse,
+    RouteCandidateResponse,
+    RoutePlanResponse,
+    VehicleAllocationResponse,
+    VehicleCandidateResponse,
+)
 from app.events.broker import TaskEventBroker
 from app.events.models import TaskEvent, TaskEventType
 from app.idempotency.service import IdempotencyService
+from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
+from app.models.dispatch_evidence import DispatchEvidence
 from app.models.dispatch_publication import DispatchPublication
 from app.models.task import DispatchTask
 from app.observability.context import current_correlation_id
@@ -55,10 +68,7 @@ class DispatchTaskApiService:
             self._require_active_delivery_employee(assignee_subject_id)
         existing = self._by_key(request.idempotency_key)
         if existing is not None:
-            if (
-                existing.order_id != request.order_id
-                or existing.assignee_subject_id != assignee_subject_id
-            ):
+            if existing.order_id != request.order_id or existing.assignee_subject_id != assignee_subject_id:
                 raise IdempotencyConflictError
             if existing.status == "SUBMISSION_FAILED":
                 return await self._publish_existing(existing, request)
@@ -152,26 +162,31 @@ class DispatchTaskApiService:
         if task.status not in {"APPROVED", "COMPLETED", "REVIEW_REQUIRED"}:
             return {"task_id": task.task_id, "order_id": task.order_id, "ready": False, "status": status}
         with self._session_factory() as session:
+            anomaly = session.get(Anomaly, task.anomaly_id) if task.anomaly_id is not None else None
             dispatch = session.scalar(select(Dispatch).where(Dispatch.task_id == task.id))
-            audit = session.scalar(select(AuditRecord).where(AuditRecord.task_id == task.id))
-            publication = session.scalar(
-                select(DispatchPublication).where(DispatchPublication.task_id == task.id)
+            evidence_rows = (
+                []
+                if dispatch is None
+                else list(session.scalars(select(DispatchEvidence).where(DispatchEvidence.dispatch_id == dispatch.id).order_by(DispatchEvidence.id)))
             )
+            audit = session.scalar(select(AuditRecord).where(AuditRecord.task_id == task.id))
+            publication = session.scalar(select(DispatchPublication).where(DispatchPublication.task_id == task.id))
             recipient = None
             if task.assignee_subject_id is not None:
                 recipient = session.get(DemoEmployeeAccount, task.assignee_subject_id)
             recipient_employee_id = task.assignee_subject_id
-            recipient_display_name = (
-                recipient.display_name
-                if recipient is not None
-                else task.assignee_subject_id
-            )
+            recipient_display_name = recipient.display_name if recipient is not None else task.assignee_subject_id
             route_visible = include_unpublished or publication is not None
+            vehicle_allocation = None
+            route_plan = None
+            if route_visible and dispatch is not None:
+                vehicle_allocation, route_plan = self._evidence_responses(dispatch, evidence_rows)
             return {
                 "task_id": task.task_id,
                 "order_id": task.order_id,
                 "ready": True,
                 "status": status,
+                "anomaly_type": None if anomaly is None else anomaly.anomaly_type,
                 "dispatch": None
                 if dispatch is None
                 else {
@@ -203,7 +218,212 @@ class DispatchTaskApiService:
                     "recipient_employee_id": recipient_employee_id,
                     "recipient_display_name": recipient_display_name,
                 },
+                "vehicle_allocation": vehicle_allocation,
+                "route_plan": route_plan,
             }
+
+    @classmethod
+    def _evidence_responses(
+        cls,
+        dispatch: Dispatch,
+        evidence_rows: Sequence[DispatchEvidence],
+    ) -> tuple[dict[str, object] | None, dict[str, object] | None]:
+        if len(evidence_rows) != 2:
+            return None, None
+        by_type = {row.evidence_type: row for row in evidence_rows}
+        if set(by_type) != {"FLEET_ALLOCATION", "ROUTE_CALCULATION"}:
+            return None, None
+        fleet_row = by_type["FLEET_ALLOCATION"]
+        route_row = by_type["ROUTE_CALCULATION"]
+        if not isinstance(fleet_row.payload_json, Mapping) or not isinstance(route_row.payload_json, Mapping):
+            return None, None
+        try:
+            candidates = cls._vehicle_candidates(
+                fleet_row.payload_json,
+                dispatch.target_vehicle_id,
+                dispatch.target_driver_id,
+            )
+            pickup_source = fleet_row.payload_json.get("pickup_route")
+            if pickup_source is None:
+                pickup_source = route_row.payload_json.get("pickup_path")
+            allocation = VehicleAllocationResponse.model_validate(
+                {
+                    "original_vehicle_id": dispatch.original_vehicle_id,
+                    "target_vehicle_id": dispatch.target_vehicle_id,
+                    "target_driver_id": dispatch.target_driver_id,
+                    "vehicle_reassigned": dispatch.target_vehicle_id is not None and dispatch.target_vehicle_id != dispatch.original_vehicle_id,
+                    "candidate_vehicles": candidates,
+                    "pickup_route": cls._path(pickup_source),
+                    "scoring_formula": fleet_row.algorithm_version,
+                }
+            )
+            recommended = cls._path(route_row.payload_json.get("recommended_path"))
+            route_plan = RoutePlanResponse.model_validate(
+                {
+                    "original_path": cls._path(route_row.payload_json.get("original_path")),
+                    "recommended_path": recommended,
+                    "candidate_routes": cls._route_candidates(route_row.payload_json.get("candidate_routes")),
+                    "blocked_edge_ids": cls._string_list(route_row.payload_json.get("blocked_edge_ids")),
+                    "distance_delta_km": route_row.payload_json.get("distance_delta_km"),
+                    "eta_delta_minutes": route_row.payload_json.get("eta_delta_minutes"),
+                    "visited_node_count": route_row.payload_json.get("visited_node_count")
+                    if "visited_node_count" in route_row.payload_json
+                    else (None if recommended is None else recommended.get("visited_node_count")),
+                    "routing_status": route_row.payload_json.get("routing_status"),
+                    "algorithm": route_row.algorithm_version,
+                    "road_network_version": route_row.road_network_version,
+                    "network_nodes": cls._road_nodes(route_row.payload_json.get("network_nodes")),
+                    "network_edges": cls._road_edges(route_row.payload_json.get("network_edges")),
+                }
+            )
+        except (TypeError, ValueError, ValidationError):
+            return None, None
+        return allocation.model_dump(mode="json"), route_plan.model_dump(mode="json")
+
+    @classmethod
+    def _vehicle_candidates(
+        cls,
+        payload: Mapping[str, object],
+        target_vehicle_id: str | None,
+        target_driver_id: str | None,
+    ) -> list[dict[str, object]]:
+        for key, expected in (
+            ("target_vehicle_id", target_vehicle_id),
+            ("target_driver_id", target_driver_id),
+        ):
+            if key in payload and payload[key] != expected:
+                raise ValueError("Fleet evidence identity conflicts with dispatch facts.")
+        raw_candidates = cls._mapping_list(payload.get("candidates"))
+        selected = payload.get("selected_candidate")
+        selected_candidate = selected if isinstance(selected, Mapping) else {}
+        for key, expected in (
+            ("vehicle_id", target_vehicle_id),
+            ("driver_id", target_driver_id),
+        ):
+            if key in selected_candidate and selected_candidate[key] != expected:
+                raise ValueError("Selected candidate identity conflicts with dispatch facts.")
+        output: list[dict[str, object]] = []
+        selected_count = 0
+        for candidate in raw_candidates:
+            source = dict(candidate)
+            if source.get("vehicle_id") == target_vehicle_id:
+                selected_count += 1
+                if "driver_id" in source and source["driver_id"] != target_driver_id:
+                    raise ValueError("Candidate driver identity conflicts with dispatch facts.")
+                source.update({key: value for key, value in selected_candidate.items() if key not in {"vehicle_id", "driver_id"}})
+                source["vehicle_id"] = target_vehicle_id
+                source["driver_id"] = target_driver_id
+            output.append(VehicleCandidateResponse.model_validate(cls._pick(source, cls._vehicle_candidate_keys())).model_dump(mode="json"))
+        if target_vehicle_id is not None and selected_count != 1:
+            raise ValueError("Fleet evidence must contain exactly one selected vehicle.")
+        return output
+
+    @classmethod
+    def _route_candidates(cls, value: object) -> list[dict[str, object]]:
+        return [
+            RouteCandidateResponse.model_validate(cls._pick(candidate, cls._route_candidate_keys())).model_dump(mode="json")
+            for candidate in cls._mapping_list(value)
+        ]
+
+    @classmethod
+    def _road_nodes(cls, value: object) -> list[dict[str, object]]:
+        keys = ("node_id", "name", "x_km", "y_km", "node_type")
+        return [RoadNodeResponse.model_validate(cls._pick(node, keys)).model_dump(mode="json") for node in cls._mapping_list(value)]
+
+    @classmethod
+    def _road_edges(cls, value: object) -> list[dict[str, object]]:
+        keys = (
+            "edge_id",
+            "name",
+            "from_node_id",
+            "to_node_id",
+            "distance_km",
+            "base_minutes",
+            "road_level",
+            "risk_level",
+            "status",
+            "congestion_factor",
+            "weight_limit_tons",
+            "bidirectional",
+            "version",
+        )
+        return [RoadEdgeResponse.model_validate(cls._pick(edge, keys)).model_dump(mode="json") for edge in cls._mapping_list(value)]
+
+    @classmethod
+    def _path(cls, value: object) -> dict[str, object] | None:
+        if value is None:
+            return None
+        if not isinstance(value, Mapping):
+            raise ValueError("Path evidence must be an object.")
+        keys = (
+            "objective",
+            "node_ids",
+            "edge_ids",
+            "distance_km",
+            "estimated_minutes",
+            "risk_cost",
+            "visited_node_count",
+            "scoring_formula",
+        )
+        return PathResponse.model_validate(cls._pick(value, keys)).model_dump(mode="json")
+
+    @staticmethod
+    def _pick(source: Mapping[str, object], keys: Sequence[str]) -> dict[str, object]:
+        return {key: source[key] for key in keys if key in source}
+
+    @staticmethod
+    def _mapping_list(value: object) -> list[Mapping[str, object]]:
+        if not isinstance(value, list) or not all(isinstance(item, Mapping) for item in value):
+            raise ValueError("Evidence list is invalid.")
+        return value
+
+    @staticmethod
+    def _string_list(value: object) -> list[str]:
+        if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+            raise ValueError("Evidence identifier list is invalid.")
+        return value
+
+    @staticmethod
+    def _vehicle_candidate_keys() -> tuple[str, ...]:
+        return (
+            "vehicle_id",
+            "driver_id",
+            "vehicle_status",
+            "driver_status",
+            "remaining_capacity_kg",
+            "gross_weight_tons",
+            "cargo_capability",
+            "pickup_route",
+            "pickup_distance_km",
+            "pickup_eta_minutes",
+            "score",
+            "score_components",
+            "scoring_formula",
+            "eligible",
+            "exclusion_reasons",
+        )
+
+    @staticmethod
+    def _route_candidate_keys() -> tuple[str, ...]:
+        return (
+            "route_id",
+            "route_name",
+            "objective",
+            "node_ids",
+            "edge_ids",
+            "distance_km",
+            "estimated_minutes",
+            "risk_level",
+            "risk_cost",
+            "visited_node_count",
+            "available",
+            "reason",
+            "score",
+            "score_components",
+            "scoring_formula",
+            "algorithm_version",
+            "road_network_version",
+        )
 
     def require_read_access(
         self,

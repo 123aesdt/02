@@ -16,11 +16,11 @@ test("test_browser_runtime_override_concurrent", async ({ browser, request }) =>
     await authenticatePage(first, "SUPERVISOR", `/dispatch/${taskId}`);
     await authenticatePage(second, "SUPERVISOR", `/dispatch/${taskId}`);
     const dialogA = await openOverrideDialog(first, taskId, "BROKEN"); const dialogB = await openOverrideDialog(second, taskId, "MAINTENANCE");
-    await dialogA.getByLabel("Reason").fill("人工确认车辆爆胎"); await dialogB.getByLabel("Reason").fill("人工确认进入维护");
+    await dialogA.getByLabel("干预原因").fill("人工确认车辆爆胎"); await dialogB.getByLabel("干预原因").fill("人工确认进入维护");
     await Promise.all([dialogA.getByRole("button", { name: "确认干预" }).click(), dialogB.getByRole("button", { name: "确认干预" }).click()]);
     await expect.poll(async () => {
       const values = await Promise.all([first.locator(".runtime-result").textContent(), second.locator(".runtime-result").textContent()]);
-      return values.filter((value) => value?.includes("APPLIED")).length;
+      return values.filter((value) => value?.includes("已应用")).length;
     }).toBe(1);
     const threadResponse = await request.get(`${apiBaseUrl}/api/v1/runtime/threads/by-task/${taskId}`, { headers: e2eHeaders() });
     const current = await threadResponse.json(); expect(current.state_version).toBe(before.state_version + 1);

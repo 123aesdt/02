@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import select
 
 import app.seed as seed_module
+from app.anomaly_reports.sqlalchemy_repository import SqlAlchemyAnomalyReportRepository
 from app.core.config import Settings
 from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
@@ -24,12 +25,13 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
         anomalies = session.scalars(select(Anomaly).where(Anomaly.anomaly_no.like("DEMO-ANOM-%"))).all()
         tasks = session.scalars(select(DispatchTask).where(DispatchTask.idempotency_key.like("demo-seed-%"))).all()
         dispatches = session.scalars(select(Dispatch).where(Dispatch.dispatch_no.like("DEMO-DISPATCH-%"))).all()
-        audits = session.scalars(
-            select(AuditRecord).join(DispatchTask).where(DispatchTask.idempotency_key.like("demo-seed-%"))
-        ).all()
+        audits = session.scalars(select(AuditRecord).join(DispatchTask).where(DispatchTask.idempotency_key.like("demo-seed-%"))).all()
         threads = session.scalars(select(RuntimeThread).where(RuntimeThread.thread_id.like("demo-thread-%"))).all()
+        report_tasks = session.scalars(
+            select(DispatchTask).where(DispatchTask.idempotency_key.like("demo-report-source-%"))
+        ).all()
 
-    assert len(orders) == 10
+    assert len(orders) == 12
     assert len(anomalies) == 10
     assert {row.severity for row in anomalies} == {"HIGH", "MEDIUM", "LOW"}
     assert len(tasks) == 10
@@ -53,11 +55,51 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
     assert len(audits) == 10
     assert len(threads) == 10
     assert {row.status for row in threads} == {"RUNNING", "STABLE", "OVERRIDING", "TERMINAL"}
+    assert len(report_tasks) == 20
+    assert {row.status for row in report_tasks} == {"IN_PROGRESS"}
+    assert {row.assignee_subject_id for row in report_tasks} == {"CF-DEMO-001"}
+
+    anomaly_repository = SqlAlchemyAnomalyReportRepository(sqlite_factory)
+    vehicle_source = anomaly_repository.get_source_task("DEMO-TASK-REPORT-VEHICLE")
+    road_source = anomaly_repository.get_source_task("DEMO-TASK-REPORT-ROAD")
+    final_source = anomaly_repository.get_source_task("DEMO-TASK-REPORT-020")
+    assert vehicle_source is not None
+    assert road_source is not None
+    assert final_source is not None
+    assert (vehicle_source.driver_id, vehicle_source.vehicle_id, vehicle_source.route_id) == (
+        "D-001",
+        "V-001",
+        "ROUTE-01",
+    )
+    assert (road_source.driver_id, road_source.vehicle_id, road_source.route_id) == (
+        "D-007",
+        "V-008",
+        "ROUTE-04",
+    )
+    assert (final_source.driver_id, final_source.vehicle_id, final_source.route_id) == (
+        "D-001",
+        "V-020",
+        "ROUTE-10",
+    )
 
     repository = SqlAlchemyWorkspaceReadRepository(sqlite_factory)
     assert repository.list_reviews(limit=20, before_id=None).provenance == "DEMO"
     assert repository.list_runtime_threads(limit=20, before_id=None, status=None).provenance == "DEMO"
-    assert repository.count_domains().provenance == "DEMO"
+    assert repository.count_domains().provenance == "MIXED"
+
+
+def test_development_seed_creates_stable_docker_e2e_case(sqlite_factory):
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        order = session.scalar(select(Order).where(Order.order_no == "ORDER-E2E-RAIN-001"))
+        anomaly = session.scalar(select(Anomaly).where(Anomaly.anomaly_no == "ANOM-E2E-RAIN-001"))
+
+    assert order is not None
+    assert anomaly is not None
+    assert (order.driver_id, order.vehicle_id, order.route_id) == ("driver-li", "vehicle-001", "xinping-road")
+    assert (anomaly.order_id, anomaly.anomaly_type, anomaly.severity) == (order.id, "rain_slippery", "HIGH")
 
 
 def test_development_seed_backfills_assignment_without_resetting_existing_status(sqlite_factory):
@@ -82,9 +124,7 @@ def test_development_seed_backfills_assignment_without_resetting_existing_status
 
     with sqlite_factory() as session:
         task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "DEMO-TASK-004"))
-        non_demo_task = session.scalar(
-            select(DispatchTask).where(DispatchTask.task_id == "NON-DEMO-TASK-001")
-        )
+        non_demo_task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "NON-DEMO-TASK-001"))
         assert task is not None
         assert non_demo_task is not None
         assert task.status == "REJECTED"

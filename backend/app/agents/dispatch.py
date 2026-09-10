@@ -1,6 +1,6 @@
 from app.core.errors import OptimisticLockConflict
 from app.dispatch.models import DispatchResult
-from app.dispatch.service import DispatchService
+from app.dispatch.service import DispatchService, VehicleReservationConflict
 from app.graph.state import DispatchGraphState, DispatchResultState
 
 
@@ -10,12 +10,18 @@ def dispatch_result_to_state(result: DispatchResult) -> DispatchResultState:
         "dispatch_no": result.dispatch_no,
         "status": result.status,
         "target_route_id": result.target_route_id,
+        "original_vehicle_id": result.original_vehicle_id,
+        "target_vehicle_id": result.target_vehicle_id,
+        "target_driver_id": result.target_driver_id,
         "version": result.version,
         "executed": result.executed,
     }
 
 
-async def dispatch_node(state: DispatchGraphState, dispatch_service: DispatchService | None) -> dict[str, object]:
+async def dispatch_node(
+    state: DispatchGraphState,
+    dispatch_service: DispatchService | None,
+) -> dict[str, object]:
     if dispatch_service is None:
         return {}
     try:
@@ -32,7 +38,47 @@ async def dispatch_node(state: DispatchGraphState, dispatch_service: DispatchSer
             state.get("recommended_action"),
             state.get("analysis_mode"),
             state.get("issue_subtype"),
+            state.get("vehicle_id") if state.get("original_vehicle_weight_tons") is not None else None,
+            state.get("candidate_vehicles", []),
+            state.get("incident_node_id"),
+            {
+                "algorithm_version": "FLEET_SCORE_V1",
+                "candidates": state.get("candidate_vehicles", []),
+                "pickup_route": state.get("pickup_route"),
+            },
+            {
+                "algorithm_version": state.get("routing_algorithm", "DIJKSTRA_V1"),
+                "road_network_version": state.get("road_network_version"),
+                "blocked_edge_ids": state.get("blocked_edge_ids", []),
+                "original_path": state.get("original_path"),
+                "recommended_path": state.get("recommended_path"),
+                "pickup_route": state.get("pickup_route"),
+                "road_network_nodes": state.get("road_network_nodes", []),
+                "road_network_edges": state.get("road_network_edges", []),
+                "candidate_routes": state.get("candidate_routes", []),
+                "distance_delta_km": state.get("distance_delta_km"),
+                "eta_delta_minutes": state.get("eta_delta_minutes"),
+                "routing_status": state.get("routing_status"),
+            },
         )
+    except VehicleReservationConflict:
+        return {
+            "requires_manual_review": True,
+            "error_code": "VEHICLE_RESERVATION_CONFLICT",
+            "error_message": "Replacement vehicle reservation conflicted with another dispatch.",
+        }
     except OptimisticLockConflict:
-        return {"requires_manual_review": True, "error_code": "DISPATCH_VERSION_CONFLICT", "error_message": "Dispatch was modified by another operation."}
-    return {"dispatch_result": dispatch_result_to_state(result), "requires_manual_review": result.requires_manual_review}
+        return {
+            "requires_manual_review": True,
+            "error_code": "DISPATCH_VERSION_CONFLICT",
+            "error_message": "Dispatch was modified by another operation.",
+        }
+    patch: dict[str, object] = {
+        "dispatch_result": dispatch_result_to_state(result),
+        "requires_manual_review": result.requires_manual_review,
+    }
+    if result.target_vehicle_id is not None:
+        patch["selected_vehicle_id"] = result.target_vehicle_id
+    if result.target_driver_id is not None:
+        patch["selected_driver_id"] = result.target_driver_id
+    return patch

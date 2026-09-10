@@ -47,15 +47,73 @@ class CapacityState(TypedDict):
     provider_name: str
 
 
+class RouteScoreComponentsState(TypedDict):
+    normalized_minutes: str
+    normalized_distance: str
+    normalized_risk: str
+    time_penalty: str
+    distance_penalty: str
+    risk_penalty: str
+
+
 class RouteCandidateState(TypedDict):
     route_id: str
     route_name: str
-    distance_km: float
+    distance_km: str
     estimated_minutes: int
     risk_level: str
     available: bool
     reason: str | None
-    score: float
+    score: str
+    node_ids: NotRequired[list[str]]
+    edge_ids: NotRequired[list[str]]
+    objective: NotRequired[str | None]
+    algorithm_version: NotRequired[str | None]
+    road_network_version: NotRequired[int | None]
+    visited_node_count: NotRequired[int | None]
+    risk_cost: NotRequired[str | None]
+    scoring_formula: NotRequired[str | None]
+    score_components: NotRequired[RouteScoreComponentsState | None]
+
+
+class RoadNodeSnapshotState(TypedDict):
+    node_id: str
+    name: str
+    x_km: str
+    y_km: str
+    node_type: str
+
+
+class RoadEdgeSnapshotState(TypedDict):
+    edge_id: str
+    name: str
+    from_node_id: str
+    to_node_id: str
+    distance_km: str
+    base_minutes: int
+    road_level: str
+    risk_level: str
+    status: str
+    congestion_factor: str
+    weight_limit_tons: str
+    bidirectional: bool
+    version: int
+
+
+class RoadNetworkSnapshotState(TypedDict):
+    version: int
+    nodes: list[RoadNodeSnapshotState]
+    edges: list[RoadEdgeSnapshotState]
+
+
+class PathState(TypedDict):
+    objective: str
+    node_ids: list[str]
+    edge_ids: list[str]
+    distance_km: str
+    estimated_minutes: int
+    risk_cost: str
+    visited_node_count: int
 
 
 class DispatchResultState(TypedDict):
@@ -63,6 +121,9 @@ class DispatchResultState(TypedDict):
     dispatch_no: str | None
     status: str
     target_route_id: str | None
+    original_vehicle_id: str | None
+    target_vehicle_id: str | None
+    target_driver_id: str | None
     version: int | None
     executed: bool
 
@@ -72,6 +133,10 @@ class AuditChecksState(TypedDict):
     memory_consistency: bool
     fallback_consistency: bool
     dispatch_execution: bool
+    vehicle_assignment: bool
+    capacity_constraint: bool
+    route_connectivity: bool
+    blocked_edge_exclusion: bool
 
 
 class AuditResultState(TypedDict):
@@ -94,6 +159,10 @@ class DispatchGraphState(TypedDict):
     anomaly_description: str
     vehicle_id: NotRequired[str]
     vehicle_status: NotRequired[VehicleRuntimeStatus]
+    vehicle_weight_tons: NotRequired[str]
+    original_vehicle_weight_tons: NotRequired[str]
+    active_vehicle_weight_tons: NotRequired[str]
+    sandtable_context_loaded: NotRequired[bool]
     normalized_anomaly: NotRequired[str]
     memory_results: NotRequired[list[MemoryRecallState]]
     graph_memory_facts: NotRequired[list[GraphFactState]]
@@ -107,6 +176,29 @@ class DispatchGraphState(TypedDict):
     environment_provider: NotRequired[str]
     environment_elapsed_ms: NotRequired[float]
     capacity_state: NotRequired[CapacityState]
+    cargo_weight_kg: NotRequired[str]
+    cargo_type: NotRequired[str]
+    origin_node_id: NotRequired[str]
+    destination_node_id: NotRequired[str]
+    incident_node_id: NotRequired[str | None]
+    affected_edge_ids: NotRequired[list[str]]
+    candidate_vehicles: NotRequired[list[dict[str, object]]]
+    selected_vehicle_id: NotRequired[str]
+    selected_driver_id: NotRequired[str]
+    selected_vehicle_gross_weight_tons: NotRequired[str]
+    vehicle_reassigned: NotRequired[bool]
+    pickup_route: NotRequired[PathState | None]
+    blocked_edge_ids: NotRequired[list[str]]
+    original_path: NotRequired[PathState | None]
+    recommended_path: NotRequired[PathState | None]
+    routing_algorithm: NotRequired[str]
+    routing_status: NotRequired[str]
+    road_network_version: NotRequired[int]
+    road_network_snapshot: NotRequired[RoadNetworkSnapshotState]
+    distance_delta_km: NotRequired[str]
+    eta_delta_minutes: NotRequired[int]
+    road_network_nodes: NotRequired[list[dict[str, object]]]
+    road_network_edges: NotRequired[list[dict[str, object]]]
     candidate_routes: NotRequired[list[RouteCandidateState]]
     recommended_route: NotRequired[str]
     identified_issue: NotRequired[str]

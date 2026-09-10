@@ -1,16 +1,55 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal
+
+from app.road_network.models import PathResult
+
+
+@dataclass(frozen=True)
+class RouteScoreComponents:
+    normalized_minutes: Decimal
+    normalized_distance: Decimal
+    normalized_risk: Decimal
+    time_penalty: Decimal
+    distance_penalty: Decimal
+    risk_penalty: Decimal
 
 
 @dataclass(frozen=True)
 class RouteCandidate:
     route_id: str
     route_name: str
-    distance_km: float
+    distance_km: Decimal
     estimated_minutes: int
     risk_level: str
     available: bool
     reason: str | None
-    score: float
+    score: Decimal
+    node_ids: tuple[str, ...] = ()
+    edge_ids: tuple[str, ...] = ()
+    objective: str | None = None
+    algorithm_version: str | None = None
+    road_network_version: int | None = None
+    visited_node_count: int | None = None
+    risk_cost: Decimal | None = None
+    scoring_formula: str | None = None
+    score_components: RouteScoreComponents | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RoutePlanningContext:
+    order_id: int
+    order_no: str
+    cargo_weight_kg: Decimal
+    cargo_type: str
+    origin_node_id: str
+    destination_node_id: str
+    current_vehicle_id: str
+    current_driver_id: str | None
+    incident_node_id: str | None
+    affected_edge_ids: tuple[str, ...]
+    road_network_version: int
+    original_vehicle_weight_tons: Decimal
+    active_vehicle_weight_tons: Decimal
 
 
 @dataclass(frozen=True)
@@ -23,3 +62,9 @@ class RoutingResult:
     adopted_memory_id: str | None
     routing_status: str
     requires_manual_review: bool
+    original_path: PathResult | None = None
+    recommended_path: PathResult | None = None
+    blocked_edge_ids: tuple[str, ...] = ()
+    road_network_version: int | None = None
+    road_network_nodes: list[dict[str, object]] = field(default_factory=list)
+    road_network_edges: list[dict[str, object]] = field(default_factory=list)

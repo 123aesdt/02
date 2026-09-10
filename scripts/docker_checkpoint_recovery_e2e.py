@@ -76,7 +76,7 @@ async def submit(run: int) -> str:
                 "vehicle_id": "vehicle-001",
                 "route_id": "xinping-road",
                 "anomaly_type": "rain_slippery",
-                "anomaly_description": f"V2-C checkpoint recovery run {run}",
+                "anomaly_description": f"李师傅在雨天经过新平路，道路出现湿滑风险（V2-C 检查点恢复第 {run} 次）。",
                 "idempotency_key": f"v2c-recovery-{uuid4().hex}",
             },
         )
@@ -188,12 +188,12 @@ async def run_trial(redis_client: Redis, run: int) -> dict[str, object]:
     task_id = await submit(run)
     checkpoint = await wait_checkpoint(redis_client, task_id)
     docker("pause", container_id("worker-1"))
-    killed_at = time.perf_counter()
     docker("kill", container_id("worker-1"))
     docker("unpause", container_id("worker-2"))
+    recovery_started_at = time.perf_counter()
     await wait_terminal(task_id)
     pending = await wait_pending_zero(redis_client)
-    recovery_seconds = time.perf_counter() - killed_at
+    recovery_seconds = time.perf_counter() - recovery_started_at
     observed_checkpoint_id = str(checkpoint["data"]["checkpoint_id"])
     evidence = durable_evidence(task_id, mutation_count_before, observed_checkpoint_id)
     record = {

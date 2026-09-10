@@ -2,7 +2,7 @@ import asyncio
 
 from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient
-from security_support import authorize_app, ws_ticket_url
+from security_support import authorize_app, principal_for, ws_ticket_url
 from sqlalchemy import select
 
 from app.events.broker import InMemoryTaskEventBroker
@@ -12,6 +12,10 @@ from app.locks.redis_execution_lock import RedisExecutionLock
 from app.main import create_app
 from app.models.audit import AuditRecord
 from app.models.dispatch import Dispatch
+from app.models.dispatch_publication import DispatchPublication
+from app.models.task import DispatchTask
+from app.security.permissions import Role
+from app.security.ws_ticket import RedisWsTicketService
 from app.services.dispatch_task_api_service import DispatchTaskApiService
 from app.streams.redis_queue import RedisStreamQueue
 from app.workers.dispatch_worker import DispatchWorker
@@ -19,8 +23,8 @@ from tests.unit.test_dispatch_service import _service
 from tests.workers.test_worker_idempotency import _real_graph
 
 
-def _app_with_events():
-    app = authorize_app(create_app())
+def _app_with_events(role: Role = Role.ADMIN, *, real_tickets: bool = False):
+    app = authorize_app(create_app(), role)
     temp, engine, factory = _service()
     redis = FakeRedis(decode_responses=False)
     broker = InMemoryTaskEventBroker()
@@ -30,7 +34,53 @@ def _app_with_events():
         RedisStreamQueue(redis, "ws:tasks", "ws-workers", "ws-api"),
         event_broker=broker,
     )
+    if real_tickets:
+        app.state.ws_ticket_service = RedisWsTicketService(redis)
     return app, temp, engine, redis, broker
+
+
+def _assign_task(service: DispatchTaskApiService, subject_id: str) -> None:
+    with service._session_factory() as session:
+        task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "task-001"))
+        task.assignee_subject_id = subject_id
+        session.commit()
+
+
+def _publish_task(service: DispatchTaskApiService) -> None:
+    with service._session_factory() as session:
+        task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "task-001"))
+        dispatch = Dispatch(
+            dispatch_no="DSP-WS-PUBLISHED",
+            order_id=task.order_id,
+            task_id=task.id,
+            original_route_id="route-original",
+            target_route_id="route-published",
+            status="COMPLETED",
+        )
+        session.add(dispatch)
+        session.flush()
+        session.add(
+            DispatchPublication(
+                task_id=task.id,
+                dispatch_id=dispatch.id,
+                status="PUBLISHED",
+                route_id="route-published",
+                route_instruction="按已发布路线行驶。",
+                published_by_subject_id="test-supervisor",
+                published_by_display_name="Test Supervisor",
+                published_at=task.created_at,
+            )
+        )
+        session.commit()
+
+
+def _issue_task_ticket(client: TestClient) -> str:
+    response = client.post(
+        "/api/v1/ws-tickets",
+        json={"target_type": "task", "target_id": "task-001"},
+    )
+    assert response.status_code == 201
+    return response.json()["ticket"]
 
 
 def test_websocket_task_not_found():
@@ -161,6 +211,215 @@ def test_websocket_receives_worker_and_terminal_events_from_real_graph():
         }.issubset(event_types)
         assert event_types[-1] == "TASK_COMPLETED"
         assert (dispatch.target_route_id, audit.result) == ("national-102", "APPROVED")
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_websocket_preserves_extended_fleet_and_route_event_payloads() -> None:
+    app, temp, engine, redis, broker = _app_with_events()
+    try:
+        with TestClient(app).websocket_connect(ws_ticket_url("/api/v1/ws/tasks/task-001")) as socket:
+            assert socket.receive_json()["event_type"] == "TASK_SNAPSHOT"
+            asyncio.run(
+                broker.publish(
+                    TaskEvent.create(
+                        "task-001",
+                        TaskEventType.CAPACITY_COMPLETED,
+                        "capacity",
+                        "PROCESSING",
+                        data={
+                            "vehicle_id": "V-001",
+                            "capacity_status": "REASSIGNED",
+                            "selected_vehicle_id": "V-005",
+                            "selected_driver_id": "D-003",
+                            "vehicle_reassigned": True,
+                        },
+                    )
+                )
+            )
+            capacity = socket.receive_json()
+            asyncio.run(
+                broker.publish(
+                    TaskEvent.create(
+                        "task-001",
+                        TaskEventType.ROUTING_COMPLETED,
+                        "routing",
+                        "PROCESSING",
+                        data={
+                            "algorithm": "DIJKSTRA_V1",
+                            "blocked_edge_ids": ["E04"],
+                            "recommended_path": {"edge_ids": ["E01", "E06", "E07", "E08", "E09"]},
+                            "network_nodes": [],
+                            "network_edges": [],
+                        },
+                    )
+                )
+            )
+            routing = socket.receive_json()
+
+        assert capacity["data"]["vehicle_id"] == "V-001"
+        assert capacity["data"]["capacity_status"] == "REASSIGNED"
+        assert capacity["data"]["selected_vehicle_id"] == "V-005"
+        assert routing["data"]["algorithm"] == "DIJKSTRA_V1"
+        assert routing["data"]["blocked_edge_ids"] == ["E04"]
+        assert routing["data"]["recommended_path"]["edge_ids"] == [
+            "E01",
+            "E06",
+            "E07",
+            "E08",
+            "E09",
+        ]
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_assigned_employee_history_hides_unpublished_dispatch_details() -> None:
+    app, temp, engine, redis, broker = _app_with_events(Role.EMPLOYEE, real_tickets=True)
+    service = app.state.dispatch_task_api_service
+    _assign_task(service, principal_for(Role.EMPLOYEE).subject_id)
+    asyncio.run(
+        broker.publish(
+            TaskEvent.create(
+                "task-001",
+                TaskEventType.ROUTING_COMPLETED,
+                "routing",
+                "PROCESSING",
+                data={
+                    "progress": 70,
+                    "routing_status": "ROUTED",
+                    "recommended_route": "route-unpublished",
+                    "decision_reason": "secret routing decision",
+                    "candidate_routes": [{"route_id": "route-unpublished"}],
+                    "original_path": {"edge_ids": ["E-ORIGINAL"]},
+                    "recommended_path": {"edge_ids": ["E-UNPUBLISHED"]},
+                    "blocked_edge_ids": ["E-BLOCKED"],
+                    "distance_delta_km": "3.20",
+                    "eta_delta_minutes": 4,
+                    "visited_node_count": 8,
+                    "algorithm": "DIJKSTRA_V1",
+                    "road_network_version": 7,
+                    "network_nodes": [{"node_id": "N-SECRET"}],
+                    "network_edges": [{"edge_id": "E-UNPUBLISHED"}],
+                },
+            )
+        )
+    )
+    try:
+        with TestClient(app) as client:
+            ticket = _issue_task_ticket(client)
+            with client.websocket_connect(f"/api/v1/ws/tasks/task-001?ticket={ticket}") as socket:
+                snapshot = socket.receive_json()
+                replay = socket.receive_json()
+
+        assert snapshot["event_type"] == "TASK_SNAPSHOT"
+        assert replay["event_type"] == "ROUTING_COMPLETED"
+        assert replay["task_id"] == "task-001"
+        assert replay["node"] == "routing"
+        assert replay["status"] == "PROCESSING"
+        assert replay["data"] == {"progress": 70, "routing_status": "ROUTED"}
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_assigned_employee_live_events_become_visible_only_after_publication() -> None:
+    app, temp, engine, redis, broker = _app_with_events(Role.EMPLOYEE, real_tickets=True)
+    service = app.state.dispatch_task_api_service
+    _assign_task(service, principal_for(Role.EMPLOYEE).subject_id)
+    try:
+        with TestClient(app) as client:
+            ticket = _issue_task_ticket(client)
+            with client.websocket_connect(f"/api/v1/ws/tasks/task-001?ticket={ticket}") as socket:
+                assert socket.receive_json()["event_type"] == "TASK_SNAPSHOT"
+                asyncio.run(
+                    broker.publish(
+                        TaskEvent.create(
+                            "task-001",
+                            TaskEventType.CAPACITY_COMPLETED,
+                            "capacity",
+                            "PROCESSING",
+                            data={
+                                "progress": 55,
+                                "capacity_status": "REASSIGNED",
+                                "vehicle_id": "V-001",
+                                "candidate_vehicles": [{"vehicle_id": "V-005"}],
+                                "selected_vehicle_id": "V-005",
+                                "selected_driver_id": "D-003",
+                                "vehicle_reassigned": True,
+                                "pickup_route": {"edge_ids": ["E20"]},
+                                "scoring_formula": "FLEET_SCORE_V1",
+                            },
+                        )
+                    )
+                )
+                unpublished = socket.receive_json()
+                _publish_task(service)
+                asyncio.run(
+                    broker.publish(
+                        TaskEvent.create(
+                            "task-001",
+                            TaskEventType.DISPATCH_COMPLETED,
+                            "dispatch",
+                            "PROCESSING",
+                            data={
+                                "progress": 90,
+                                "original_vehicle_id": "V-001",
+                                "target_vehicle_id": "V-005",
+                                "target_driver_id": "D-003",
+                                "target_route_id": "route-published",
+                                "status": "COMPLETED",
+                            },
+                        )
+                    )
+                )
+                published = socket.receive_json()
+
+        assert unpublished["event_type"] == "CAPACITY_COMPLETED"
+        assert unpublished["data"] == {"progress": 55, "capacity_status": "REASSIGNED"}
+        assert published["data"]["target_vehicle_id"] == "V-005"
+        assert published["data"]["target_driver_id"] == "D-003"
+        assert published["data"]["target_route_id"] == "route-published"
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_supervisor_history_sees_unpublished_dispatch_details() -> None:
+    app, temp, engine, redis, broker = _app_with_events(Role.SUPERVISOR, real_tickets=True)
+    asyncio.run(
+        broker.publish(
+            TaskEvent.create(
+                "task-001",
+                TaskEventType.ROUTING_COMPLETED,
+                "routing",
+                "PROCESSING",
+                data={
+                    "progress": 70,
+                    "algorithm": "DIJKSTRA_V1",
+                    "recommended_path": {"edge_ids": ["E-UNPUBLISHED"]},
+                    "network_nodes": [{"node_id": "N-SECRET"}],
+                    "network_edges": [{"edge_id": "E-UNPUBLISHED"}],
+                },
+            )
+        )
+    )
+    try:
+        with TestClient(app) as client:
+            ticket = _issue_task_ticket(client)
+            with client.websocket_connect(f"/api/v1/ws/tasks/task-001?ticket={ticket}") as socket:
+                assert socket.receive_json()["event_type"] == "TASK_SNAPSHOT"
+                replay = socket.receive_json()
+
+        assert replay["data"]["algorithm"] == "DIJKSTRA_V1"
+        assert replay["data"]["recommended_path"]["edge_ids"] == ["E-UNPUBLISHED"]
+        assert replay["data"]["network_nodes"] == [{"node_id": "N-SECRET"}]
+        assert replay["data"]["network_edges"] == [{"edge_id": "E-UNPUBLISHED"}]
     finally:
         asyncio.run(redis.aclose())
         engine.dispose()

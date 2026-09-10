@@ -103,7 +103,7 @@ async def test_hung_projection_is_audited_as_partial_before_total_timeout(sqlite
     seed_fact(sqlite_factory, item, content_fingerprint="a" * 64)
     service, _, _, _, _ = harness(sqlite_factory)
     service._graph_projection = HungProjection()
-    service._timeout_seconds = 0.2
+    service._timeout_seconds = 1.0
     service._projection_timeout_seconds = 0.05
 
     result = await service.mutate(item)

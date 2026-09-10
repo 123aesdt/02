@@ -1,4 +1,5 @@
 from dataclasses import replace
+from decimal import Decimal
 
 from app.capacity.models import CapacityResult, CapacitySnapshot
 from app.capacity.provider import CapacityProvider, CapacityProviderError
@@ -22,6 +23,8 @@ class CapacityService:
         order_id: int,
         *,
         vehicle_status: str = "NORMAL",
+        cargo_weight_kg: Decimal | None = None,
+        cargo_type: str | None = None,
     ) -> CapacityResult:
         try:
             snapshot = await self._provider.get_capacity(driver_id, vehicle_id, route_id, order_id)
@@ -39,6 +42,10 @@ class CapacityService:
             return self._result(snapshot, "UNAVAILABLE", "high", "Assigned driver is unavailable.")
         if not snapshot.vehicle_available:
             return self._result(snapshot, "UNAVAILABLE", "high", "Assigned vehicle is unavailable.")
+        if cargo_weight_kg is not None and snapshot.remaining_load_kg is not None and snapshot.remaining_load_kg < cargo_weight_kg:
+            return self._result(snapshot, "UNAVAILABLE", "high", "Assigned vehicle has insufficient remaining payload.")
+        if cargo_type == "COLD_CHAIN" and snapshot.cargo_capability is not None and snapshot.cargo_capability != "COLD_CHAIN":
+            return self._result(snapshot, "UNAVAILABLE", "high", "Assigned vehicle lacks the required cargo capability.")
         if self._is_unavailable(snapshot.load_ratio, snapshot.station_load_ratio):
             return self._result(snapshot, "UNAVAILABLE", "high", "Vehicle or station load exceeds capacity.")
         if self._is_limited(snapshot.load_ratio, snapshot.station_load_ratio):

@@ -21,7 +21,7 @@ test("test_browser_runtime_override_success", async ({ page, request }) => {
     const before = await waitForEligibility(request, taskId, "ELIGIBLE");
     pauseWorkerOne();
     await authenticatePage(page, "SUPERVISOR", `/dispatch/${taskId}`);
-    await expect(page.getByTestId("runtime-intervention")).toContainText("ELIGIBLE");
+    await expect(page.getByTestId("runtime-intervention")).toContainText("可干预");
     const stableWindowBefore = runtimeRequests.length;
     await page.waitForTimeout(1_100);
     const stableWindowAfter = runtimeRequests.length;
@@ -29,7 +29,7 @@ test("test_browser_runtime_override_success", async ({ page, request }) => {
     await page.screenshot({ path: path.join(screenshots, "runtime-intervention-eligible.png"), fullPage: true });
     await page.screenshot({ path: path.join(v2eScreenshots, "intervention-eligible.png"), fullPage: true });
     const dialog = await openOverrideDialog(page, taskId, "BROKEN");
-    await dialog.getByLabel("Reason").fill("人工确认车辆爆胎");
+    await dialog.getByLabel("干预原因").fill("人工确认车辆爆胎");
     await page.screenshot({ path: path.join(screenshots, "runtime-intervention-confirm.png"), fullPage: true });
     await dialog.getByRole("button", { name: "确认干预" }).click();
     const applied = page.locator('[data-submission-state="APPLIED"]');
@@ -40,8 +40,8 @@ test("test_browser_runtime_override_success", async ({ page, request }) => {
     expect(after.state_version).toBe(before.state_version + 1);
     expect(after.current_checkpoint_id).not.toBe(before.canonical_checkpoint_id);
     unpauseWorkerOne(); unpauseWorkerTwo();
-    await expect(page.getByTestId("capacity-evidence").getByText("BROKEN", { exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("capacity-evidence")).toContainText("vehicle_available = false");
+    await expect(page.getByTestId("capacity-evidence").getByText("故障", { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("capacity-evidence")).toContainText("车辆可用：否");
     await page.screenshot({ path: path.join(screenshots, "runtime-intervention-capacity-broken.png"), fullPage: true });
     await page.getByTestId("capacity-evidence").screenshot({ path: path.join(v2eScreenshots, "capacity-broken.png") });
     const final = await waitForTaskReady(request, taskId);

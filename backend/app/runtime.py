@@ -1,13 +1,14 @@
 from decimal import Decimal
 
 from app.audit.service import AuditService
-from app.capacity.models import CapacitySnapshot
-from app.capacity.provider import InMemoryCapacityProvider
+from app.capacity.provider import FleetCapacityProvider
 from app.capacity.service import CapacityService
 from app.core.config import Settings
 from app.core.database import build_session_factory
 from app.dispatch.service import DispatchService
 from app.events.factory import create_task_event_broker
+from app.fleet.service import DijkstraTravelTimeEstimator, FleetAllocationService
+from app.fleet.sqlalchemy_repository import SqlAlchemyFleetRepository
 from app.graph.builder import NODE_ORDER, build_graph
 from app.graph.dependencies import GraphDependencies
 from app.graph_memory.extractor import DeterministicGraphTripleExtractor
@@ -23,6 +24,9 @@ from app.observability.runtime import get_process_observability
 from app.providers.embedding.fake import FakeEmbeddingProvider
 from app.providers.environment import EnvironmentProvider, EnvironmentResult, HttpEnvironmentProvider, StaticRouteFallbackProvider
 from app.publications.service import DispatchPublicationService
+from app.road_network.dijkstra import DijkstraPathFinder
+from app.road_network.service import RoadNetworkSnapshotService
+from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
 from app.routing.provider import InMemoryRouteProvider
 from app.routing.service import RoutingService
 from app.runtime_threads.checkpoint_store import RedisRuntimeCheckpointStore
@@ -30,7 +34,8 @@ from app.runtime_threads.events import RuntimeThreadEventPublisher
 from app.runtime_threads.reconciler import ThreadCheckpointReconciler
 from app.runtime_threads.runner import CheckpointedGraphRunner
 from app.runtime_threads.sqlalchemy_repository import SqlAlchemyRuntimeThreadRepository
-from app.seed import DEMO_BUSINESS_CASES
+from app.sandtable.service import SandtableContextService
+from app.sandtable.sqlalchemy_repository import SqlAlchemySandtableRepository
 from app.services.circuit_breaker import CircuitBreaker
 from app.services.environment import EnvironmentService
 from app.shared_memory.events import MemoryMutationEventPublisher
@@ -97,6 +102,8 @@ def build_runtime_graph(
         embedding,
         QdrantMemoryRepository(qdrant_client, "entity_resolution_memory", embedding.vector_dimension),
     )
+    fleet_repository = SqlAlchemyFleetRepository(session_factory)
+    road_network_repository = SqlAlchemyRoadNetworkRepository(session_factory)
     dependencies = GraphDependencies(
         entity_memory_service=memory,
         graph_memory_service=build_graph_memory_service(settings, neo4j_driver),
@@ -106,18 +113,22 @@ def build_runtime_graph(
             CircuitBreaker(settings.environment_cb_failure_threshold, settings.environment_cb_recovery_seconds),
         ),
         capacity_service=CapacityService(
-            InMemoryCapacityProvider(
-                {
-                    (str(case["driver_id"]), str(case["vehicle_id"])): CapacitySnapshot(
-                        True, True, 0.45, 0.60, "docker_runtime"
-                    )
-                    for case in DEMO_BUSINESS_CASES
-                }
-            ),
+            FleetCapacityProvider(fleet_repository),
             limited_threshold=settings.capacity_limited_threshold,
             unavailable_threshold=settings.capacity_unavailable_threshold,
         ),
-        routing_service=RoutingService(InMemoryRouteProvider.default_catalog(), memory_adoption_threshold=settings.memory_adoption_threshold),
+        sandtable_context_service=SandtableContextService(SqlAlchemySandtableRepository(session_factory)),
+        road_network_snapshot_service=RoadNetworkSnapshotService(road_network_repository),
+        fleet_allocation_service=FleetAllocationService(
+            fleet_repository,
+            DijkstraTravelTimeEstimator(road_network_repository, DijkstraPathFinder()),
+        ),
+        routing_service=RoutingService(
+            InMemoryRouteProvider.default_catalog(),
+            memory_adoption_threshold=settings.memory_adoption_threshold,
+            road_network_provider=road_network_repository,
+            path_finder=DijkstraPathFinder(),
+        ),
         dispatch_service=DispatchService(session_factory),
         audit_service=AuditService(session_factory),
         metrics=actual_metrics,
@@ -140,9 +151,7 @@ def build_shared_memory_service(
 ) -> SharedMemoryMutationService:
     embedding = FakeEmbeddingProvider(dimension=settings.embedding_dimension)
     return SharedMemoryMutationService(
-        repository=SqlAlchemyMemoryControlRepository(
-            build_session_factory(settings.database_url)
-        ),
+        repository=SqlAlchemyMemoryControlRepository(build_session_factory(settings.database_url)),
         lock=MemoryMutationLock(
             redis_client,
             ttl_ms=settings.memory_mutation_lock_ttl_ms,

@@ -1,16 +1,16 @@
 # CountyFlow 最终事实基线
 
 > 文档性质：最终总结文档的唯一事实源（Single Source of Truth）
-> 审计日期：2026-09-01（Asia/Shanghai）
+> 审计日期：2026-09-08（Asia/Shanghai）
 > 审计方法：以当前代码、配置、测试与原始验收证据为准；旧总结仅作为线索，不作为结论。
 > 适用范围：CountyFlow / 县域物流异常识别与智能调度系统当前工作区。
-> 变更范围：在既有事实基线上新增司机异常上报、自动创建 AI 调度任务、调度中心收口及相关测试；未扩展照片、GPS 或生产 Provider 范围。
+> 变更范围：在既有事实基线上新增司机异常上报、离线新平县虚拟沙盘、车辆故障接替调度、道路堵塞 Dijkstra 重算、前端证据展示及相关测试；未扩展照片、GPS、外部地图或生产 Provider 范围。
 
 ## 1. 结论口径
 
 本项目已经形成一套可部署、可恢复、可审计的异步县域物流异常识别与智能调度工程原型。核心链路由 FastAPI、Redis Streams、Worker、LangGraph、MySQL、Qdrant、Neo4j、WebSocket 和 React 组成；运行时线程、稳定检查点、人工覆盖、共享记忆、权限、限流与可观测性均有真实代码和自动化测试支撑。
 
-它还不能被描述为“开箱即用的生产系统”。当前全量 Docker 组合是 `docker-dev`：Embedding 使用 deterministic fake provider，Capacity 与 Routing 使用 in-memory provider；生产运行配置会主动拒绝未完成的 Provider wiring。灾备备份、恢复、校验、演练与 RPO/RTO 证据不存在。2026-09-01 已使用现有 `.docker.env` 重建 migration、backend、双 worker 与 frontend，当前容器健康且司机上报 Playwright spec 1/1 通过；真实依赖专项集成测试与性能压测未全部重跑。
+它还不能被描述为“开箱即用的生产系统”。当前 `docker-dev` Graph 的 Embedding 使用 deterministic fake provider，Environment 使用开发 Provider；Capacity 通过 `FleetCapacityProvider`/`SqlAlchemyFleetRepository` 读取 MySQL 虚拟车队，接驳估算和 Routing 通过 `SqlAlchemyRoadNetworkRepository` 与本地 Decimal Dijkstra 计算。`runtime_profile=production` 仍会对未完成的外部生产 Provider wiring 主动 fail fast；灾备备份、恢复、校验、演练与 RPO/RTO 证据不存在。2026-09-01 容器重建健康与司机上报 Playwright 1/1 属于 HISTORICAL VERIFIED；2026-09-08 当前 Task 9 真实双场景 Docker 验收因缺少 `.docker.env` 退出 2，状态为 `BLOCKED BY ENVIRONMENT`，没有当前容器健康结论。
 
 ## 2. 事实状态定义
 
@@ -24,14 +24,12 @@
 
 ## 3. 审计约束与异常
 
-- Git 仓库当前显示 `No commits yet on master`，没有可用历史基线用于区分此前阶段提交。
-- 工作树在本轮开始前已有大量 staged、untracked 与 mixed 状态；本轮保持这些用户内容不变。
-- 根目录真实 `.env` 被忽略，但其中 development JWT secret 长度不满足当前最小 32 字符约束。
-- 因该本地环境值，直接按 Makefile 默认方式执行后端 `pytest` 在收集阶段出现 15 个错误。
-- 使用仅对测试进程生效的 `AUTHENTICATION_PROVIDER=disabled` 后，本轮后端测试通过：850 passed、7 skipped。
-- 历史及本轮 pytest 临时目录存在 Windows ACL 拒绝访问，`rg`/Ruff 会告警，但不影响已完成测试结果。
-- Docker Compose 配置解析在提供 `.docker.env` 时成功；不提供时会因必填安全配置缺失而失败，这是预期的 fail-fast 行为。
-- Docker Compose 不提供环境文件时仍会按设计 fail-fast；使用现有 `.docker.env` 后已完成重建，backend health 为 ok，MySQL、Redis、Qdrant、Neo4j 及业务容器处于运行状态。
+- 项目最终审查候选位于分支 `codex/县域物流异常调度`、HEAD `849cbc6c886913cca14da09e1023384074a6b6c4`；文档修复开始前工作树干净。
+- 2026-09-08 主控制器在该 HEAD 以工作区 `--basetemp` 直接运行后端全量，结果为 994 collected、982 passed、12 skipped、866 warnings、exit 0；早期 850 passed/7 skipped 是本分支新增沙盘功能之前的 HISTORICAL VERIFIED，不是当前测试总数。
+- Windows 默认系统临时目录曾因 ACL 造成 setup/扫描噪声；当前可信全量结果来自显式工作区 `--basetemp`，不能用包装脚本未传播的外层退出码代替。
+- Compose 拓扑与 fail-fast 配置可由代码静态核对；2026-09-08 当前工作区缺少被忽略的 `.docker.env`，`scripts/test-offline-fleet-routing.ps1` 实际退出 2，因此没有当前容器在线或真实双场景通过结论。
+- 2026-09-01 使用当时存在的 `.docker.env` 完成重建、backend health 与司机上报 Playwright 1/1，属于 HISTORICAL VERIFIED，不代表 2026-09-08 在线状态。
+- 本轮文档修复不读取或输出任何 `.env`/`.docker.env` secret value。
 
 ## 4. 项目定位
 
@@ -133,11 +131,11 @@ GraphState 覆盖任务身份、订单/异常输入、规范化文本、向量�
 
 ### 8.3 Environment、Capacity、Routing
 
-- Environment 有 HTTP provider、静态 fallback 与 circuit breaker。
-- Capacity 只有 Protocol 与 `InMemoryCapacityProvider`。
-- Routing 只有 Protocol 与 `InMemoryRouteProvider`。
-- Docker runtime 的 Capacity 与 Routing 均为 in-memory。
-- `runtime_profile=production` 会抛出错误：生产 Provider wiring 尚未实现。
+- Environment 有 HTTP provider、静态 fallback 与 circuit breaker；`docker-dev` 使用开发 Environment provider。
+- Capacity 除 Protocol 和测试用 `InMemoryCapacityProvider` 外，当前 runtime 使用 `FleetCapacityProvider` 与 MySQL-backed `SqlAlchemyFleetRepository`。
+- 车辆接驳估算使用 `DijkstraTravelTimeEstimator(SqlAlchemyRoadNetworkRepository, DijkstraPathFinder)`；Routing 使用同一 MySQL 路网仓储与本地 `DijkstraPathFinder`，不是 InMemory Route Catalog。
+- `local`/自动化测试可在明确测试作用域内使用 InMemory、SQLite 或 fake；这不代表当前 Docker runtime 的车队/路网实现。
+- `runtime_profile=production` 会抛出错误：外部生产 Provider wiring 尚未实现；不能把 `docker-dev` 的 MySQL 虚拟沙盘和本地 Dijkstra 称为真实外部运力/地图系统。
 
 ## 9. Redis Streams 与 Worker
 
@@ -185,7 +183,7 @@ GraphState 覆盖任务身份、订单/异常输入、规范化文本、向量�
 
 ### 10.3 版本控制
 
-`runtime_threads` 使用 SQLAlchemy `version_id_col`。并发更新不是 Python 内存等值判断；数据库检测到 stale write 后转换为明确冲突。
+`RuntimeThread` 使用 SQLAlchemy `version_id_col`。当前其他 versioned ORM 实体还包括 `Dispatch`、`SharedMemoryFact`、`FleetDriver`、`FleetVehicle` 与 `RoadEdge`；并发更新不是 Python 内存等值判断，数据库检测到 stale write 后转换为明确冲突。
 
 ### 10.4 历史恢复证据
 
@@ -314,11 +312,11 @@ Projection 状态：`NOT_REQUIRED`、`PENDING`、`STAGED`、`ACTIVE`、`RETIRED`
 
 ## 15. MySQL 持久化与迁移
 
-MySQL canonical 表覆盖：orders、anomalies、dispatches、audit_records、dispatch_tasks、runtime_threads、runtime_thread_events、runtime_overrides、runtime_override_attempts、memory_mutations、memory_facts、memory_evidence、memory_mutation_attempts、security_audit_events、demo_employee_accounts、dispatch_publications。
+MySQL canonical ORM 表覆盖：orders、anomalies、dispatches、audit_records、dispatch_tasks、runtime_threads、runtime_thread_events、runtime_overrides、runtime_override_attempts、memory_mutations、shared_memory_facts、memory_evidence、memory_mutation_attempts、security_audit_events、demo_employee_accounts、dispatch_publications，以及离线沙盘新增的 logistics_stations、fleet_drivers、fleet_vehicles、road_nodes、road_edges、dispatch_evidence。
 
-Alembic 共 10 个 migration，最新为 `20260830_10_delivery_employee_role.py`。
+Alembic 目录共有 14 个 migration；只读命令 `alembic heads` 返回唯一 head `20260907_14`，对应 `20260907_14_dispatch_task_uniqueness.py`。`20260902_13_offline_fleet_routing.py` 创建 logistics_stations、fleet_drivers、fleet_vehicles、road_nodes、road_edges、dispatch_evidence 六张 canonical 表，`20260907_14` 为 dispatches.task_id 增加唯一约束。
 
-使用 SQLAlchemy optimistic locking 的关键实体：Dispatch、RuntimeThread、MemoryFact。`StaleDataError` 被转为业务冲突/HTTP 409，而非静默覆盖。
+使用 SQLAlchemy optimistic locking 的实体：Dispatch、RuntimeThread、SharedMemoryFact、FleetDriver、FleetVehicle、RoadEdge。`StaleDataError` 被转为业务冲突/HTTP 409，而非静默覆盖。
 
 距离与成本等精度敏感值使用 `Decimal`。
 
@@ -480,10 +478,10 @@ Redis token bucket 按 subject 与 operation class 限流。高风险写操作�
 
 ### 19.2 本轮状态
 
-- `docker compose --env-file .docker.env config --services` 成功。
-- `docker compose ps` 因 Docker daemon 未运行而失败。
-- 所以拓扑配置 VERIFIED，当前在线容器数 NOT VERIFIED。
-- 历史证据记录 10 个长期容器运行、migration exit 0。
+- VERIFIED（代码/静态配置）：Compose 声明 11 个 service，其中 migration 为一次性任务、10 个为长期运行服务。
+- CURRENT BLOCKED（2026-09-08）：工作区缺少 `.docker.env`，`scripts/test-offline-fleet-routing.ps1` 输出 `[BLOCKED BY ENVIRONMENT]` 并退出 2；未进入真实双场景服务启动与 MySQL/Redis 事后断言。
+- 因此当前在线容器数、当前 health 和公开 API → Redis Streams → Worker → MySQL 双场景均为 NOT VERIFIED；本轮不再同时声称 daemon 未运行或容器健康。
+- HISTORICAL VERIFIED（2026-09-01）：证据记录过 10 个长期容器运行、migration exit 0、backend health ok 和司机上报 Playwright 1/1。
 
 ### 19.3 两种启动模式
 
@@ -531,21 +529,19 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 
 ### 21.1 Backend
 
-- 测试文件：168。
-- Ruff：通过；有两个不可访问历史临时目录告警。
-- 默认环境 pytest：收集阶段 15 errors，根因是被忽略 `.env` 中 dev JWT secret 太短。
-- 隔离认证 Provider 后：850 passed、7 skipped、768 warnings，耗时 224.62 s。
-- 7 skipped：2 个真实 Redis checkpoint、1 个真实 security MySQL、3 个真实 security Redis、1 个真实 shared-memory race。
-- 这些 skip 本轮因所需 Docker / MySQL / Redis 环境与安全配置不可用而未补跑。
+- 当前测试文件：168；Ruff 在 2026-09-08 当前候选上通过。
+- 主控制器在 `849cbc6` HEAD 以工作区 `--basetemp` 直接运行完整后端：994 collected、982 passed、12 skipped、866 warnings、exit 0。
+- 12 个 skipped 均为需要显式 opt-in 的 MySQL/Redis/共享内存真实依赖测试；它们没有被包装成已通过。
+- 早期 850 passed/7 skipped/768 warnings/224.62 s 属于新增司机上报与离线沙盘之前的 HISTORICAL VERIFIED，只用于阶段追溯，不是当前基线。
+- Windows 默认临时目录曾产生 ACL setup/扫描噪声；当前全量可信退出码来自直接 pytest 与工作区 `--basetemp`。
 
 ### 21.2 Frontend
 
-- Vitest：52 files、238 tests passed。
-- ESLint：exit 0，0 error，2 个 Fast Refresh warning。
-- Build：成功，1917 modules transformed。
-- 产物：CSS 73.75 kB（gzip 14.51）；主 JS 498.35 kB（gzip 146.47）。
-- Playwright spec：15 个。
-- 司机上报 Playwright spec 在真实本地 Docker 栈与 `http://localhost:5173` 上为 1/1 passed；覆盖员工登录、本人任务、跨员工 403、异常提交 202、真实 anomaly/task identity 与 390px 无横向溢出。
+- 当前全量 Vitest：54 files、250 tests passed。
+- ESLint：exit 0，0 error，2 个既有 Fast Refresh warning。
+- Build：成功，1919 modules transformed；主 JS 512.09 kB（gzip 150.14 kB）。
+- 当前仓库 Playwright spec：17 个；本轮没有声称全部 17 个均重新执行。
+- HISTORICAL VERIFIED（2026-09-01）：司机上报 Playwright spec 曾在真实本地 Docker 栈与 `http://localhost:5173` 上 1/1 passed；2026-09-08 当前 Task 9 真实双场景 Docker 验收仍因缺 `.docker.env` 阻断。
 
 ### 21.3 已知警告债务
 
@@ -561,7 +557,20 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 - 上报幂等键同时约束异常与调度任务；同键同内容安全重放，同键不同内容（含并发争用）返回冲突且不重复调度。
 - 前端新增 `/report-issue`，My Tasks 增加“提出问题/报告问题”入口；`/dispatch` 改为任务中心，不再提交固定演示案例。
 - 本地 mock 页面已在 1440px 与 390px 视口执行结构、交互、控制台和横向溢出检查，均通过；该检查不等同于真实 Docker 全链路 E2E。
-- 使用现有 `.docker.env` 重建后，司机异常上报真实依赖 Playwright 用例为 1/1 passed；这不等同于全部历史 Playwright、故障注入或性能门禁均已重跑。
+- HISTORICAL VERIFIED（2026-09-01）：使用当时存在的 `.docker.env` 重建后，司机异常上报真实依赖 Playwright 用例为 1/1 passed；这不代表 2026-09-08 容器在线，也不等同于全部历史 Playwright、故障注入或性能门禁均已重跑。
+
+### 21.5 2026-09-08 离线车辆接替与道路绕行增量
+
+- 固定新平县沙盘数据为 8 个站点、18 个道路节点、26 条道路边、10 名司机、12 辆车辆和 12 张运单；数据全部由仓库生成，不接入高德、实时路况或真实车辆系统。
+- `DEMO-ORDER-001` 车辆故障的确定性结果为 `V-001 → V-005`、司机 `D-003`、接驳边 `E20`、2.80 公里、6 分钟、评分 93.4；候选集合包含 12 辆车，每个不合格候选都保留排除原因。
+- `DEMO-ORDER-005` 道路堵塞的原路线为 `E01,E02,E03,E04,E05`（10.00 公里、20 分钟），Dijkstra（`DIJKSTRA_V1`）重算路线为 `E01,E06,E07,E08,E09`（13.20 公里、24 分钟）；新路线排除 `E04`，差值为 3.20 公里和 4 分钟；网络拦截 UI fixture 忠实固化沙盘从版本 7 阻断 `E04` 后的版本 8，`E04.version=8`，其他道路仍为版本 7。
+- Task 1–8 主计划精确聚焦后端命令：`$env:PYTHONPATH = (Resolve-Path -LiteralPath 'backend').Path; & '.\.venv\Scripts\python.exe' -m pytest backend/tests/migrations/test_offline_fleet_routing_migration.py backend/tests/sandtable backend/tests/road_network backend/tests/fleet backend/tests/graph/test_offline_dispatch_flow.py backend/tests/concurrency/test_vehicle_reservation.py backend/tests/api/test_task_events.py backend/tests/api/test_dispatch_tasks.py -q --basetemp='backend/.pytest-runtime/task9-review-fix-focused-recorded'`；Task 9 首轮审查修复的新鲜结果为 96 passed、4 skipped、252 warnings、57.67 秒，exit 0；这是聚焦集合证据，不与完整后端 982/12 混用。
+- 后端完整基线：主控制器在同一 `849cbc6` HEAD 新鲜运行得到 982 passed、12 skipped、866 warnings、exit 0；12 个 skip 均为未启用的 opt-in MySQL/Redis/共享内存真实依赖测试。最终独立项目审查只读复用了这项证据，没有重复约五分钟全量。
+- 前端全量：54 files、250 tests passed；ESLint exit 0（0 errors、2 个既有 Fast Refresh warnings）；构建 exit 0、1919 modules transformed，主 JS 512.09 kB（gzip 150.14 kB）。
+- 网络拦截 Playwright UI 回归专用证据：2/2 passed、4.7 秒；两个场景都验证未发布员工的 `dispatch.decision_reason`、`vehicle_allocation`、`route_plan` 不展示，主管发布后切回员工核对完整证据，并在刷新、重新登录后以同一组完整断言复核。车辆夹具逐项匹配固定沙盘（包括 V-005 剩余 900 kg、V-006 维护/休班/冷链不匹配），路线节点序列为 `N01→N02→N07→N08→N09→N06`。该证据位于 `docs/verification/fleet-rerouting/playwright-mocked.json`，是确定性 UI 权限与展示回归，不是实时服务或真实 Docker 浏览器验收。
+- `scripts/test-offline-fleet-routing.ps1` 于 2026-09-08 实际退出 2：`[BLOCKED BY ENVIRONMENT] 缺少 .docker.env，无法启动真实依赖验收。` 因此本轮没有声称公开 API → Redis Streams → Worker → MySQL 的真实双场景链已经重新通过。
+- Task 9 初次运行 `scripts/test.ps1` 时默认系统临时目录因 Windows ACL 产生 1 个 setup error；现有包装脚本没有传播 pytest 非零退出码，因此不能把该次外层 0 当作通过证据。当前可信完整基线仅采用主控制器直接 pytest、工作区 `--basetemp` 得到的 982/12/exit 0。
+
 ## 22. 历史集成、并发与性能证据
 
 ### 22.1 V2-E 黑盒
@@ -683,16 +692,17 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 
 1. 不能声称当前图由 LLM 生成调度结论。
 2. 不能声称 Docker runtime 使用真实 embedding。
-3. 不能声称 Capacity/Route 已接生产系统。
+3. 不能把 `docker-dev` 的 MySQL 虚拟车队/路网与本地 Dijkstra 声称为已接入真实外部运力、地图或生产调度系统。
 4. 不能声称 production runtime wiring 完成。
 5. 不能声称 exactly-once delivery。
 6. 不能声称灾备、备份恢复与 RPO/RTO 已完成。
-7. 不能声称全部 Docker 专项集成、全部 Playwright、故障注入或 Locust 已重新执行；本轮只重新验证了当前容器健康与司机异常上报 E2E 1/1。
+7. 不能声称全部 Docker 专项集成、全部 Playwright、故障注入或 Locust 已重新执行；2026-09-08 只重新验证了网络拦截的离线车辆/路线 UI 回归 2/2，真实双场景 Docker 验收因缺少 `.docker.env` 被环境阻断。
 8. 不能声称当前只有 5 个角色。
 9. 不能声称 `/team-tasks` 已交付。
 10. 不能声称所有 Auditor 全局审计视图已暴露。
 11. 不能把历史性能证据冒充 2026-08-31 在线数据。
-12. 不能声称默认 `make test` 在当前本地 `.env` 下通过。
+12. 不能声称默认 `make test` 或现有 `scripts/test.ps1` 的外层退出码已经可靠证明全量测试通过；本轮可信证据来自带工作区 `--basetemp` 的直接 pytest。
+13. 不能声称使用了高德地图、实时路况、GPS 或真实车辆调度；当前教师反馈场景使用固定离线虚拟沙盘。
 
 ## 28. 最终工程判断
 
@@ -704,7 +714,7 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 
 生产前至少需要：
 
-1. 实现并验收 production Provider wiring，包括真实 Capacity、Routing、Embedding 以及是否实际启用 LLM 的明确设计。
+1. 明确并验收 production Provider wiring：决定 MySQL 车队/路网与本地 Dijkstra 的生产化边界，接入真实外部 Environment/Embedding 等所需 Provider，并明确是否实际启用 LLM。
 2. 建立 V2-G3：跨存储备份、manifest、checksum、sanitizer、恢复、RPO/RTO 与演练。
 3. 在干净 CI 环境和可用 Docker daemon 上重跑所有真实依赖 integration、Playwright、故障注入与性能门禁。
 4. 修复本地 dev JWT 配置漂移，保证默认质量门禁不依赖临时环境覆盖。

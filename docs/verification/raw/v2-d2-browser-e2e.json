@@ -2,12 +2,12 @@
   "config": {
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
-      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\node_modules\\@playwright\\test\\cli.js",
       "test",
-      "driver-anomaly-report.spec.ts"
+      "e2e/offline-fleet-rerouting.spec.ts"
     ],
-    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
-    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+    "configFile": "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -23,7 +23,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
+        "outputDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -31,7 +31,7 @@
         },
         "id": "",
         "name": "",
-        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+        "testDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -66,63 +66,77 @@
   },
   "suites": [
     {
-      "title": "driver-anomaly-report.spec.ts",
-      "file": "driver-anomaly-report.spec.ts",
+      "title": "offline-fleet-rerouting.spec.ts",
+      "file": "offline-fleet-rerouting.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [
         {
-          "title": "delivery employee reports an assigned task and receives one AI dispatch identity",
+          "title": "网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工查看，刷新重登仍一致",
           "ok": true,
           "tags": [],
           "tests": [
             {
               "timeout": 60000,
-              "annotations": [
-                {
-                  "type": "skip",
-                  "description": "Docker development JWT secret is required",
-                  "location": {
-                    "file": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\e2e\\driver-anomaly-report.spec.ts",
-                    "line": 9,
-                    "column": 8
-                  }
-                }
-              ],
-              "expectedStatus": "skipped",
+              "annotations": [],
+              "expectedStatus": "passed",
               "projectId": "",
               "projectName": "",
               "results": [
                 {
                   "workerIndex": 0,
                   "parallelIndex": 0,
-                  "status": "skipped",
-                  "duration": 1,
+                  "status": "passed",
+                  "duration": 1849,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-01T10:25:11.133Z",
-                  "annotations": [
-                    {
-                      "type": "skip",
-                      "description": "Docker development JWT secret is required",
-                      "location": {
-                        "file": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\e2e\\driver-anomaly-report.spec.ts",
-                        "line": 9,
-                        "column": 8
-                      }
-                    }
-                  ],
+                  "startTime": "2026-09-09T09:17:53.701Z",
+                  "annotations": [],
                   "attachments": []
                 }
               ],
-              "status": "skipped"
+              "status": "expected"
             }
           ],
-          "id": "c9d163d34965e87bb88f-0f39fae0ee062442c5a0",
-          "file": "driver-anomaly-report.spec.ts",
-          "line": 12,
+          "id": "b8ee7217811f6a4a9e53-7c6c6fff63a1da22256f",
+          "file": "offline-fleet-rerouting.spec.ts",
+          "line": 547,
+          "column": 1
+        },
+        {
+          "title": "网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工查看，刷新重登仍一致",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1395,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-09T09:17:55.808Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b8ee7217811f6a4a9e53-2372058003f364e92875",
+          "file": "offline-fleet-rerouting.spec.ts",
+          "line": 572,
           "column": 1
         }
       ]
@@ -130,10 +144,10 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-01T10:25:10.681Z",
-    "duration": 489.011,
-    "expected": 0,
-    "skipped": 1,
+    "startTime": "2026-09-09T09:17:53.302Z",
+    "duration": 4198.881,
+    "expected": 2,
+    "skipped": 0,
     "unexpected": 0,
     "flaky": 0
   }

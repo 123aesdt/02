@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from security_support import authorize_app, principal_for
 
 from app.main import create_app
+from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
@@ -167,9 +168,7 @@ def test_delivery_employee_cannot_read_another_employees_task():
         task = session.query(DispatchTask).filter_by(task_id="task-001").one()
         task.assignee_subject_id = "CF-DEMO-006"
         session.commit()
-    app.dependency_overrides[get_current_principal] = lambda: replace(
-        principal_for(Role.EMPLOYEE), subject_id="CF-DEMO-001"
-    )
+    app.dependency_overrides[get_current_principal] = lambda: replace(principal_for(Role.EMPLOYEE), subject_id="CF-DEMO-001")
     try:
         status_response = TestClient(app).get("/api/v1/dispatch-tasks/task-001")
         result_response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
@@ -490,6 +489,33 @@ def test_get_dispatch_result_completed():
         temp.cleanup()
 
 
+def test_get_dispatch_result_includes_the_persisted_anomaly_type():
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    with service._session_factory() as session:
+        task = session.query(DispatchTask).filter_by(task_id="task-001").one()
+        anomaly = Anomaly(
+            anomaly_no="ANOM-VEHICLE-001",
+            order_id=task.order_id,
+            anomaly_type="VEHICLE_BREAKDOWN",
+            severity="HIGH",
+            description="V-001 发动机故障",
+            status="REPORTED",
+        )
+        session.add(anomaly)
+        session.flush()
+        task.anomaly_id = anomaly.id
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert response.status_code == 200
+        assert response.json()["anomaly_type"] == "VEHICLE_BREAKDOWN"
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
 def test_get_dispatch_result_uses_database_facts():
     app, temp, engine, redis = _terminal_app("COMPLETED", "county-308")
     try:
@@ -674,3 +700,378 @@ def test_dispatcher_cannot_publish_a_dispatch() -> None:
     assert response.status_code == 403
     assert response.json()["code"] == "AUTHORIZATION_DENIED"
     assert service.calls == []
+
+
+def _persist_task_7_evidence(service: DispatchTaskApiService) -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    with service._session_factory() as session:
+        task = session.query(DispatchTask).filter_by(task_id="task-001").one()
+        dispatch = session.query(Dispatch).filter_by(task_id=task.id).one()
+        dispatch.original_vehicle_id = "V-001"
+        dispatch.target_vehicle_id = "V-005"
+        dispatch.target_driver_id = "D-003"
+        dispatch.transfer_node_id = "N04"
+        session.add_all(
+            [
+                DispatchEvidence(
+                    dispatch_id=dispatch.id,
+                    evidence_type="FLEET_ALLOCATION",
+                    algorithm_version="FLEET_SCORE_V1",
+                    payload_json={
+                        "original_vehicle_id": "V-001",
+                        "target_vehicle_id": "V-005",
+                        "target_driver_id": "D-003",
+                        "vehicle_reassigned": True,
+                        "pickup_route": {
+                            "objective": "FASTEST",
+                            "node_ids": ["N15", "N04"],
+                            "edge_ids": ["E20"],
+                            "distance_km": "2.80",
+                            "estimated_minutes": 6,
+                            "risk_cost": "0",
+                            "visited_node_count": 2,
+                        },
+                        "candidates": [
+                            {
+                                "vehicle_id": "V-005",
+                                "driver_id": "D-003",
+                                "vehicle_status": "AVAILABLE",
+                                "driver_status": "ON_DUTY",
+                                "remaining_capacity_kg": "900.00",
+                                "gross_weight_tons": "2.40",
+                                "cargo_capability": "COLD_CHAIN",
+                                "pickup_distance_km": "2.80",
+                                "pickup_eta_minutes": 6,
+                                "score": "93.4",
+                                "score_components": {
+                                    "eta_penalty": "9.0",
+                                    "distance_penalty": "5.60",
+                                    "load_penalty": "2.0",
+                                    "road_risk_penalty": "0",
+                                    "same_station_bonus": "0",
+                                    "cargo_exact_match_bonus": "10",
+                                },
+                                "scoring_formula": "FLEET_SCORE_V1",
+                                "eligible": True,
+                                "exclusion_reasons": [],
+                            }
+                        ],
+                    },
+                ),
+                DispatchEvidence(
+                    dispatch_id=dispatch.id,
+                    evidence_type="ROUTE_CALCULATION",
+                    algorithm_version="DIJKSTRA_V1",
+                    road_network_version=7,
+                    payload_json={
+                        "original_path": {
+                            "objective": "FASTEST",
+                            "node_ids": ["N01", "N02", "N03", "N04", "N05", "N06"],
+                            "edge_ids": ["E01", "E02", "E03", "E04", "E05"],
+                            "distance_km": "10.00",
+                            "estimated_minutes": 20,
+                            "risk_cost": "2",
+                            "visited_node_count": 6,
+                        },
+                        "recommended_path": {
+                            "objective": "FASTEST",
+                            "node_ids": ["N01", "N02", "N07", "N08", "N09", "N06"],
+                            "edge_ids": ["E01", "E06", "E07", "E08", "E09"],
+                            "distance_km": "13.20",
+                            "estimated_minutes": 24,
+                            "risk_cost": "0",
+                            "visited_node_count": 8,
+                            "scoring_formula": "ROUTE_SCORE_V1",
+                        },
+                        "candidate_routes": [
+                            {
+                                "route_id": "RTE-RECOMMENDED",
+                                "route_name": "最快路线",
+                                "objective": "FASTEST",
+                                "node_ids": ["N01", "N02", "N07", "N08", "N09", "N06"],
+                                "edge_ids": ["E01", "E06", "E07", "E08", "E09"],
+                                "distance_km": "13.20",
+                                "estimated_minutes": 24,
+                                "risk_level": "LOW",
+                                "risk_cost": "0",
+                                "visited_node_count": 8,
+                                "available": True,
+                                "reason": None,
+                                "score": "100.00",
+                                "scoring_formula": "ROUTE_SCORE_V1",
+                            }
+                        ],
+                        "blocked_edge_ids": ["E04"],
+                        "distance_delta_km": "3.20",
+                        "eta_delta_minutes": 4,
+                        "routing_status": "ROUTED",
+                        "visited_node_count": 8,
+                        "network_nodes": [
+                            {"node_id": "N01", "name": "中心仓", "x_km": "0.00", "y_km": "0.00", "node_type": "STATION"},
+                            {"node_id": "N06", "name": "城东站", "x_km": "10.00", "y_km": "2.00", "node_type": "STATION"},
+                        ],
+                        "network_edges": [
+                            {
+                                "edge_id": "E04",
+                                "name": "新平路东河桥段",
+                                "from_node_id": "N04",
+                                "to_node_id": "N05",
+                                "distance_km": "2.50",
+                                "base_minutes": 5,
+                                "road_level": "COUNTY",
+                                "risk_level": "HIGH",
+                                "status": "BLOCKED",
+                                "congestion_factor": "1.00",
+                                "weight_limit_tons": "6.00",
+                                "bidirectional": True,
+                                "version": 2,
+                            }
+                        ],
+                    },
+                ),
+            ]
+        )
+        session.commit()
+
+
+def test_supervisor_reads_persisted_fleet_and_route_evidence_snapshot() -> None:
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    app.dependency_overrides[get_current_principal] = lambda: principal_for(Role.SUPERVISOR)
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+        body = response.json()
+
+        assert response.status_code == 200
+        assert body["vehicle_allocation"]["target_vehicle_id"] == "V-005"
+        assert body["vehicle_allocation"]["target_driver_id"] == "D-003"
+        assert body["vehicle_allocation"]["pickup_route"]["edge_ids"] == ["E20"]
+        assert body["vehicle_allocation"]["scoring_formula"] == "FLEET_SCORE_V1"
+        assert body["route_plan"]["distance_delta_km"] == "3.20"
+        assert body["route_plan"]["algorithm"] == "DIJKSTRA_V1"
+        assert body["route_plan"]["road_network_version"] == 7
+        assert "E04" not in body["route_plan"]["recommended_path"]["edge_ids"]
+        assert body["route_plan"]["network_nodes"][0]["x_km"] == "0.00"
+        assert body["route_plan"]["network_edges"][0]["status"] == "BLOCKED"
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_manual_review_result_keeps_persisted_calculation_evidence_visible() -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("REVIEW_REQUIRED", target_route_id=None, audit_result="REVIEW_REQUIRED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        dispatch = session.query(Dispatch).filter_by(dispatch_no="DSP-001").one()
+        dispatch.target_vehicle_id = None
+        dispatch.target_driver_id = None
+        fleet = session.query(DispatchEvidence).filter_by(evidence_type="FLEET_ALLOCATION").one()
+        fleet.payload_json = {
+            "original_vehicle_id": "V-001",
+            "target_vehicle_id": None,
+            "target_driver_id": None,
+            "vehicle_reassigned": False,
+            "pickup_route": None,
+            "selected_candidate": None,
+            "candidates": [
+                {
+                    "vehicle_id": "V-005",
+                    "score": None,
+                    "exclusion_reasons": ["VEHICLE_UNAVAILABLE"],
+                }
+            ],
+        }
+        route = session.query(DispatchEvidence).filter_by(evidence_type="ROUTE_CALCULATION").one()
+        route.road_network_version = None
+        route.payload_json = {
+            "original_path": None,
+            "recommended_path": None,
+            "candidate_routes": [],
+            "blocked_edge_ids": [],
+            "distance_delta_km": None,
+            "eta_delta_minutes": None,
+            "routing_status": "MANUAL_REVIEW",
+            "network_nodes": [],
+            "network_edges": [],
+        }
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+        body = response.json()
+
+        assert response.status_code == 200
+        assert body["vehicle_allocation"]["original_vehicle_id"] == "V-001"
+        assert body["vehicle_allocation"]["target_vehicle_id"] is None
+        assert body["vehicle_allocation"]["candidate_vehicles"] == [
+            {
+                "vehicle_id": "V-005",
+                "driver_id": None,
+                "vehicle_status": None,
+                "driver_status": None,
+                "remaining_capacity_kg": None,
+                "gross_weight_tons": None,
+                "cargo_capability": None,
+                "pickup_route": None,
+                "pickup_distance_km": None,
+                "pickup_eta_minutes": None,
+                "score": None,
+                "score_components": None,
+                "scoring_formula": None,
+                "eligible": None,
+                "exclusion_reasons": ["VEHICLE_UNAVAILABLE"],
+            }
+        ]
+        assert body["route_plan"]["routing_status"] == "MANUAL_REVIEW"
+        assert body["route_plan"]["road_network_version"] is None
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+def test_delivery_employee_cannot_read_unpublished_fleet_or_route_evidence() -> None:
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    employee = principal_for(Role.EMPLOYEE)
+    with service._session_factory() as session:
+        task = session.query(DispatchTask).filter_by(task_id="task-001").one()
+        task.assignee_subject_id = employee.subject_id
+        session.commit()
+    app.dependency_overrides[get_current_principal] = lambda: employee
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+        body = response.json()
+
+        assert response.status_code == 200
+        assert body["dispatch"]["target_route_id"] is None
+        assert body["vehicle_allocation"] is None
+        assert body["route_plan"] is None
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_result_rejects_malformed_or_duplicate_evidence_without_leaking_internal_fields() -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        route = session.query(DispatchEvidence).filter_by(evidence_type="ROUTE_CALCULATION").one()
+        malformed = dict(route.payload_json)
+        malformed["authorization"] = "Bearer must-not-leak"
+        malformed["network_nodes"] = [{"node_id": "N01", "name": "中心仓", "x_km": 0, "y_km": "0.00", "node_type": "STATION"}]
+        route.payload_json = malformed
+        session.commit()
+    try:
+        malformed_response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+        malformed_body = malformed_response.json()
+
+        assert malformed_response.status_code == 200
+        assert malformed_body["vehicle_allocation"] is None
+        assert malformed_body["route_plan"] is None
+        assert "must-not-leak" not in malformed_response.text
+
+        with service._session_factory() as session:
+            dispatch = session.query(Dispatch).filter_by(dispatch_no="DSP-001").one()
+            session.add(
+                DispatchEvidence(
+                    dispatch_id=dispatch.id,
+                    evidence_type="FLEET_ALLOCATION",
+                    algorithm_version="FLEET_SCORE_V1",
+                    payload_json={},
+                )
+            )
+            session.commit()
+        duplicate_response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert duplicate_response.status_code == 200
+        assert duplicate_response.json()["vehicle_allocation"] is None
+        assert duplicate_response.json()["route_plan"] is None
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_result_rejects_selected_candidate_identity_tampering() -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        fleet = session.query(DispatchEvidence).filter_by(evidence_type="FLEET_ALLOCATION").one()
+        payload = dict(fleet.payload_json)
+        payload["selected_candidate"] = {
+            "vehicle_id": "V-TAMPERED",
+            "driver_id": "D-TAMPERED",
+            "vehicle_status": "AVAILABLE",
+        }
+        fleet.payload_json = payload
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert response.status_code == 200
+        assert response.json()["vehicle_allocation"] is None
+        assert response.json()["route_plan"] is None
+        assert "TAMPERED" not in response.text
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+@pytest.mark.parametrize(
+    "corruption",
+    [
+        "empty_recommended_path",
+        "recommended_path_missing_distance",
+        "candidate_route_missing_distance",
+        "recommended_path_wrong_eta_type",
+    ],
+)
+def test_result_rejects_incomplete_or_wrong_typed_path_evidence(corruption: str) -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        route = session.query(DispatchEvidence).filter_by(evidence_type="ROUTE_CALCULATION").one()
+        payload = dict(route.payload_json)
+        if corruption == "empty_recommended_path":
+            payload["recommended_path"] = {}
+        elif corruption == "recommended_path_missing_distance":
+            recommended_path = dict(payload["recommended_path"])
+            recommended_path.pop("distance_km")
+            payload["recommended_path"] = recommended_path
+        elif corruption == "candidate_route_missing_distance":
+            candidate = dict(payload["candidate_routes"][0])
+            candidate.pop("distance_km")
+            payload["candidate_routes"] = [candidate]
+        else:
+            recommended_path = dict(payload["recommended_path"])
+            recommended_path["estimated_minutes"] = "24"
+            payload["recommended_path"] = recommended_path
+        route.payload_json = payload
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert response.status_code == 200
+        assert response.json()["vehicle_allocation"] is None
+        assert response.json()["route_plan"] is None
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()

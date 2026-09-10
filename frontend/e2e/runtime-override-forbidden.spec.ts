@@ -6,7 +6,7 @@ import { authenticatePage, bearer, developmentToken } from "./support/security-a
 test("test_browser_runtime_override_forbidden", async ({ page, request }) => {
   const taskId = await createRuntimeTask(request);
   await authenticatePage(page, "DISPATCHER", `/dispatch/${taskId}`);
-  await expect(page.getByRole("heading", { name: "Runtime 不可用" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "运行态不可用" })).toBeVisible();
   await expect(page.getByText("当前身份缺少 runtime:read 权限。")).toBeVisible();
   await expect(page.locator('button[data-target="BROKEN"]')).toHaveCount(0);
   const response = await request.post(`${apiBaseUrl}/api/v1/runtime/threads/${encodeURIComponent(`cf:dispatch:${taskId}`)}/overrides`, { headers: bearer(developmentToken("DISPATCHER")), data: {

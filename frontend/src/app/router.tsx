@@ -10,6 +10,7 @@ import { AuditPage } from "../pages/audit-page";
 import { DispatcherWorkspacePage } from "../pages/dispatcher-workspace-page";
 import { DispatchDetailPage } from "../pages/dispatch-detail-page";
 import { DispatchTaskCenterPage } from "../pages/dispatch-task-center-page";
+import { FleetLiveMapPage } from "../pages/fleet-live-map-page";
 import { AnomaliesPage } from "../pages/anomalies-page";
 import { AgentsPage } from "../pages/agents-page";
 import { MemoryPage } from "../pages/memory-page";
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([{ path: "/", element: <AppShell />, c
   { path: "reviews", element: <RequirePermission permission="dispatch:review"><ReviewsPage /></RequirePermission> },
   { path: "runtime", element: <RequirePermission permission="runtime:read"><RuntimePage /></RequirePermission> },
   { path: "dispatch", element: <RequirePermission permission="dispatch:create"><DispatchTaskCenterPage /></RequirePermission> },
+  { path: "fleet-live-map", element: <RequirePermission permission="dispatch:review"><FleetLiveMapPage /></RequirePermission> },
   { path: "dispatch/:taskId", element: <RequirePermission permission="dispatch:read"><DispatchDetailPage /></RequirePermission> },
   { path: "anomalies", element: <RequirePermission permission="anomalies:read"><AnomaliesPage /></RequirePermission> },
   { path: "orders", element: <RequirePermission permission="orders:read"><OrdersPage /></RequirePermission> },

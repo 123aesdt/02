@@ -2,7 +2,7 @@
   "config": {
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
-      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\node_modules\\@playwright\\test\\cli.js",
       "test",
       "v2e-normal-routing.spec.ts",
       "v2e-memory-reconcile.spec.ts",
@@ -12,8 +12,8 @@
       "runtime-override-terminal.spec.ts",
       "runtime-override-forbidden.spec.ts"
     ],
-    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
-    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+    "configFile": "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -29,7 +29,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
+        "outputDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -37,7 +37,7 @@
         },
         "id": "",
         "name": "",
-        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+        "testDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -54,7 +54,7 @@
       [
         "json",
         {
-          "outputFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\docs\\verification\\v2-g2\\raw\\browser-authenticated-regression.json"
+          "outputFile": "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\docs\\verification\\v2-g2\\raw\\browser-authenticated-regression.json"
         }
       ]
     ],
@@ -93,7 +93,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 4656,
+                  "duration": 6565,
                   "errors": [],
                   "stdout": [
                     {
@@ -111,7 +111,7 @@
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:17:34.210Z",
+                  "startTime": "2026-09-09T01:39:52.766Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -148,12 +148,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 283,
+                  "duration": 348,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:17:39.205Z",
+                  "startTime": "2026-09-09T01:40:00.680Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -190,7 +190,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 3605,
+                  "duration": 7410,
                   "errors": [],
                   "stdout": [
                     {
@@ -208,7 +208,7 @@
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:17:39.512Z",
+                  "startTime": "2026-09-09T01:40:01.055Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -239,7 +239,7 @@
               "annotations": [
                 {
                   "type": "runtime-request-count",
-                  "description": "{\"stable_window\":[6,6],\"total\":32,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-88a8d526744243cc82549757d996fd4\":11,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/history\":10,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/intervention\":5,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/overrides\":6}}"
+                  "description": "{\"stable_window\":[5,5],\"total\":35,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-60233b37192b4c5f8e768ca5ef45295\":11,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-60233b37192b4c5f8e768ca5ef45295/history\":9,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-60233b37192b4c5f8e768ca5ef45295/intervention\":7,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-60233b37192b4c5f8e768ca5ef45295/overrides\":8}}"
                 }
               ],
               "expectedStatus": "passed",
@@ -250,7 +250,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11733,
+                  "duration": 17322,
                   "errors": [],
                   "stdout": [
                     {
@@ -266,20 +266,19 @@
                       "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
                     },
                     {
+                      "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMS0xCg=="
+                    },
+                    {
                       "buffer": "Y291bnR5Zmxvdy1haS13b3JrZXItMi0xCg=="
                     }
                   ],
-                  "stderr": [
-                    {
-                      "buffer": "RXJyb3IgcmVzcG9uc2UgZnJvbSBkYWVtb246IENvbnRhaW5lciA2YzljYjQ0N2ZhYjI3YWRiOTk2NDUyOGQ4OGRlZmRmNDE1NDAzNGY1MWVhYTM1NDU5ZDZlYTNjM2MxNGQ3NmQyIGlzIG5vdCBwYXVzZWQK"
-                    }
-                  ],
+                  "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:17:43.138Z",
+                  "startTime": "2026-09-09T01:40:08.486Z",
                   "annotations": [
                     {
                       "type": "runtime-request-count",
-                      "description": "{\"stable_window\":[6,6],\"total\":32,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-88a8d526744243cc82549757d996fd4\":11,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/history\":10,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/intervention\":5,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-88a8d526744243cc82549757d996fd4/overrides\":6}}"
+                      "description": "{\"stable_window\":[5,5],\"total\":35,\"endpoints\":{\"/api/v1/runtime/threads/by-task/TASK-60233b37192b4c5f8e768ca5ef45295\":11,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-60233b37192b4c5f8e768ca5ef45295/history\":9,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-60233b37192b4c5f8e768ca5ef45295/intervention\":7,\"/api/v1/runtime/threads/cf%3Adispatch%3ATASK-60233b37192b4c5f8e768ca5ef45295/overrides\":8}}"
                     }
                   ],
                   "attachments": []
@@ -317,12 +316,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1413,
+                  "duration": 2374,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:17:54.886Z",
+                  "startTime": "2026-09-09T01:40:25.837Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -359,7 +358,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 11542,
+                  "duration": 12126,
                   "errors": [],
                   "stdout": [
                     {
@@ -369,16 +368,16 @@
                       "buffer": "Y291bnR5Zmxvdy1haS1xZHJhbnQtMQo="
                     },
                     {
-                      "buffer": "eyJtdXRhdGlvbl9pZCI6ICI2ZWNmNjU4ZC1mY2ViLTQ4MWEtOWQ5Ny0zYWZhYjdlY2NlNDciLCAiZmFjdF9rZXkiOiAic21mX2Y1YzE0NjJmNjNkMWI0NGQ4ODczNDgxY2ZhNTFjYjYxNGE5MTQxNzA2NGFmNzcwZGJhZjc4NTU3MTk2ODgxYTkiLCAiZGVjaXNpb24iOiAiQ1JFQVRFIiwgInN0YXR1cyI6ICJBUFBMSUVEIiwgImJlZm9yZV92ZXJzaW9uIjogbnVsbCwgImFmdGVyX3ZlcnNpb24iOiAxLCAidmVjdG9yX3N0YXR1cyI6ICJBQ1RJVkUiLCAiZ3JhcGhfc3RhdHVzIjogIkFDVElWRSIsICJwcm9qZWN0aW9uX2luY29tcGxldGUiOiBmYWxzZSwgImVycm9yX2NvZGUiOiBudWxsLCAiZXJyb3Jfc3VtbWFyeSI6IG51bGwsICJtZXRhZGF0YSI6IHt9fQ0K"
+                      "buffer": "eyJtdXRhdGlvbl9pZCI6ICI1Mzk1Y2IzZC1hZGM5LTQ1N2ItYjFkOC0xZjc4MzdlNGEyMjYiLCAiZmFjdF9rZXkiOiAic21mX2Y5OTdhYTgxMzc1OTVmYzFjNTJhMDMyOWJiN2I5MzcwNzMzOWRhNzA3NTYxODU4NTAxMDEzOTUwOTY4OTM2MDAiLCAiZGVjaXNpb24iOiAiQ1JFQVRFIiwgInN0YXR1cyI6ICJBUFBMSUVEIiwgImJlZm9yZV92ZXJzaW9uIjogbnVsbCwgImFmdGVyX3ZlcnNpb24iOiAxLCAidmVjdG9yX3N0YXR1cyI6ICJBQ1RJVkUiLCAiZ3JhcGhfc3RhdHVzIjogIkFDVElWRSIsICJwcm9qZWN0aW9uX2luY29tcGxldGUiOiBmYWxzZSwgImVycm9yX2NvZGUiOiBudWxsLCAiZXJyb3Jfc3VtbWFyeSI6IG51bGwsICJtZXRhZGF0YSI6IHt9fQ0K"
                     }
                   ],
                   "stderr": [
                     {
-                      "buffer": "RXJyb3IgcmVzcG9uc2UgZnJvbSBkYWVtb246IENvbnRhaW5lciAxZDI2Y2JhNmFhZTk5ZWI3ZDBmZmNlNjlkOTdhZGNkZmFkOGZhODNhZWE1NDVjNjVhNjljMzMxODQzOTE4YjkzIGlzIG5vdCBwYXVzZWQK"
+                      "buffer": "RXJyb3IgcmVzcG9uc2UgZnJvbSBkYWVtb246IENvbnRhaW5lciBmOTZjNzY5NDBmYzU1NGI5Y2U0MTVhYjMzOTcwNDVhNGMzMmE5ZDMwOTg5MjI4ZmNmODQ1MDA2MmE1YTg0N2MwIGlzIG5vdCBwYXVzZWQK"
                     }
                   ],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:17:56.320Z",
+                  "startTime": "2026-09-09T01:40:28.229Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -415,12 +414,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1374,
+                  "duration": 1397,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:18:07.887Z",
+                  "startTime": "2026-09-09T01:40:40.383Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -438,8 +437,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-08-29T05:17:33.612Z",
-    "duration": 35888.378,
+    "startTime": "2026-09-09T01:39:52.193Z",
+    "duration": 49848.479999999996,
     "expected": 7,
     "skipped": 0,
     "unexpected": 0,

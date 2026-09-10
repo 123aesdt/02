@@ -1,4 +1,5 @@
 import type { DashboardSnapshot, DispatchDetail } from "../types/dispatch";
+import type { RoutePlanResponse } from "../services/api/dispatch-adapter";
 
 export const dashboardSnapshot: DashboardSnapshot = {
   metrics: [
@@ -25,6 +26,37 @@ export const dashboardSnapshot: DashboardSnapshot = {
     { id: "routing", name: "路径规划", status: "SUCCESS", elapsed: "31 毫秒", output: "national-102" },
     { id: "dispatch", name: "调度", status: "SUCCESS", elapsed: "27 毫秒", output: "已执行改道" },
     { id: "audit", name: "审核", status: "APPROVED", elapsed: "14 毫秒", output: "调度完成" },
+  ],
+};
+
+export const mockRoutePlan: RoutePlanResponse = {
+  original_path: { objective: "FASTEST", node_ids: ["N01", "N02", "N04", "N06"], edge_ids: ["E01", "E04", "E05"], distance_km: "10.00", estimated_minutes: 20, risk_cost: "1.00", visited_node_count: 6, scoring_formula: null },
+  recommended_path: { objective: "FASTEST", node_ids: ["N01", "N02", "N07", "N08", "N09", "N06"], edge_ids: ["E01", "E06", "E07", "E08", "E09"], distance_km: "13.20", estimated_minutes: 24, risk_cost: "0.30", visited_node_count: 8, scoring_formula: "ROUTE_SCORE_V1" },
+  candidate_routes: [{ route_id: "RTE-DEMO-NORTH", route_name: "北环绕行线", objective: "FASTEST", node_ids: ["N01", "N02", "N07", "N08", "N09", "N06"], edge_ids: ["E01", "E06", "E07", "E08", "E09"], distance_km: "13.20", estimated_minutes: 24, risk_level: "LOW", risk_cost: "0.30", visited_node_count: 8, available: true, reason: null, score: "92.00", score_components: null, scoring_formula: "ROUTE_SCORE_V1", algorithm_version: "DIJKSTRA_V1", road_network_version: 7 }],
+  blocked_edge_ids: ["E04"],
+  distance_delta_km: "3.20",
+  eta_delta_minutes: 4,
+  visited_node_count: 8,
+  routing_status: "ROUTED",
+  algorithm: "DIJKSTRA_V1",
+  road_network_version: 7,
+  network_nodes: [
+    { node_id: "N01", name: "中心仓", x_km: "0.00", y_km: "2.00", node_type: "DEPOT" },
+    { node_id: "N02", name: "北门", x_km: "2.00", y_km: "2.00", node_type: "JUNCTION" },
+    { node_id: "N04", name: "东河桥", x_km: "6.00", y_km: "2.00", node_type: "JUNCTION" },
+    { node_id: "N06", name: "城东站", x_km: "10.00", y_km: "2.00", node_type: "STATION" },
+    { node_id: "N07", name: "北环一口", x_km: "3.00", y_km: "5.00", node_type: "JUNCTION" },
+    { node_id: "N08", name: "北环二口", x_km: "5.00", y_km: "6.00", node_type: "JUNCTION" },
+    { node_id: "N09", name: "北环三口", x_km: "8.00", y_km: "5.00", node_type: "JUNCTION" },
+  ],
+  network_edges: [
+    { edge_id: "E01", name: "仓前路", from_node_id: "N01", to_node_id: "N02", distance_km: "2.00", base_minutes: 4, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+    { edge_id: "E04", name: "新平路东河桥段", from_node_id: "N02", to_node_id: "N04", distance_km: "5.00", base_minutes: 10, road_level: "COUNTY", risk_level: "HIGH", status: "BLOCKED", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+    { edge_id: "E05", name: "新平路东段", from_node_id: "N04", to_node_id: "N06", distance_km: "3.00", base_minutes: 6, road_level: "COUNTY", risk_level: "MEDIUM", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+    { edge_id: "E06", name: "北环入口", from_node_id: "N02", to_node_id: "N07", distance_km: "2.60", base_minutes: 5, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+    { edge_id: "E07", name: "北环支路", from_node_id: "N07", to_node_id: "N08", distance_km: "2.40", base_minutes: 4, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+    { edge_id: "E08", name: "北环东段", from_node_id: "N08", to_node_id: "N09", distance_km: "3.20", base_minutes: 6, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
+    { edge_id: "E09", name: "城东联络线", from_node_id: "N09", to_node_id: "N06", distance_km: "3.00", base_minutes: 5, road_level: "COUNTY", risk_level: "LOW", status: "OPEN", congestion_factor: "1.00", weight_limit_tons: "6.00", bidirectional: true, version: 7 },
   ],
 };
 

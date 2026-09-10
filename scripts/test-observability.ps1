@@ -6,6 +6,25 @@ function Stop-ObservabilityTest([string]$Message) {
     exit 1
 }
 
+function Wait-ObservabilityDependencySeries([string]$Token, [int]$TimeoutSeconds = 90) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $headers = @{ Authorization = "Bearer $Token" }
+    $requiredDependencies = @('mysql', 'redis', 'qdrant', 'neo4j')
+    while ([DateTime]::UtcNow -lt $deadline) {
+        try {
+            $summary = Invoke-RestMethod -Uri 'http://localhost:8001/api/v1/observability/summary?window=5m' -Headers $headers -TimeoutSec 5
+            $dependencySeries = $summary.series.dependency_up
+            if ($null -ne $dependencySeries) {
+                $names = @($dependencySeries.PSObject.Properties.Name)
+                $missing = @($requiredDependencies | Where-Object { $names -notcontains $_ })
+                if ($missing.Count -eq 0) { return }
+            }
+        } catch {}
+        Start-Sleep -Milliseconds 1000
+    }
+    throw 'Prometheus dependency series did not become ready after the final metrics-enabled recreation.'
+}
+
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $envFile = Join-Path $projectRoot '.docker.env'
 $python = Join-Path $projectRoot '.venv\Scripts\python.exe'
@@ -63,6 +82,7 @@ if ($LASTEXITCODE -ne 0) { Stop-ObservabilityTest 'Failure isolation E2E failed.
 if ($LASTEXITCODE -ne 0) { Stop-ObservabilityTest 'Alert lifecycle E2E failed.' }
 & $python (Join-Path $PSScriptRoot 'observability_overhead.py') --output (Join-Path $rawDirectory 'overhead.json')
 if ($LASTEXITCODE -ne 0) { Stop-ObservabilityTest 'Observability overhead benchmark failed.' }
+Wait-ObservabilityDependencySeries -Token $token
 
 $env:E2E_JSON_REPORT = Join-Path $rawDirectory 'browser-e2e.json'
 Push-Location (Join-Path $projectRoot 'frontend')

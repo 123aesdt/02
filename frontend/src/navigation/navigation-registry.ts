@@ -7,6 +7,7 @@ import {
   Gauge,
   LayoutDashboard,
   ListChecks,
+  MapPinned,
   MessageSquareWarning,
   PackageSearch,
   Route,
@@ -27,6 +28,7 @@ export const NAVIGATION_REGISTRY: readonly NavigationItem[] = [
   { id: "admin-home", label: "系统总览", icon: LayoutDashboard, route: "/overview", group: "home", requiredPermissions: [PERMISSIONS.SYSTEM_ADMIN], visibility: "primary", landingRole: "ADMIN" },
 
   { id: "anomalies", label: "异常中心", icon: TriangleAlert, route: "/anomalies", group: "business", requiredPermissions: [PERMISSIONS.ANOMALIES_READ], visibility: "primary" },
+  { id: "fleet-live-map", label: "车辆态势地图", icon: MapPinned, route: "/fleet-live-map", group: "business", requiredPermissions: [PERMISSIONS.DISPATCH_REVIEW], visibility: "contextual", presentationRoles: ["SUPERVISOR", "ADMIN"] },
   { id: "dispatch", label: "智能调度", icon: Route, route: "/dispatch", group: "business", requiredPermissions: [PERMISSIONS.DISPATCH_CREATE], visibility: "primary" },
   { id: "orders", label: "运单管理", icon: PackageSearch, route: "/orders", group: "business", requiredPermissions: [PERMISSIONS.ORDERS_READ], visibility: "primary" },
   { id: "my-tasks", label: "我的任务", icon: UserRoundCheck, route: "/my-tasks", group: "business", requiredPermissions: [PERMISSIONS.DISPATCH_READ], visibility: "contextual", presentationRoles: ["EMPLOYEE"] },

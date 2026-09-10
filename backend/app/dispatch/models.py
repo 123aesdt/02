@@ -14,3 +14,6 @@ class DispatchResult:
     executed: bool
     reason: str
     requires_manual_review: bool
+    original_vehicle_id: str | None = None
+    target_vehicle_id: str | None = None
+    target_driver_id: str | None = None

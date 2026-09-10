@@ -6,7 +6,10 @@ from app.models.base import Base, TimestampMixin
 
 class Dispatch(TimestampMixin, Base):
     __tablename__ = "dispatches"
-    __table_args__ = (UniqueConstraint("dispatch_no", name="uq_dispatches_dispatch_no"),)
+    __table_args__ = (
+        UniqueConstraint("dispatch_no", name="uq_dispatches_dispatch_no"),
+        UniqueConstraint("task_id", name="uq_dispatches_task_id"),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     dispatch_no: Mapped[str] = mapped_column(String(64), nullable=False)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="RESTRICT"), nullable=False)
@@ -15,6 +18,9 @@ class Dispatch(TimestampMixin, Base):
     target_driver_id: Mapped[str | None] = mapped_column(String(64))
     original_route_id: Mapped[str | None] = mapped_column(String(64))
     target_route_id: Mapped[str | None] = mapped_column(String(64))
+    original_vehicle_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("fleet_vehicles.vehicle_id", ondelete="RESTRICT"))
+    target_vehicle_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("fleet_vehicles.vehicle_id", ondelete="RESTRICT"))
+    transfer_node_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("road_nodes.node_id", ondelete="RESTRICT"))
     decision_reason: Mapped[str | None] = mapped_column(Text)
     recommended_action: Mapped[str | None] = mapped_column(Text)
     analysis_mode: Mapped[str | None] = mapped_column(String(32))

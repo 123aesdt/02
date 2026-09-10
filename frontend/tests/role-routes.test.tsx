@@ -123,6 +123,15 @@ describe("role routes", () => {
     expect(view.container.textContent).not.toContain("无权访问");
   });
 
+  it("exposes the vehicle situation map as a protected administrator workspace", async () => {
+    workspaceReadApi.getAnomalies.mockResolvedValue({ items: [], total: 0, next_cursor: null, provenance: "LIVE" });
+    const allowed = await render(<AuthContext.Provider value={authorizedFor("dispatch:review")}><MemoryRouter>{routeElement("fleet-live-map")}</MemoryRouter></AuthContext.Provider>);
+    expect(allowed.container.textContent).toContain("车辆态势地图");
+
+    const denied = await render(<AuthContext.Provider value={authorizedFor("dispatch:read")}><MemoryRouter>{routeElement("fleet-live-map")}</MemoryRouter></AuthContext.Provider>);
+    expect(denied.container.querySelector("h2")?.textContent).toBe("无权访问");
+  });
+
   it("replaces the reviews placeholder while preserving its role guard", async () => {
     workspaceReadApi.getReviews.mockResolvedValue(reviewPage);
     const allowed = await render(<AuthContext.Provider value={authorizedFor("dispatch:review")}><MemoryRouter>{routeElement("reviews")}</MemoryRouter></AuthContext.Provider>);

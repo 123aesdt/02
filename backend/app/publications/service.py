@@ -9,6 +9,8 @@ from app.models.audit import AuditRecord
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
 from app.models.dispatch_publication import DispatchPublication
+from app.models.fleet_driver import FleetDriver
+from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.task import DispatchTask
 from app.security.models import AuthenticatedPrincipal
@@ -98,9 +100,11 @@ class DispatchPublicationService:
                 dispatch_id=dispatch.id,
                 status="PUBLISHED",
                 route_id=route_id,
-                route_instruction=(
-                    f"从 {order.origin} 出发，按 {route_id} 行驶，前往 {order.destination}。"
-                    "途中注意现场路况并服从安全调度。"
+                route_instruction=self._route_instruction(
+                    session,
+                    dispatch,
+                    order,
+                    route_id,
                 ),
                 published_by_subject_id=published_by_subject_id,
                 published_by_display_name=published_by_display_name,
@@ -120,6 +124,48 @@ class DispatchPublicationService:
             return self._result(session, task, publication, duplicate=True)
         finally:
             session.close()
+
+    @staticmethod
+    def _route_instruction(
+        session: Session,
+        dispatch: Dispatch,
+        order: Order,
+        route_id: str,
+    ) -> str:
+        reassigned = (
+            dispatch.target_vehicle_id is not None
+            and dispatch.target_vehicle_id != dispatch.original_vehicle_id
+        )
+        if not reassigned:
+            return (
+                f"从 {order.origin} 出发，按 {route_id} 行驶，前往 {order.destination}。"
+                "途中注意现场路况并服从安全调度。"
+            )
+        vehicle = session.scalar(
+            select(FleetVehicle).where(
+                FleetVehicle.vehicle_id == dispatch.target_vehicle_id
+            )
+        )
+        driver = (
+            None
+            if dispatch.target_driver_id is None
+            else session.scalar(
+                select(FleetDriver).where(
+                    FleetDriver.driver_id == dispatch.target_driver_id
+                )
+            )
+        )
+        plate = vehicle.plate_no if vehicle is not None else dispatch.target_vehicle_id
+        driver_label = (
+            f"{driver.name}（{dispatch.target_driver_id}）"
+            if driver is not None
+            else dispatch.target_driver_id or "未指定司机"
+        )
+        transfer_node_id = dispatch.transfer_node_id or "未指定接驳节点"
+        return (
+            f"换用车牌 {plate}，由司机 {driver_label}前往接驳节点 {transfer_node_id}，"
+            f"随后按路线 {route_id} 行驶至 {order.destination}。"
+        )
 
     @staticmethod
     def _aware(value: datetime) -> datetime:

@@ -76,6 +76,19 @@ async def test_execution_lock_can_be_reacquired_after_ttl(redis_client: FakeRedi
 
 
 @pytest.mark.asyncio
+async def test_execution_lock_renewal_preserves_the_current_owner(redis_client: FakeRedis):
+    lock = RedisExecutionLock(redis_client, ttl_ms=500)
+    handle = await lock.acquire("idem-001")
+    await asyncio.sleep(0.35)
+
+    renewed = await lock.renew(handle)
+    await asyncio.sleep(0.35)
+    second = await lock.acquire("idem-001")
+
+    assert renewed is True
+    assert second.acquired is False
+
+@pytest.mark.asyncio
 async def test_execution_lock_normalizes_redis_errors(redis_client: FakeRedis, monkeypatch):
     async def failed_set(*args, **kwargs):
         raise ConnectionError("redis://user:password@host unavailable")

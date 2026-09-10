@@ -1,7 +1,11 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from datetime import date, datetime
+from decimal import Decimal
+from enum import Enum
 from typing import Protocol
 
 from app.events.broker import TaskEventBroker
+from app.events.graph_payloads import project_capacity_event, project_dispatch_event, project_routing_event
 from app.events.models import TaskEvent, TaskEventType
 from app.graph.state import DispatchGraphState
 
@@ -81,10 +85,11 @@ class GraphEventAdapter:
             )
 
     async def _publish(self, task_id: str, node: str, event_type: TaskEventType, status: str, data: Mapping[str, object]) -> None:
-        await self._broker.publish(TaskEvent.create(task_id, event_type, node, status, data=data))
+        await self._broker.publish(TaskEvent.create(task_id, event_type, node, status, data=self._json_safe(data)))
 
-    @staticmethod
+    @classmethod
     def _data_for(
+        cls,
         node: str,
         patch: Mapping[str, object],
         state: Mapping[str, object] | None = None,
@@ -101,38 +106,27 @@ class GraphEventAdapter:
                 )
             }
         if node == "routing":
-            data = {
-                key: patch.get(key)
-                for key in (
-                    "recommended_route",
-                    "decision",
-                    "decision_reason",
-                    "memory_adopted",
-                    "requires_manual_review",
-                    "candidate_routes",
-                )
-            }
-            if "adopted_memory_id" in patch:
-                data["adopted_memory_id"] = patch.get("adopted_memory_id")
-            return data
+            return project_routing_event(patch)
         if node == "capacity":
-            combined = state or patch
-            capacity = combined.get("capacity_state")
-            capacity_data = capacity if isinstance(capacity, Mapping) else {}
-            return {
-                "vehicle_id": combined.get("vehicle_id"),
-                "vehicle_status": combined.get("vehicle_status"),
-                **{
-                    key: capacity_data.get(key)
-                    for key in (
-                        "driver_available",
-                        "vehicle_available",
-                        "capacity_status",
-                        "risk_level",
-                        "reason",
-                    )
-                },
-            }
+            return project_capacity_event(state or patch)
+        if node == "dispatch":
+            return project_dispatch_event(patch.get("dispatch_result"))
         if node == "audit":
             return {"audit_result": patch.get("audit_result")}
         return {}
+
+    @classmethod
+    def _json_safe(cls, value: object) -> object:
+        if isinstance(value, Decimal):
+            return format(value, "f")
+        if isinstance(value, Enum):
+            return cls._json_safe(value.value)
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        if isinstance(value, Mapping):
+            return {str(key): cls._json_safe(item) for key, item in value.items()}
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            return [cls._json_safe(item) for item in value]
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        return None

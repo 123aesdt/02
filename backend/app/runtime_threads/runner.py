@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Mapping, Sequence
 from inspect import isawaitable
+from time import monotonic
 from typing import Any
 
 from app.observability.recorder import MetricsRecorder, NoOpMetricsRecorder
@@ -14,6 +16,9 @@ from app.runtime_threads.models import (
     ThreadVersionConflict,
 )
 from app.runtime_threads.protocols import RuntimeCheckpointStore, RuntimeThreadRepository
+
+_BOUNDARY_VISIBILITY_TIMEOUT_SECONDS = 0.5
+_BOUNDARY_VISIBILITY_POLL_SECONDS = 0.01
 
 
 def checkpoint_descends_from(
@@ -169,23 +174,28 @@ class CheckpointedGraphRunner:
         return result
 
     async def _latest_boundary(self, thread: RuntimeThreadSnapshot, node: str) -> CheckpointRecord:
-        records = await self._checkpoint_store.list_bounded(thread.thread_id, 10)
-        records_by_id = {record.checkpoint_id: record for record in records}
-        for record in records:
-            parent_is_continuous = (
-                checkpoint_has_initial_ancestry(record, records_by_id)
-                if thread.current_checkpoint_id is None
-                else checkpoint_descends_from(record, thread.current_checkpoint_id, records_by_id)
-            )
-            if (
-                record.thread_id == thread.thread_id
-                and record.state.get("last_completed_node") == node
-                and record.state.get("completed_node_count") == thread.checkpoint_count + 1
-                and node == thread.next_node
-                and parent_is_continuous
-            ):
-                return record
-        raise RuntimeThreadCheckpointError("CHECKPOINT_BOUNDARY_MISSING")
+        deadline = monotonic() + _BOUNDARY_VISIBILITY_TIMEOUT_SECONDS
+        while True:
+            records = await self._checkpoint_store.list_bounded(thread.thread_id, 10)
+            records_by_id = {record.checkpoint_id: record for record in records}
+            for record in records:
+                parent_is_continuous = (
+                    checkpoint_has_initial_ancestry(record, records_by_id)
+                    if thread.current_checkpoint_id is None
+                    else checkpoint_descends_from(record, thread.current_checkpoint_id, records_by_id)
+                )
+                if (
+                    record.thread_id == thread.thread_id
+                    and record.state.get("last_completed_node") == node
+                    and record.state.get("completed_node_count") == thread.checkpoint_count + 1
+                    and node == thread.next_node
+                    and parent_is_continuous
+                ):
+                    return record
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                raise RuntimeThreadCheckpointError("CHECKPOINT_BOUNDARY_MISSING")
+            await asyncio.sleep(min(_BOUNDARY_VISIBILITY_POLL_SECONDS, remaining))
 
     async def _promote(
         self,

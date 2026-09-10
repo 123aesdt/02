@@ -160,3 +160,345 @@ async def test_graph_event_adapter_maps_fallback_and_safe_routing_data():
         "graph_memory_paths": [],
     }
     assert audit["data"] == {"audit_result": {"audit_status": "APPROVED"}}
+
+
+@pytest.mark.asyncio
+async def test_graph_event_adapter_projects_fleet_route_and_dispatch_snapshot_as_json_safe_data():
+    import json
+    from decimal import Decimal
+
+    from app.sandtable.seed_data import VEHICLES
+
+    candidate_vehicles = [
+        {
+            "vehicle_id": f"V-{index:03d}",
+            "driver_id": "D-003" if index == 5 else None,
+            "pickup_distance_km": Decimal("2.80") if index == 5 else None,
+            "score": Decimal("93.4") if index == 5 else None,
+            "eligible": index == 5,
+            "exclusion_reasons": [] if index == 5 else ["NOT_SELECTED"],
+        }
+        for index in range(1, len(VEHICLES) + 1)
+    ]
+
+    class StreamingGraph:
+        async def astream(self, state, *, stream_mode):
+            yield {"intake": {}}
+            yield {"entity_memory": {}}
+            yield {"graph_memory": {}}
+            yield {"environment": {}}
+            yield {
+                "capacity": {
+                    "capacity_state": {
+                        "driver_available": True,
+                        "vehicle_available": True,
+                        "capacity_status": "REASSIGNED",
+                        "risk_level": "low",
+                        "reason": None,
+                    },
+                    "candidate_vehicles": candidate_vehicles,
+                    "selected_vehicle_id": "V-005",
+                    "selected_driver_id": "D-003",
+                    "vehicle_reassigned": True,
+                    "pickup_route": {
+                        "node_ids": ["N15", "N04"],
+                        "edge_ids": ["E20"],
+                        "distance_km": Decimal("2.80"),
+                        "estimated_minutes": 6,
+                    },
+                }
+            }
+            yield {
+                "routing": {
+                    "blocked_edge_ids": ["E04"],
+                    "original_path": {
+                        "node_ids": ["N01", "N02", "N03", "N04", "N05", "N06"],
+                        "edge_ids": ["E01", "E02", "E03", "E04", "E05"],
+                        "distance_km": Decimal("10.00"),
+                        "estimated_minutes": 20,
+                    },
+                    "recommended_path": {
+                        "node_ids": ["N01", "N02", "N07", "N08", "N09", "N06"],
+                        "edge_ids": ["E01", "E06", "E07", "E08", "E09"],
+                        "distance_km": Decimal("13.20"),
+                        "estimated_minutes": 24,
+                        "visited_node_count": 8,
+                    },
+                    "candidate_routes": [],
+                    "distance_delta_km": Decimal("3.20"),
+                    "eta_delta_minutes": 4,
+                    "routing_algorithm": "DIJKSTRA_V1",
+                    "routing_status": "ROUTED",
+                    "road_network_version": 7,
+                    "road_network_nodes": [{"node_id": "N01", "name": "中心仓", "x_km": Decimal("0.00"), "y_km": Decimal("0.00"), "node_type": "STATION"}],
+                    "road_network_edges": [
+                        {
+                            "edge_id": "E04",
+                            "name": "新平路东河桥段",
+                            "from_node_id": "N04",
+                            "to_node_id": "N05",
+                            "distance_km": Decimal("2.50"),
+                            "base_minutes": 5,
+                            "road_level": "COUNTY",
+                            "risk_level": "HIGH",
+                            "status": "BLOCKED",
+                            "congestion_factor": Decimal("1.00"),
+                            "weight_limit_tons": Decimal("6.00"),
+                            "bidirectional": True,
+                            "version": 2,
+                        }
+                    ],
+                }
+            }
+            yield {
+                "dispatch": {
+                    "dispatch_result": {
+                        "original_vehicle_id": "V-001",
+                        "target_vehicle_id": "V-005",
+                        "target_driver_id": "D-003",
+                        "target_route_id": "RTE-RECOMMENDED",
+                        "status": "REROUTED",
+                        "version": 1,
+                        "executed": True,
+                    }
+                }
+            }
+            yield {"audit": {}}
+
+    broker = InMemoryTaskEventBroker()
+    subscription = await broker.subscribe("TASK-007")
+    await GraphEventAdapter(broker).invoke(
+        StreamingGraph(),
+        {"task_id": "TASK-007", "vehicle_id": "V-001", "vehicle_status": "BROKEN"},
+    )
+    events = [subscription.queue.get_nowait().to_dict() for _ in range(subscription.queue.qsize())]
+    capacity = next(event for event in events if event["event_type"] == "CAPACITY_COMPLETED")
+    routing = next(event for event in events if event["event_type"] == "ROUTING_COMPLETED")
+    dispatch = next(event for event in events if event["event_type"] == "DISPATCH_COMPLETED")
+
+    assert capacity["data"]["selected_vehicle_id"] == "V-005"
+    assert capacity["data"]["selected_driver_id"] == "D-003"
+    assert capacity["data"]["vehicle_reassigned"] is True
+    assert len(capacity["data"]["candidate_vehicles"]) == len(VEHICLES)
+    assert capacity["data"]["pickup_route"]["distance_km"] == "2.80"
+    assert routing["data"]["algorithm"] == "DIJKSTRA_V1"
+    assert routing["data"]["blocked_edge_ids"] == ["E04"]
+    assert routing["data"]["recommended_path"]["edge_ids"] == ["E01", "E06", "E07", "E08", "E09"]
+    assert routing["data"]["distance_delta_km"] == "3.20"
+    assert routing["data"]["visited_node_count"] == 8
+    assert routing["data"]["network_nodes"][0]["x_km"] == "0.00"
+    assert routing["data"]["network_edges"][0]["weight_limit_tons"] == "6.00"
+    assert dispatch["data"]["original_vehicle_id"] == "V-001"
+    assert dispatch["data"]["target_vehicle_id"] == "V-005"
+    assert dispatch["data"]["target_driver_id"] == "D-003"
+    json.dumps(events)
+
+
+@pytest.mark.asyncio
+async def test_graph_events_drop_unknown_nested_fields_and_opaque_objects() -> None:
+    import json
+    from decimal import Decimal
+
+    class OpaqueSecret:
+        def __str__(self) -> str:
+            return "opaque-secret-must-not-leak"
+
+    broker = InMemoryTaskEventBroker()
+    adapter = GraphEventAdapter(broker)
+    capacity_patch = {
+        "capacity_state": {
+            "driver_available": True,
+            "vehicle_available": True,
+            "capacity_status": "REASSIGNED",
+            "risk_level": "low",
+            "reason": None,
+        },
+        "candidate_vehicles": [
+            {
+                "vehicle_id": "V-005",
+                "driver_id": "D-003",
+                "pickup_distance_km": Decimal("2.80"),
+                "score": Decimal("93.4"),
+                "eligible": True,
+                "exclusion_reasons": [],
+                "pickup_route": {
+                    "node_ids": ["N15", "N04"],
+                    "edge_ids": ["E20"],
+                    "distance_km": Decimal("2.80"),
+                    "estimated_minutes": 6,
+                    "authorization": "Bearer nested-capacity-secret",
+                    "opaque": OpaqueSecret(),
+                },
+                "authorization": "Bearer candidate-secret",
+                "opaque": OpaqueSecret(),
+            }
+        ],
+        "selected_vehicle_id": OpaqueSecret(),
+        "selected_driver_id": "D-003",
+        "vehicle_reassigned": True,
+        "pickup_route": {
+            "node_ids": ["N15", "N04"],
+            "edge_ids": ["E20"],
+            "distance_km": Decimal("2.80"),
+            "estimated_minutes": 6,
+            "authorization": "Bearer pickup-secret",
+        },
+    }
+    await adapter.publish_completed("TASK-WHITELIST", "capacity", capacity_patch, capacity_patch)
+    await adapter.publish_completed(
+        "TASK-WHITELIST",
+        "routing",
+        {
+            "recommended_route": "route-102",
+            "decision": "REROUTE",
+            "decision_reason": OpaqueSecret(),
+            "memory_adopted": False,
+            "requires_manual_review": False,
+            "candidate_routes": [
+                {
+                    "route_id": "route-102",
+                    "route_name": "102国道",
+                    "distance_km": Decimal("13.20"),
+                    "estimated_minutes": 24,
+                    "risk_level": "LOW",
+                    "available": True,
+                    "reason": None,
+                    "score": Decimal("100.00"),
+                    "score_components": {
+                        "normalized_minutes": Decimal("0.25"),
+                        "authorization": "Bearer score-secret",
+                    },
+                    "authorization": "Bearer route-secret",
+                    "opaque": OpaqueSecret(),
+                }
+            ],
+            "recommended_path": {
+                "node_ids": ["N01", "N06"],
+                "edge_ids": ["E09"],
+                "distance_km": Decimal("13.20"),
+                "estimated_minutes": 24,
+                "authorization": "Bearer path-secret",
+            },
+            "road_network_nodes": [
+                {
+                    "node_id": "N01",
+                    "name": "中心仓",
+                    "x_km": Decimal("0.00"),
+                    "y_km": Decimal("0.00"),
+                    "node_type": "STATION",
+                    "authorization": "Bearer node-secret",
+                }
+            ],
+            "road_network_edges": [
+                {
+                    "edge_id": "E09",
+                    "name": "国道",
+                    "from_node_id": "N09",
+                    "to_node_id": "N06",
+                    "distance_km": Decimal("2.50"),
+                    "base_minutes": 5,
+                    "road_level": "NATIONAL",
+                    "risk_level": "LOW",
+                    "status": "OPEN",
+                    "congestion_factor": Decimal("1.00"),
+                    "weight_limit_tons": Decimal("20.00"),
+                    "bidirectional": True,
+                    "version": 7,
+                    "authorization": "Bearer edge-secret",
+                }
+            ],
+        },
+    )
+
+    capacity, routing = [event.to_dict() for event in await broker.history("TASK-WHITELIST")]
+    serialized = json.dumps([capacity, routing], ensure_ascii=False)
+
+    assert capacity["data"]["candidate_vehicles"] == [
+        {
+            "vehicle_id": "V-005",
+            "driver_id": "D-003",
+            "pickup_distance_km": "2.80",
+            "score": "93.4",
+            "eligible": True,
+            "exclusion_reasons": [],
+            "pickup_route": {
+                "node_ids": ["N15", "N04"],
+                "edge_ids": ["E20"],
+                "distance_km": "2.80",
+                "estimated_minutes": 6,
+            },
+        }
+    ]
+    assert "selected_vehicle_id" not in capacity["data"]
+    assert capacity["data"]["selected_driver_id"] == "D-003"
+    assert routing["data"]["candidate_routes"][0]["score_components"] == {"normalized_minutes": "0.25"}
+    assert routing["data"]["recommended_path"] == {
+        "node_ids": ["N01", "N06"],
+        "edge_ids": ["E09"],
+        "distance_km": "13.20",
+        "estimated_minutes": 24,
+    }
+    assert set(routing["data"]["network_nodes"][0]) == {
+        "node_id",
+        "name",
+        "x_km",
+        "y_km",
+        "node_type",
+    }
+    assert set(routing["data"]["network_edges"][0]) == {
+        "edge_id",
+        "name",
+        "from_node_id",
+        "to_node_id",
+        "distance_km",
+        "base_minutes",
+        "road_level",
+        "risk_level",
+        "status",
+        "congestion_factor",
+        "weight_limit_tons",
+        "bidirectional",
+        "version",
+    }
+    assert "decision_reason" not in routing["data"]
+    assert "Bearer" not in serialized
+    assert "opaque-secret-must-not-leak" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_dispatch_event_rejects_wrong_typed_identifiers_without_stringifying_them() -> None:
+    import json
+
+    class OpaqueSecret:
+        def __str__(self) -> str:
+            return "dispatch-secret-must-not-leak"
+
+    broker = InMemoryTaskEventBroker()
+    await GraphEventAdapter(broker).publish_completed(
+        "TASK-DISPATCH-WHITELIST",
+        "dispatch",
+        {
+            "dispatch_result": {
+                "original_vehicle_id": "V-001",
+                "target_vehicle_id": "V-005",
+                "target_driver_id": OpaqueSecret(),
+                "target_route_id": "route-102",
+                "status": "REROUTED",
+                "version": 1,
+                "executed": True,
+                "authorization": "Bearer dispatch-secret",
+            }
+        },
+    )
+
+    event = (await broker.history("TASK-DISPATCH-WHITELIST"))[0].to_dict()
+
+    assert event["data"] == {
+        "original_vehicle_id": "V-001",
+        "target_vehicle_id": "V-005",
+        "target_route_id": "route-102",
+        "status": "REROUTED",
+        "version": 1,
+        "executed": True,
+    }
+    assert "dispatch-secret-must-not-leak" not in json.dumps(event)

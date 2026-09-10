@@ -37,6 +37,7 @@ class ConsumedWsTicket:
     required_permission: Permission
     issued_at: datetime
     expires_at: datetime
+    can_review: bool = False
 
 
 class RedisWsTicketService:
@@ -78,6 +79,7 @@ class RedisWsTicketService:
                 "target_type": normalized_type,
                 "target_id": normalized_id,
                 "required_permission": required_permission.value,
+                "can_review": principal.can(Permission.DISPATCH_REVIEW),
                 "issued_at": issued_at.isoformat(),
                 "expires_at": expires_at.isoformat(),
             },
@@ -126,6 +128,7 @@ class RedisWsTicketService:
                 required_permission=Permission(payload["required_permission"]),
                 issued_at=datetime.fromisoformat(payload["issued_at"]),
                 expires_at=datetime.fromisoformat(payload["expires_at"]),
+                can_review=self._boolean(payload.get("can_review", False), "can_review"),
             )
         except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
             raise WsTicketRejected("WS_TICKET_INVALID") from None
@@ -146,3 +149,9 @@ class RedisWsTicketService:
         if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
             raise ValueError(f"invalid WebSocket ticket {name}")
         return value.strip()
+
+    @staticmethod
+    def _boolean(value: object, name: str) -> bool:
+        if not isinstance(value, bool):
+            raise ValueError(f"invalid WebSocket ticket {name}")
+        return value

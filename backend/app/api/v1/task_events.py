@@ -2,6 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.events.broker import EventBrokerConnectionError, TaskEventBroker
 from app.events.models import TaskEvent, TaskEventType
+from app.events.visibility import TaskEventVisibilityProjector
 from app.observability.websocket import event_group
 from app.security.audit import SecurityAuditEventType, SecurityAuditStatus
 from app.security.metrics import record_security_metric
@@ -23,7 +24,7 @@ async def task_events(websocket: WebSocket, task_id: str) -> None:
         await _close_with_visible_code(websocket, 4401)
         return
     try:
-        await websocket.app.state.ws_ticket_service.consume(
+        consumed_ticket = await websocket.app.state.ws_ticket_service.consume(
             ticket,
             target_type="task",
             target_id=task_id,
@@ -48,6 +49,7 @@ async def task_events(websocket: WebSocket, task_id: str) -> None:
         await _close_with_visible_code(websocket, 1008)
         return
 
+    projector = TaskEventVisibilityProjector(service._session_factory)
     await websocket.accept()
     metrics = websocket.app.state.metrics_recorder
     metrics.adjust_gauge("countyflow_websocket_connections", 1)
@@ -60,18 +62,18 @@ async def task_events(websocket: WebSocket, task_id: str) -> None:
             str(status["status"]),
             data={"ready": status["ready"], "requires_manual_review": status["requires_manual_review"]},
         )
-        await websocket.send_json(snapshot.to_dict())
+        await _send_projected(websocket, projector, snapshot, can_review=consumed_ticket.can_review)
         metrics.increment("countyflow_websocket_events_total", {"event_type": "task", "result": "sent"})
         last_event_id = websocket.query_params.get("last_event_id")
         replay = await broker.history(task_id, after_event_id=last_event_id)
         cursor = replay[-1].event_id if replay else last_event_id
         subscription = await broker.subscribe(task_id, last_event_id=cursor)
         for event in replay:
-            await websocket.send_json(event.to_dict())
+            await _send_projected(websocket, projector, event, can_review=consumed_ticket.can_review)
             metrics.increment("countyflow_websocket_events_total", {"event_type": event_group(event.event_type), "result": "replayed"})
         while True:
             for event in await subscription.read():
-                await websocket.send_json(event.to_dict())
+                await _send_projected(websocket, projector, event, can_review=consumed_ticket.can_review)
                 metrics.increment("countyflow_websocket_events_total", {"event_type": event_group(event.event_type), "result": "sent"})
     except EventBrokerConnectionError:
         metrics.increment("countyflow_websocket_events_total", {"event_type": "task", "result": "error"})
@@ -83,6 +85,16 @@ async def task_events(websocket: WebSocket, task_id: str) -> None:
         if subscription is not None:
             await broker.unsubscribe(subscription)
         metrics.adjust_gauge("countyflow_websocket_connections", -1)
+
+
+async def _send_projected(
+    websocket: WebSocket,
+    projector: TaskEventVisibilityProjector,
+    event: TaskEvent,
+    *,
+    can_review: bool,
+) -> None:
+    await websocket.send_json(projector.project(event, can_review=can_review))
 
 
 async def _close_with_visible_code(websocket: WebSocket, code: int) -> None:

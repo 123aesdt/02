@@ -74,14 +74,133 @@ export interface AuditResultResponse {
   created_at: string;
 }
 
+
+export interface FleetScoreComponentsResponse {
+  eta_penalty: string | null;
+  distance_penalty: string | null;
+  load_penalty: string | null;
+  road_risk_penalty: string | null;
+  same_station_bonus: string | null;
+  cargo_exact_match_bonus: string | null;
+}
+
+export interface RouteScoreComponentsResponse {
+  normalized_minutes: string | null;
+  normalized_distance: string | null;
+  normalized_risk: string | null;
+  time_penalty: string | null;
+  distance_penalty: string | null;
+  risk_penalty: string | null;
+}
+
+export interface PathResponse {
+  objective: string;
+  node_ids: string[];
+  edge_ids: string[];
+  distance_km: string;
+  estimated_minutes: number;
+  risk_cost: string;
+  visited_node_count: number;
+  scoring_formula: string | null;
+}
+
+export interface VehicleCandidateResponse {
+  vehicle_id: string;
+  driver_id: string | null;
+  vehicle_status: string | null;
+  driver_status: string | null;
+  remaining_capacity_kg: string | null;
+  gross_weight_tons: string | null;
+  cargo_capability: string | null;
+  pickup_route: PathResponse | null;
+  pickup_distance_km: string | null;
+  pickup_eta_minutes: number | null;
+  score: string | null;
+  score_components: FleetScoreComponentsResponse | null;
+  scoring_formula: string | null;
+  eligible: boolean | null;
+  exclusion_reasons: string[];
+}
+
+export interface VehicleAllocationResponse {
+  original_vehicle_id: string | null;
+  target_vehicle_id: string | null;
+  target_driver_id: string | null;
+  vehicle_reassigned: boolean;
+  candidate_vehicles: VehicleCandidateResponse[];
+  pickup_route: PathResponse | null;
+  scoring_formula: string;
+}
+
+export interface RoadNodeResponse {
+  node_id: string;
+  name: string;
+  x_km: string;
+  y_km: string;
+  node_type: string;
+}
+
+export interface RoadEdgeResponse {
+  edge_id: string;
+  name: string;
+  from_node_id: string;
+  to_node_id: string;
+  distance_km: string;
+  base_minutes: number;
+  road_level: string;
+  risk_level: string;
+  status: string;
+  congestion_factor: string;
+  weight_limit_tons: string;
+  bidirectional: boolean;
+  version: number;
+}
+
+export interface RouteCandidateResponse {
+  route_id: string;
+  route_name: string;
+  objective: string;
+  node_ids: string[];
+  edge_ids: string[];
+  distance_km: string;
+  estimated_minutes: number;
+  risk_level: string;
+  risk_cost: string;
+  visited_node_count: number;
+  available: boolean;
+  reason: string | null;
+  score: string;
+  score_components: RouteScoreComponentsResponse | null;
+  scoring_formula: string;
+  algorithm_version: string | null;
+  road_network_version: number | null;
+}
+
+export interface RoutePlanResponse {
+  original_path: PathResponse | null;
+  recommended_path: PathResponse | null;
+  candidate_routes: RouteCandidateResponse[];
+  blocked_edge_ids: string[];
+  distance_delta_km: string | null;
+  eta_delta_minutes: number | null;
+  visited_node_count: number | null;
+  routing_status: string | null;
+  algorithm: string;
+  road_network_version: number | null;
+  network_nodes: RoadNodeResponse[];
+  network_edges: RoadEdgeResponse[];
+}
 export interface TaskResultResponse {
   task_id: string;
   order_id: number;
   ready: boolean;
   status: string;
+  anomaly_type?: string | null;
   dispatch: DispatchResultResponse | null;
   audit: AuditResultResponse | null;
   publication?: PublicationResultResponse | null;
+  vehicle_allocation?: VehicleAllocationResponse | null;
+  route_plan?: RoutePlanResponse | null;
 }
 
 export interface DispatchAdapter {

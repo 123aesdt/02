@@ -122,6 +122,8 @@ class AnomalyReportService:
             reported_vehicle_status=command.reported_vehicle_status.strip().upper(),
             severity=command.severity.strip().upper(),
             idempotency_key=command.idempotency_key.strip(),
+            incident_node_id=None if command.incident_node_id is None else command.incident_node_id.strip(),
+            affected_edge_id=None if command.affected_edge_id is None else command.affected_edge_id.strip(),
         )
 
     @staticmethod
@@ -137,5 +139,7 @@ class AnomalyReportService:
             and report.location_text == command.location_text
             and report.reported_vehicle_status == command.reported_vehicle_status
             and report.severity == command.severity
+            and report.incident_node_id == command.incident_node_id
+            and report.affected_edge_id == command.affected_edge_id
             and report.reported_by_subject_id == principal_subject_id
         )

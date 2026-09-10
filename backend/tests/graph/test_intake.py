@@ -32,6 +32,20 @@ def test_intake_invalid_input_requires_manual_review():
     assert patch["error_code"] == "INTAKE_VALIDATION_ERROR"
 
 
+def test_intake_keeps_legacy_flow_when_order_has_no_sandtable_context():
+    class MissingSandtableContext:
+        def resolve(self, *args):
+            raise LookupError("订单沙盘上下文不完整")
+
+    patch = intake_node(valid_state(), MissingSandtableContext())
+
+    assert patch["normalized_anomaly"] == "李师傅在雨天经过新平路，道路出现湿滑风险。"
+    assert patch["requires_manual_review"] is False
+    assert patch["sandtable_context_loaded"] is False
+    assert "cargo_weight_kg" not in patch
+    assert datetime.fromisoformat(patch["started_at"]).tzinfo is UTC
+
+
 @pytest.mark.asyncio
 async def test_graph_runs_intake_node():
     result = await build_graph().ainvoke(valid_state())

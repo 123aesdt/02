@@ -25,6 +25,27 @@ afterEach(() => {
 });
 
 describe("demo employee switcher", () => {
+  it("shows the fixed Chinese demo identities when the API list is empty", async () => {
+    const view = await render(<DemoEmployeeSwitcher
+      enabled
+      employees={[]}
+      currentEmployeeId={null}
+      onSelect={vi.fn()}
+    />);
+
+    const select = view.container.querySelector("select") as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+    expect([...select.options].map((option) => [option.value, option.textContent])).toEqual([
+      ["", "选择演示员工"],
+      ["CF-DEMO-001", "张师傅 · 配送员工"],
+      ["CF-DEMO-006", "陈师傅 · 配送员工"],
+      ["CF-DEMO-007", "孙调度 · 调度员"],
+      ["CF-DEMO-003", "王主管 · 调度主管"],
+      ["CF-DEMO-002", "李运营 · 系统运维"],
+      ["CF-DEMO-004", "赵审计 · 审计员"],
+      ["CF-DEMO-005", "系统管理员 · 系统管理员"],
+    ]);
+  });
   it("renders Chinese employee and role labels without a password input", async () => {
     const view = await render(<DemoEmployeeSwitcher
       enabled

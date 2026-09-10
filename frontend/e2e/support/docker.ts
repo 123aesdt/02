@@ -9,5 +9,5 @@ function container(...args: string[]): void {
 
 export function pauseWorkerTwo(): void { container("stop", "-t", "1", "countyflow-ai-worker-2-1"); }
 export function unpauseWorkerTwo(): void { container("start", "countyflow-ai-worker-2-1"); }
-export function pauseWorkerOne(): void { container("pause", "countyflow-ai-worker-1-1"); }
-export function unpauseWorkerOne(): void { container("unpause", "countyflow-ai-worker-1-1"); }
+export function pauseWorkerOne(): void { container("stop", "-t", "1", "countyflow-ai-worker-1-1"); }
+export function unpauseWorkerOne(): void { container("start", "countyflow-ai-worker-1-1"); }
