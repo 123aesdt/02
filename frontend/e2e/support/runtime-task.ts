@@ -4,7 +4,7 @@ export async function openOverrideDialog(page: Page, taskId: string, target: "BR
   const targetPath = `/dispatch/${encodeURIComponent(taskId)}`;
   if (new URL(page.url()).pathname !== targetPath) await page.goto(targetPath);
   const panel = page.getByTestId("runtime-intervention");
-  await expect(panel).toContainText("ELIGIBLE");
+  await expect(panel).toContainText("可干预");
   await panel.locator(`button[data-target="${target}"]`).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -13,6 +13,6 @@ export async function openOverrideDialog(page: Page, taskId: string, target: "BR
 
 export async function confirmOverride(page: Page, reason = "人工确认车辆爆胎") {
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Reason").fill(reason);
+  await dialog.getByLabel("干预原因").fill(reason);
   await dialog.getByRole("button", { name: "确认干预" }).click();
 }

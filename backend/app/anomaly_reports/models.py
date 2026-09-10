@@ -10,6 +10,8 @@ class AnomalyReportCommand:
     reported_vehicle_status: str
     severity: str
     idempotency_key: str
+    incident_node_id: str | None = None
+    affected_edge_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,8 @@ class PersistedAnomalyReport:
     severity: str
     idempotency_key: str
     reported_by_subject_id: str
+    incident_node_id: str | None = None
+    affected_edge_id: str | None = None
 
 
 @dataclass(frozen=True)

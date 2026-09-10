@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from security_support import authorize_app, principal_for
 
 from app.main import create_app
+from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
@@ -488,6 +489,33 @@ def test_get_dispatch_result_completed():
         temp.cleanup()
 
 
+def test_get_dispatch_result_includes_the_persisted_anomaly_type():
+    app, temp, engine, redis = _terminal_app("COMPLETED")
+    service = app.state.dispatch_task_api_service
+    with service._session_factory() as session:
+        task = session.query(DispatchTask).filter_by(task_id="task-001").one()
+        anomaly = Anomaly(
+            anomaly_no="ANOM-VEHICLE-001",
+            order_id=task.order_id,
+            anomaly_type="VEHICLE_BREAKDOWN",
+            severity="HIGH",
+            description="V-001 发动机故障",
+            status="REPORTED",
+        )
+        session.add(anomaly)
+        session.flush()
+        task.anomaly_id = anomaly.id
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+
+        assert response.status_code == 200
+        assert response.json()["anomaly_type"] == "VEHICLE_BREAKDOWN"
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
 def test_get_dispatch_result_uses_database_facts():
     app, temp, engine, redis = _terminal_app("COMPLETED", "county-308")
     try:
@@ -832,6 +860,79 @@ def test_supervisor_reads_persisted_fleet_and_route_evidence_snapshot() -> None:
         engine.dispose()
         temp.cleanup()
 
+
+def test_manual_review_result_keeps_persisted_calculation_evidence_visible() -> None:
+    from app.models.dispatch_evidence import DispatchEvidence
+
+    app, temp, engine, redis = _terminal_app("REVIEW_REQUIRED", target_route_id=None, audit_result="REVIEW_REQUIRED")
+    service = app.state.dispatch_task_api_service
+    _persist_task_7_evidence(service)
+    with service._session_factory() as session:
+        dispatch = session.query(Dispatch).filter_by(dispatch_no="DSP-001").one()
+        dispatch.target_vehicle_id = None
+        dispatch.target_driver_id = None
+        fleet = session.query(DispatchEvidence).filter_by(evidence_type="FLEET_ALLOCATION").one()
+        fleet.payload_json = {
+            "original_vehicle_id": "V-001",
+            "target_vehicle_id": None,
+            "target_driver_id": None,
+            "vehicle_reassigned": False,
+            "pickup_route": None,
+            "selected_candidate": None,
+            "candidates": [
+                {
+                    "vehicle_id": "V-005",
+                    "score": None,
+                    "exclusion_reasons": ["VEHICLE_UNAVAILABLE"],
+                }
+            ],
+        }
+        route = session.query(DispatchEvidence).filter_by(evidence_type="ROUTE_CALCULATION").one()
+        route.road_network_version = None
+        route.payload_json = {
+            "original_path": None,
+            "recommended_path": None,
+            "candidate_routes": [],
+            "blocked_edge_ids": [],
+            "distance_delta_km": None,
+            "eta_delta_minutes": None,
+            "routing_status": "MANUAL_REVIEW",
+            "network_nodes": [],
+            "network_edges": [],
+        }
+        session.commit()
+    try:
+        response = TestClient(app).get("/api/v1/dispatch-tasks/task-001/result")
+        body = response.json()
+
+        assert response.status_code == 200
+        assert body["vehicle_allocation"]["original_vehicle_id"] == "V-001"
+        assert body["vehicle_allocation"]["target_vehicle_id"] is None
+        assert body["vehicle_allocation"]["candidate_vehicles"] == [
+            {
+                "vehicle_id": "V-005",
+                "driver_id": None,
+                "vehicle_status": None,
+                "driver_status": None,
+                "remaining_capacity_kg": None,
+                "gross_weight_tons": None,
+                "cargo_capability": None,
+                "pickup_route": None,
+                "pickup_distance_km": None,
+                "pickup_eta_minutes": None,
+                "score": None,
+                "score_components": None,
+                "scoring_formula": None,
+                "eligible": None,
+                "exclusion_reasons": ["VEHICLE_UNAVAILABLE"],
+            }
+        ]
+        assert body["route_plan"]["routing_status"] == "MANUAL_REVIEW"
+        assert body["route_plan"]["road_network_version"] is None
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
 
 def test_delivery_employee_cannot_read_unpublished_fleet_or_route_evidence() -> None:
     app, temp, engine, redis = _terminal_app("COMPLETED")

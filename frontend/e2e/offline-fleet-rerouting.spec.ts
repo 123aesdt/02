@@ -116,6 +116,26 @@ function networkEdges() {
   }));
 }
 
+
+function unchangedFleetAllocation() {
+  return {
+    original_vehicle_id: "V-008", target_vehicle_id: "V-008", target_driver_id: "D-007", vehicle_reassigned: false,
+    candidate_vehicles: [{ vehicle_id: "V-008", driver_id: "D-007", vehicle_status: "AVAILABLE", driver_status: "ON_DUTY", remaining_capacity_kg: "1300.00", gross_weight_tons: "4.50", cargo_capability: "GENERAL", pickup_route: null, pickup_distance_km: "0.00", pickup_eta_minutes: 0, score: "100.0", score_components: null, scoring_formula: "FLEET_SCORE_V1", eligible: true, exclusion_reasons: [] }],
+    pickup_route: null,
+    scoring_formula: "FLEET_SCORE_V1",
+  };
+}
+
+function unblockedRoutePlan() {
+  const path = pathEvidence(["N04", "N05", "N06"], ["E04", "E05"], "5.00", 10, "0", 4, "ROUTE_SCORE_V1");
+  return {
+    original_path: path, recommended_path: path, candidate_routes: [], blocked_edge_ids: [],
+    distance_delta_km: "0.00", eta_delta_minutes: 0, visited_node_count: 4, routing_status: "ROUTED",
+    algorithm: "DIJKSTRA_V1", road_network_version: 7, network_nodes: networkNodes(),
+    network_edges: networkEdges().map((edge) => edge.edge_id === "E04" ? { ...edge, status: "OPEN", version: 7 } : edge),
+  };
+}
+
 function rejectedCandidate(
   vehicleId: string,
   driverId: string | null,
@@ -208,6 +228,7 @@ function baseResult(taskId: string, orderId: number, published: boolean) {
     order_id: orderId,
     ready: true,
     status: "COMPLETED",
+    anomaly_type: taskId === taskByAnomaly.VEHICLE_BREAKDOWN ? "VEHICLE_BREAKDOWN" : "ROAD_BLOCKED",
     dispatch: {
       dispatch_id: orderId + 100,
       dispatch_no: `DSP-${orderId}`,
@@ -237,14 +258,14 @@ function breakdownResult(published: boolean) {
       pickup_route: pathEvidence(["N15", "N04"], ["E20"], "2.80", 6, "0", 2),
       scoring_formula: "FLEET_SCORE_V1",
     },
-    route_plan: null,
+    route_plan: unblockedRoutePlan(),
   };
 }
 
 function blockedResult(published: boolean) {
   return {
     ...baseResult(taskByAnomaly.ROAD_BLOCKED, 5, published),
-    vehicle_allocation: null,
+    vehicle_allocation: unchangedFleetAllocation(),
     route_plan: {
       original_path: pathEvidence(["N01", "N02", "N03", "N04", "N05", "N06"], ["E01", "E02", "E03", "E04", "E05"], "10.00", 20, "16", 14),
       recommended_path: pathEvidence(["N01", "N02", "N07", "N08", "N09", "N06"], ["E01", "E06", "E07", "E08", "E09"], "13.20", 24, "0", 14, "ROUTE_SCORE_V1"),
@@ -359,6 +380,7 @@ async function installOfflineApi(page: Page) {
     const statusMatch = url.pathname.match(/^\/api\/v1\/dispatch-tasks\/(.+)$/);
     if (statusMatch) return json(route, { task_id: statusMatch[1], order_id: statusMatch[1] === taskByAnomaly.VEHICLE_BREAKDOWN ? 1 : 5, status: "COMPLETED", started_at: now, completed_at: now, created_at: now, ready: true, requires_manual_review: false });
     if (url.pathname === "/api/v1/ws-tickets") return json(route, { code: "UI_REGRESSION_NO_SOCKET", message: "确定性 UI 回归不连接 WebSocket" }, 503);
+    if (url.pathname.startsWith("/api/v1/runtime/")) return json(route, { code: "RUNTIME_UNAVAILABLE", message: "确定性 UI 回归不模拟运行态线程" }, 503);
     return json(route, { code: "NOT_MOCKED", message: `未模拟 ${url.pathname}` }, 404);
   });
 }
@@ -400,7 +422,28 @@ async function expectUnpublishedDecisionRedacted(page: Page) {
 }
 
 async function expectPublishedVehicleEvidence(page: Page) {
+  const overview = page.locator(".dispatch-evidence-overview");
+  const presentationNav = page.getByRole("navigation", { name: "答辩讲解导航" });
   await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
+  await expect(overview.getByRole("heading", { name: "异常处置结果总览" })).toBeVisible();
+  await expect(presentationNav).toContainText("处置总览");
+  await expect(presentationNav).toContainText("车辆计算");
+  await expect(presentationNav).toContainText("Agent 流水线");
+  await expect(overview.getByLabel("计算证据来源")).toContainText("虚拟县域沙盘");
+  await expect(overview.getByLabel("计算证据来源")).toContainText("未接入高德地图");
+  await expect(overview.getByLabel("计算证据来源")).toContainText("API 持久化结果");
+  await expect(overview).toContainText("V-001 车辆故障");
+  await expect(overview).toContainText("比较 12 辆候选车辆");
+  await expect(overview).toContainText("V-005 接替");
+  await expect(overview).toContainText("评分 93.4");
+  await expect(overview.getByRole("region", { name: "车辆调度计算对比" })).toContainText("候选 12 辆");
+  await expect(overview.getByRole("region", { name: "车辆调度计算对比" })).toContainText("V-005 · D-003 · 93.4 分");
+  await expect(overview).not.toContainText("道路堵塞重规划");
+  const evidenceLink = overview.getByRole("link", { name: "查看车辆计算依据" });
+  expect(await evidenceLink.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await evidenceLink.click();
+  await expect(page).toHaveURL(/#fleet-allocation-title$/);
+  expect((await page.getByRole("heading", { name: "替代车辆调度计算" }).boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(64);
   await expect(page.getByRole("heading", { name: "替代车辆调度计算" })).toBeVisible();
   await expect(page.getByLabel("故障车辆到接替车辆")).toContainText("V-001");
   await expect(page.getByLabel("故障车辆到接替车辆")).toContainText("V-005");
@@ -413,11 +456,36 @@ async function expectPublishedVehicleEvidence(page: Page) {
   await expect(page.getByLabel("V-006 候选车辆")).toContainText("维护中");
   await expect(page.getByLabel("V-006 候选车辆")).toContainText("车辆当前不可用");
   await expect(page.getByLabel("V-006 候选车辆")).toContainText("司机当前不可用");
+  await presentationNav.getByRole("link", { name: /Agent 流水线/ }).click();
+  await expect(page).toHaveURL(/#agent-pipeline-title$/);
+  await expect(page.getByRole("heading", { name: "智能体流水线" })).toBeVisible();
 }
 
 async function expectPublishedRouteEvidence(page: Page) {
+  const overview = page.locator(".dispatch-evidence-overview");
   const panel = page.locator(".route-plan-result-panel");
+  const presentationNav = page.getByRole("navigation", { name: "答辩讲解导航" });
   await expect(page.getByRole("heading", { name: "调度路线已发布" })).toBeVisible();
+  await expect(presentationNav).toContainText("路线计算");
+  await expect(overview.getByLabel("计算证据来源")).toContainText("虚拟县域沙盘");
+  await expect(overview.getByLabel("计算证据来源")).toContainText("未接入高德地图");
+  await expect(overview.getByLabel("计算证据来源")).toContainText("API 持久化结果");
+  await expect(overview).toContainText("E04 道路堵塞");
+  await expect(overview).toContainText("Dijkstra 访问 14 个节点");
+  await expect(overview).toContainText("新路线 13.20 公里");
+  await expect(overview).toContainText("已避开 E04");
+  const comparison = overview.getByRole("region", { name: "路线重规划计算对比" });
+  await expect(comparison).toContainText("10.00 公里 · 20 分钟");
+  await expect(comparison).toContainText("移除 E04");
+  await expect(comparison).toContainText("访问 14 个节点");
+  await expect(comparison).toContainText("13.20 公里 · 24 分钟");
+  await expect(comparison).toContainText("+3.20 公里 · +4 分钟");
+  await expect(overview).not.toContainText("车辆故障处置");
+  const evidenceLink = overview.getByRole("link", { name: "查看路线计算依据" });
+  expect(await evidenceLink.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await evidenceLink.click();
+  await expect(page).toHaveURL(/#route-plan-result-title$/);
+  expect((await page.getByRole("heading", { name: "新路线规划计算" }).boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(64);
   await expect(panel.getByRole("heading", { name: "新路线规划计算" })).toBeVisible();
   await expect(panel).toContainText("Dijkstra（DIJKSTRA_V1）");
   await expect(panel).toContainText("网络版本 8");
@@ -431,6 +499,43 @@ async function expectPublishedRouteEvidence(page: Page) {
   await expect(panel.locator('[data-edge-id="E07"]')).toHaveAttribute("data-route-state", "recommended");
   await expect(panel.locator(".network-node")).toHaveCount(18);
   await expect(panel.locator(".road-edge")).toHaveCount(26);
+  await presentationNav.getByRole("link", { name: /Agent 流水线/ }).click();
+  await expect(page).toHaveURL(/#agent-pipeline-title$/);
+  await expect(page.getByRole("heading", { name: "智能体流水线" })).toBeVisible();
+}
+
+
+function observeBrowserErrors(page: Page) {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    const location = message.location().url;
+    const expectedOfflineDegradation = message.text().includes("503") && (
+      location.endsWith("/api/v1/ws-tickets") || location.includes("/api/v1/runtime/")
+    );
+    if (message.type() === "error" && !expectedOfflineDegradation) errors.push(`${message.text()} @ ${location}`);
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  return errors;
+}
+
+async function expectWideDesktopDispatchColumnsNotToOverlap(page: Page) {
+  const decisionColumn = page.locator(".decision-column");
+  const pipelineColumn = page.locator(".pipeline-column");
+  const candidateTableWrap = page.locator(".fleet-candidate-table-wrap");
+  const [decisionBox, pipelineBox, tableWrapBox] = await Promise.all([
+    decisionColumn.boundingBox(),
+    pipelineColumn.boundingBox(),
+    candidateTableWrap.boundingBox(),
+  ]);
+
+  expect(decisionBox).not.toBeNull();
+  expect(pipelineBox).not.toBeNull();
+  expect(tableWrapBox).not.toBeNull();
+  expect((decisionBox?.x ?? 0) + (decisionBox?.width ?? 0)).toBeLessThanOrEqual((pipelineBox?.x ?? 0) + 1);
+  expect((tableWrapBox?.x ?? 0) + (tableWrapBox?.width ?? 0)).toBeLessThanOrEqual(
+    (decisionBox?.x ?? 0) + (decisionBox?.width ?? 0) + 1,
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -440,28 +545,38 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工查看，刷新重登仍一致", async ({ page }) => {
+  const browserErrors = observeBrowserErrors(page);
+  await page.setViewportSize({ width: 1920, height: 1080 });
   const taskId = taskByAnomaly.VEHICLE_BREAKDOWN;
   await submitVisibleIssue(page, "SOURCE-DEMO-001", "VEHICLE_BREAKDOWN");
   await expect(page.getByRole("heading", { name: "调度路线待发布" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "替代车辆调度计算" })).toHaveCount(0);
+  await expect(page.locator(".dispatch-evidence-overview")).toHaveCount(0);
   await expectUnpublishedDecisionRedacted(page);
 
   await publishAsSupervisor(page, taskId);
   await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
   await expectPublishedVehicleEvidence(page);
+  await expectWideDesktopDispatchColumnsNotToOverlap(page);
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "需要登录" })).toBeVisible();
   await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
   await expectPublishedVehicleEvidence(page);
+  await expect(page).toHaveTitle("CountyFlow AI");
+  await expect(page.locator("vite-error-overlay")).toHaveCount(0);
+  expect(browserErrors).toEqual([]);
   await page.screenshot({ path: path.join(screenshotDir, "vehicle-breakdown-candidates.png"), fullPage: true });
 });
 
 test("网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工查看，刷新重登仍一致", async ({ page }) => {
+  const browserErrors = observeBrowserErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
   const taskId = taskByAnomaly.ROAD_BLOCKED;
   await submitVisibleIssue(page, "SOURCE-DEMO-005", "ROAD_BLOCKED");
   await expect(page.getByRole("heading", { name: "调度路线待发布" })).toBeVisible();
   await expect(page.locator(".route-plan-result-panel")).toHaveCount(0);
+  await expect(page.locator(".dispatch-evidence-overview")).toHaveCount(0);
   await expectUnpublishedDecisionRedacted(page);
 
   await publishAsSupervisor(page, taskId);
@@ -472,5 +587,9 @@ test("网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工�
   await expect(page.getByRole("heading", { name: "需要登录" })).toBeVisible();
   await authenticatePage(page, "EMPLOYEE", `/dispatch/${taskId}`);
   await expectPublishedRouteEvidence(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  await expect(page).toHaveTitle("CountyFlow AI");
+  await expect(page.locator("vite-error-overlay")).toHaveCount(0);
+  expect(browserErrors).toEqual([]);
   await page.screenshot({ path: path.join(screenshotDir, "road-blocked-reroute.png"), fullPage: true });
 });

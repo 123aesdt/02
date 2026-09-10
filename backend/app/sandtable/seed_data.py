@@ -612,6 +612,118 @@ VEHICLES = (
             "assigned_driver_id": "D-010",
         }
     ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-013",
+            "plate_no": "新物厢货-13",
+            "vehicle_type": "VAN",
+            "max_load_kg": "1200.00",
+            "current_load_kg": "260.00",
+            "gross_weight_tons": "2.20",
+            "cargo_capability": "GENERAL",
+            "status": "AVAILABLE",
+            "current_node_id": "N07",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-014",
+            "plate_no": "新物轻卡-14",
+            "vehicle_type": "LIGHT_TRUCK",
+            "max_load_kg": "2600.00",
+            "current_load_kg": "980.00",
+            "gross_weight_tons": "4.80",
+            "cargo_capability": "FARM_SUPPLY",
+            "status": "IN_TRANSIT",
+            "current_node_id": "N08",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-015",
+            "plate_no": "新物救援-15",
+            "vehicle_type": "VAN",
+            "max_load_kg": "1000.00",
+            "current_load_kg": "120.00",
+            "gross_weight_tons": "2.30",
+            "cargo_capability": "GENERAL",
+            "status": "AVAILABLE",
+            "current_node_id": "N15",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-016",
+            "plate_no": "新物电运-16",
+            "vehicle_type": "ELECTRIC_VAN",
+            "max_load_kg": "900.00",
+            "current_load_kg": "0.00",
+            "gross_weight_tons": "1.90",
+            "cargo_capability": "GENERAL",
+            "status": "AVAILABLE",
+            "current_node_id": "N10",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-017",
+            "plate_no": "新物乡配-17",
+            "vehicle_type": "VAN",
+            "max_load_kg": "1100.00",
+            "current_load_kg": "430.00",
+            "gross_weight_tons": "2.10",
+            "cargo_capability": "GENERAL",
+            "status": "IN_TRANSIT",
+            "current_node_id": "N09",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-018",
+            "plate_no": "新物检修-18",
+            "vehicle_type": "LIGHT_TRUCK",
+            "max_load_kg": "2200.00",
+            "current_load_kg": "0.00",
+            "gross_weight_tons": "4.20",
+            "cargo_capability": "GENERAL",
+            "status": "MAINTENANCE",
+            "current_node_id": "N11",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-019",
+            "plate_no": "新物冷链-19",
+            "vehicle_type": "REFRIGERATED_VAN",
+            "max_load_kg": "1500.00",
+            "current_load_kg": "300.00",
+            "gross_weight_tons": "2.90",
+            "cargo_capability": "COLD_CHAIN",
+            "status": "AVAILABLE",
+            "current_node_id": "N08",
+            "assigned_driver_id": None,
+        }
+    ),
+    MappingProxyType(
+        {
+            "vehicle_id": "V-020",
+            "plate_no": "新物乡配-20",
+            "vehicle_type": "VAN",
+            "max_load_kg": "1200.00",
+            "current_load_kg": "560.00",
+            "gross_weight_tons": "2.30",
+            "cargo_capability": "GENERAL",
+            "status": "IN_TRANSIT",
+            "current_node_id": "N08",
+            "assigned_driver_id": None,
+        }
+    ),
 )
 
 ORDERS = (

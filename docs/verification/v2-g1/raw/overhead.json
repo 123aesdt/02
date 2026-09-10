@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-29T05:27:51.725446+00:00",
+  "timestamp": "2026-09-09T01:50:19.283777+00:00",
   "workload": {
     "api_requests": 3000,
     "api_concurrency": 64,
@@ -16,27 +16,27 @@
     ]
   },
   "observability_off": {
-    "api_p95_ms": 66.948,
-    "graph_p95_ms": 1123.224,
-    "override_p95_ms": 158.812,
-    "worker_throughput": 0.388,
-    "qps": 1047.707,
+    "api_p95_ms": 69.548,
+    "graph_p95_ms": 784.136,
+    "override_p95_ms": 138.593,
+    "worker_throughput": 0.152,
+    "qps": 918.699,
     "error_rate": 0.0
   },
   "observability_on": {
-    "api_p95_ms": 66.022,
-    "graph_p95_ms": 167.311,
-    "override_p95_ms": 158.597,
-    "worker_throughput": 0.479,
-    "qps": 1037.85,
+    "api_p95_ms": 69.72,
+    "graph_p95_ms": 306.524,
+    "override_p95_ms": 438.217,
+    "worker_throughput": 0.212,
+    "qps": 1031.529,
     "error_rate": 0.0
   },
   "deltas_percent": {
-    "api_p95_ms": -1.383,
-    "graph_p95_ms": -85.104,
-    "override_p95_ms": -0.135,
-    "worker_throughput": 23.454,
-    "qps": -0.941,
+    "api_p95_ms": 0.247,
+    "graph_p95_ms": -60.909,
+    "override_p95_ms": 216.19,
+    "worker_throughput": 39.474,
+    "qps": 12.281,
     "error_rate": null
   },
   "guardrails": {

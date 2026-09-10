@@ -133,6 +133,42 @@ async def test_dispatch_agent_writes_state():
 
 
 @pytest.mark.asyncio
+async def test_dispatch_agent_only_persists_original_vehicle_for_sandtable_context():
+    class RecordingService:
+        def __init__(self):
+            self.original_vehicle_id = "not-called"
+
+        def execute(self, *args, **kwargs):
+            self.original_vehicle_id = args[12]
+            return DispatchResult(1, "DSP-1", 1, "task-001", "REROUTED", "xinping-road", "national-102", 1, True, "safer", False)
+
+    legacy_state = {
+        "task_id": "task-001",
+        "order_id": 1,
+        "route_id": "xinping-road",
+        "vehicle_id": "vehicle-001",
+        "recommended_route": "national-102",
+        "decision": "REROUTE",
+        "decision_reason": "safer",
+    }
+    legacy_service = RecordingService()
+    await dispatch_node(legacy_state, legacy_service)
+
+    sandtable_service = RecordingService()
+    await dispatch_node(
+        {
+            **legacy_state,
+            "vehicle_id": "V-001",
+            "original_vehicle_weight_tons": "4.20",
+        },
+        sandtable_service,
+    )
+
+    assert legacy_service.original_vehicle_id is None
+    assert sandtable_service.original_vehicle_id == "V-001"
+
+
+@pytest.mark.asyncio
 async def test_graph_routes_and_dispatches():
     from tests.graph.test_routing_agent import _capacity_service, _environment_service, _memory_service, _routing_service
 

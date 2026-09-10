@@ -27,6 +27,7 @@ from app.publications.service import DispatchPublicationService
 from app.road_network.dijkstra import DijkstraPathFinder
 from app.road_network.service import RoadNetworkSnapshotService
 from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
+from app.routing.provider import InMemoryRouteProvider
 from app.routing.service import RoutingService
 from app.runtime_threads.checkpoint_store import RedisRuntimeCheckpointStore
 from app.runtime_threads.events import RuntimeThreadEventPublisher
@@ -123,7 +124,7 @@ def build_runtime_graph(
             DijkstraTravelTimeEstimator(road_network_repository, DijkstraPathFinder()),
         ),
         routing_service=RoutingService(
-            None,
+            InMemoryRouteProvider.default_catalog(),
             memory_adoption_threshold=settings.memory_adoption_threshold,
             road_network_provider=road_network_repository,
             path_finder=DijkstraPathFinder(),

@@ -121,7 +121,7 @@ def test_security_runner_and_docker_security_contract_are_wired() -> None:
     assert "DEVELOPMENT_JWT_SECRET: ${DEVELOPMENT_JWT_SECRET:?DEVELOPMENT_JWT_SECRET is required}" in compose
     assert "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}" in compose
     assert "NEO4J_PASSWORD: ${MYSQL_PASSWORD" not in compose
-    assert "GF_AUTH_ANONYMOUS_ENABLED: \"false\"" in compose
+    assert 'GF_AUTH_ANONYMOUS_ENABLED: "false"' in compose
     assert "ADMIN" not in services.split("  migration:\n", 1)[1].split("\n  grafana:\n", 1)[0]
 
 
@@ -178,9 +178,7 @@ def test_full_launcher_prefetches_build_images_before_buildkit() -> None:
     assert "function Initialize-BuildImages" in source
     assert "正在准备 Docker 基础镜像" in source
     assert "基础镜像拉取失败" in source
-    assert source.index("Initialize-BuildImages $dockerCommand") < source.index(
-        "& $builder -ProjectRoot"
-    )
+    assert source.index("Initialize-BuildImages $dockerCommand") < source.index("& $builder -ProjectRoot")
 
 
 def test_local_dev_launcher_uses_chinese_user_facing_copy() -> None:
@@ -378,3 +376,9 @@ def test_neo4j_password_recovery_is_offline_secret_safe_and_non_destructive() ->
     assert "Write-Output $neo4jPassword" not in source
     assert "down -v" not in source
     assert "volume rm" not in source
+
+
+def test_neo4j_offline_recovery_helper_uses_unix_line_endings() -> None:
+    helper = PROJECT_ROOT / "scripts" / "neo4j-offline-recovery.sh"
+
+    assert b"\r\n" not in helper.read_bytes()

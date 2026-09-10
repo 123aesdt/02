@@ -10,7 +10,7 @@ from app.events.graph_adapter import GraphEventAdapter
 from app.events.models import TaskEvent, TaskEventType
 from app.graph.state import DispatchGraphState
 from app.idempotency.service import IdempotencyService
-from app.locks.redis_execution_lock import RedisExecutionLock
+from app.locks.redis_execution_lock import ExecutionLockError, LockHandle, RedisExecutionLock
 from app.observability.context import bind_observability_context
 from app.observability.labels import WORKERS
 from app.observability.recorder import MetricsRecorder, NoOpMetricsRecorder
@@ -176,6 +176,17 @@ class DispatchWorker:
             )
 
         if not self._retry_policy.should_retry(delivery_count):
+            if await self._execution_is_active(message):
+                return WorkerProcessResult(
+                    message.message_id,
+                    message.task.task_id,
+                    False,
+                    "LOCKED",
+                    False,
+                    None,
+                    delivery_count=delivery_count,
+                    lock_acquired=False,
+                )
             terminal_thread = await self._mark_runtime_terminal(
                 message.task.task_id,
                 "DLQ",
@@ -227,6 +238,15 @@ class DispatchWorker:
             backoff_ms=backoff_ms,
         )
 
+    async def _execution_is_active(self, message: StreamMessage) -> bool:
+        if self._execution_lock is None:
+            return False
+        probe = await self._execution_lock.acquire(message.task.idempotency_key)
+        if not probe.acquired:
+            return True
+        await self._execution_lock.release(probe)
+        return False
+
     async def process_message(self, message: StreamMessage) -> WorkerProcessResult:
         if self._idempotency_service is None or self._execution_lock is None:
             result = await self._process_graph(
@@ -257,6 +277,7 @@ class DispatchWorker:
                 lock_acquired=False,
             )
 
+        renewal_task = asyncio.create_task(self._maintain_execution_lock(lock_handle))
         try:
             decision = self._idempotency_service.begin(
                 message.task.task_id,
@@ -330,7 +351,25 @@ class DispatchWorker:
             )
             return terminal_result
         finally:
+            renewal_task.cancel()
+            try:
+                await renewal_task
+            except asyncio.CancelledError:
+                pass
             await self._execution_lock.release(lock_handle)
+
+    async def _maintain_execution_lock(self, handle: LockHandle) -> None:
+        if self._execution_lock is None:
+            return
+        while True:
+            await asyncio.sleep(self._execution_lock.renewal_interval_seconds)
+            try:
+                renewed = await self._execution_lock.renew(handle)
+            except ExecutionLockError:
+                self._logger.warning("Dispatch execution lock renewal failed. key=%s", handle.key)
+                return
+            if not renewed:
+                return
 
     async def _ack_terminal_replay(
         self,

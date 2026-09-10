@@ -196,12 +196,16 @@ describe("Task event lifecycle", () => {
     await act(async () => { root.unmount(); });
   });
 
-  it("restores complete fleet replacement and reroute evidence from the persisted result after refresh", async () => {
+  it("restores fleet replacement evidence without mislabeling paired route evidence as a road blockage", async () => {
     testRuntime.dataMode = "api";
     vi.stubGlobal("WebSocket", FakeWebSocket as unknown as typeof WebSocket);
+    setAuthenticatedSession("review-token", {
+      subject_id: "test-supervisor", display_name: "调度主管", roles: ["SUPERVISOR"], permissions: ["dispatch:read", "dispatch:review"],
+      auth_method: "development_jwt", issued_at: "2026-08-28T00:00:00Z", expires_at: "2099-08-28T01:00:00Z",
+    });
     taskApi.getTaskStatus.mockResolvedValue({ task_id: "TASK-1", order_id: 128, status: "COMPLETED", started_at: null, completed_at: "2026-09-07T10:00:00Z", created_at: "2026-09-07T09:59:00Z", ready: true, requires_manual_review: false });
     taskApi.getTaskResult.mockResolvedValue({
-      task_id: "TASK-1", order_id: 128, status: "COMPLETED", ready: true, dispatch: null, audit: null,
+      task_id: "TASK-1", order_id: 128, status: "COMPLETED", ready: true, anomaly_type: "VEHICLE_BREAKDOWN", dispatch: null, audit: null,
       vehicle_allocation: {
         original_vehicle_id: "V-001", target_vehicle_id: "V-005", target_driver_id: "D-003", vehicle_reassigned: true, scoring_formula: "FLEET_SCORE_V1",
         pickup_route: { objective: "FASTEST", node_ids: ["N15", "N04"], edge_ids: ["E20"], distance_km: "2.80", estimated_minutes: 6, risk_cost: "0.10", visited_node_count: 2, scoring_formula: null },
@@ -226,12 +230,26 @@ describe("Task event lifecycle", () => {
     const { root, container } = await render(<ApiDispatchDetailPage taskId="TASK-1" />);
     await flush();
 
+    expect(container.getElementsByClassName("dispatch-evidence-overview")).toHaveLength(1);
+    expect(container.textContent).toContain("异常处置结果总览");
+    expect(container.textContent).toContain("V-001 车辆故障");
+    expect(container.textContent).toContain("比较 2 辆候选车辆");
+    expect(container.textContent).toContain("V-005 接替");
+    expect(container.textContent).toContain("评分 93.4");
+    expect(container.querySelector(".dispatch-evidence-overview")?.textContent).not.toContain("E04 道路堵塞");
+    expect(container.querySelector('.dispatch-evidence-overview a[href="#fleet-allocation-title"]')?.textContent).toContain("查看车辆计算依据");
+    expect(container.querySelector('nav[aria-label="答辩讲解导航"] a[href="#agent-pipeline-title"]')?.textContent).toContain("Agent 流水线");
+    expect(container.querySelector("#agent-pipeline-title")?.textContent).toBe("智能体流水线");
+    expect(container.querySelector('.dispatch-evidence-overview a[href="#route-plan-result-title"]')).toBeNull();
     expect(container.textContent).toContain("替代车辆调度计算");
     expect(container.textContent).toContain("接驳 2.80 公里 · 6 分钟");
-    expect(container.textContent).toContain("新路线规划计算");
-    expect(container.textContent).toContain("+3.20 公里");
-    expect(container.querySelector('[data-edge-id="E04"]')?.getAttribute("data-route-state")).toBe("blocked");
-    expect(container.querySelector('[data-edge-id="E07"]')?.getAttribute("data-route-state")).toBe("recommended");
+    expect(container.querySelector(".live-vehicle-map")).not.toBeNull();
+    expect(container.textContent).toContain("车辆实时调度地图");
+    expect(container.textContent).toContain("虚拟沙盘实时模拟");
+    expect(container.textContent).toContain("V-001 · 故障车辆");
+    expect(container.textContent).toContain("V-005 · 已派出");
+    expect(container.textContent).not.toContain("新路线规划计算");
+    expect(container.querySelector(".route-plan-result-panel")).toBeNull();
     expect(container.querySelectorAll(".pipeline-item")).toHaveLength(8);
     await act(async () => { root.unmount(); });
   });

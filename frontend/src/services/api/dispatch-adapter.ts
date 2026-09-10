@@ -186,7 +186,7 @@ export interface RoutePlanResponse {
   visited_node_count: number | null;
   routing_status: string | null;
   algorithm: string;
-  road_network_version: number;
+  road_network_version: number | null;
   network_nodes: RoadNodeResponse[];
   network_edges: RoadEdgeResponse[];
 }
@@ -195,6 +195,7 @@ export interface TaskResultResponse {
   order_id: number;
   ready: boolean;
   status: string;
+  anomaly_type?: string | null;
   dispatch: DispatchResultResponse | null;
   audit: AuditResultResponse | null;
   publication?: PublicationResultResponse | null;

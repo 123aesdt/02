@@ -51,6 +51,8 @@
 }
 
 .anomaly-report-form textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.anomaly-report-form input[readonly] { color: var(--brand); border-color: var(--brand-border); background: var(--brand-subtle); cursor: default; }
+.report-vehicle-location-note { display: block; color: var(--brand); font-size: 11px; font-weight: 500; line-height: 17px; }
 .report-task-context select:focus-visible,
 .anomaly-report-form select:focus-visible,
 .anomaly-report-form input:focus-visible,
@@ -72,6 +74,7 @@
 
 .anomaly-report-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .report-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.report-scenario-field,
 .report-description-field { grid-column: 1 / -1; }
 .report-submit-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
 .report-submit-row p { max-width: 680px; margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 20px; }
@@ -84,12 +87,38 @@
 .report-feedback button { width: fit-content; min-height: 36px; padding: 0 12px; color: var(--danger); border: 1px solid currentColor; border-radius: var(--radius-md); background: var(--surface-primary); cursor: pointer; }
 .report-result-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
 
+.driver-route-card { overflow: hidden; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-primary); box-shadow: var(--shadow-sm); }
+.driver-route-card > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: linear-gradient(120deg, var(--brand-subtle), var(--surface-primary)); }
+.driver-route-card > header h3 { margin: 3px 0 0; font-size: 17px; }
+.driver-route-card > header > strong { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; color: #fff; border-radius: 999px; background: var(--brand); font-size: 13px; }
+.driver-route-map-shell { overflow: hidden; background: linear-gradient(145deg, var(--surface-primary), var(--surface-secondary)); }
+.driver-route-map-shell svg { display: block; width: 100%; height: clamp(390px, 52vh, 540px); color: color-mix(in srgb, var(--border-strong) 72%, transparent); }
+.driver-route-grid { color: color-mix(in srgb, var(--border-strong) 52%, transparent); }
+.driver-route-roads line { stroke: color-mix(in srgb, var(--text-tertiary) 34%, transparent); stroke-width: 10; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+[data-driver-route-line] { fill: none; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 3px rgba(30, 68, 72, .22)); vector-effect: non-scaling-stroke; }
+.driver-route-stops circle { fill: var(--surface-primary); stroke: var(--brand); stroke-width: 4; vector-effect: non-scaling-stroke; }
+.driver-route-stops text { paint-order: stroke; stroke: var(--surface-primary); stroke-width: 5px; stroke-linejoin: round; fill: var(--text-primary); font-size: 13px; font-weight: 800; }
+.driver-current-vehicle text { paint-order: stroke; stroke: var(--surface-primary); stroke-width: 6px; fill: var(--text-primary); font-size: 15px; font-weight: 900; }
+.driver-vehicle-pulse { fill: color-mix(in srgb, var(--brand) 18%, transparent); transform-box: fill-box; transform-origin: center; animation: driver-vehicle-pulse 1.8s ease-out infinite; }
+.driver-vehicle-dot { fill: var(--brand); stroke: #fff; stroke-width: 5; vector-effect: non-scaling-stroke; }
+.driver-route-live-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-top: 1px solid var(--border); }
+.driver-route-live-facts > div { min-width: 0; padding: 12px 15px; border-right: 1px solid var(--border); }
+.driver-route-live-facts > div:last-child { border-right: 0; }
+.driver-route-live-facts dt { display: flex; align-items: center; gap: 5px; color: var(--text-tertiary); font-size: 11px; font-weight: 700; }
+.driver-route-live-facts dd { margin: 6px 0 0; overflow-wrap: anywhere; color: var(--text-primary); font-size: 13px; font-weight: 700; }
+@keyframes driver-vehicle-pulse { 0% { opacity: .8; transform: scale(.72); } 75%, 100% { opacity: 0; transform: scale(1.5); } }
+
 @media (max-width: 800px) {
   .report-task-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-task-facts > div { border-bottom: 1px solid var(--border); }
   .report-form-grid { grid-template-columns: 1fr; }
+  .report-scenario-field,
   .report-description-field { grid-column: auto; }
   .report-submit-row { align-items: stretch; flex-direction: column; }
+  .driver-route-map-shell svg { height: 360px; }
+  .driver-route-live-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .driver-route-live-facts > div:nth-child(2) { border-right: 0; }
+  .driver-route-live-facts > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
 }
 
 @media (max-width: 480px) {

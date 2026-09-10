@@ -9,6 +9,7 @@ import os
 import time
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import httpx
 
@@ -98,6 +99,8 @@ async def _submit_and_wait(
     client: httpx.AsyncClient,
     *,
     order: dict[str, Any],
+    driver_id: str,
+    route_id: str,
     anomaly_type: str,
     description: str,
     vehicle_status: str,
@@ -109,10 +112,10 @@ async def _submit_and_wait(
             "/api/v1/dispatch-tasks",
             json={
                 "order_id": order["row_id"],
-                "driver_id": order["driver_id"],
+                "driver_id": driver_id,
                 "vehicle_id": order["vehicle_id"],
                 "vehicle_status": vehicle_status,
-                "route_id": order["route_id"],
+                "route_id": route_id,
                 "anomaly_type": anomaly_type,
                 "anomaly_description": description,
                 "idempotency_key": idempotency_key,
@@ -138,6 +141,21 @@ async def _submit_and_wait(
             )
         await asyncio.sleep(0.25)
     raise AssertionError(f"任务 {task_id} 未在 {timeout_seconds:.0f} 秒内完成，最后状态 {last_status.get('status')}")
+
+
+def _verify_candidate_explainability(item: dict[str, Any], *, selected_vehicle_id: str) -> None:
+    vehicle_id = item.get("vehicle_id")
+    if not isinstance(vehicle_id, str) or not vehicle_id:
+        raise AssertionError("候选车辆 ID 应为非空字符串")
+    reasons = _list(item.get("exclusion_reasons"), f"{vehicle_id} 排除原因")
+    eligible = item.get("eligible")
+    if vehicle_id == selected_vehicle_id:
+        _expect(eligible, True, f"{vehicle_id} 入选状态")
+        _expect(reasons, [], f"{vehicle_id} 入选车辆不得有排除原因")
+    elif eligible not in (None, False):
+        raise TypeError(f"{vehicle_id}.eligible 应为 false 或紧凑证据 null")
+    elif not reasons:
+        raise AssertionError(f"{vehicle_id} 未入选车辆缺少排除原因")
 
 
 def _verify_breakdown(result: dict[str, Any]) -> dict[str, Any]:
@@ -183,18 +201,8 @@ def _verify_breakdown(result: dict[str, Any]) -> dict[str, Any]:
     v001_reasons = set(_list(by_id["V-001"].get("exclusion_reasons"), "V-001 排除原因"))
     if not {"ORIGINAL_VEHICLE_EXCLUDED", "VEHICLE_UNAVAILABLE"}.issubset(v001_reasons):
         raise AssertionError("V-001 缺少原故障车辆排除解释")
-    for vehicle_id, item in by_id.items():
-        eligible = item.get("eligible")
-        if not isinstance(eligible, bool):
-            raise TypeError(f"{vehicle_id}.eligible 应为布尔值")
-        reasons = _list(item.get("exclusion_reasons"), f"{vehicle_id} 排除原因")
-        if eligible:
-            _expect(reasons, [], f"{vehicle_id} 合格候选不得有排除原因")
-            for field in ("driver_id", "pickup_route", "pickup_distance_km", "pickup_eta_minutes", "score"):
-                if item.get(field) is None:
-                    raise AssertionError(f"{vehicle_id} 合格候选缺少 {field}")
-        elif not reasons:
-            raise AssertionError(f"{vehicle_id} 不合格候选缺少排除原因")
+    for item in by_id.values():
+        _verify_candidate_explainability(item, selected_vehicle_id="V-005")
     return {"task_id": result["task_id"], "candidate_count": len(candidates), "selected_score": "93.4"}
 
 
@@ -256,6 +264,7 @@ async def run(base_url: str, timeout_seconds: float) -> dict[str, Any]:
     if not token:
         raise RuntimeError("缺少 E2E_ACCESS_TOKEN；令牌必须通过环境变量传入")
     headers = {"Authorization": f"Bearer {token}"}
+    run_id = uuid4().hex
     async with httpx.AsyncClient(base_url=base_url.rstrip("/"), headers=headers, timeout=10.0) as client:
         breakdown_order, blocked_order = await asyncio.gather(
             _resolve_order(client, "DEMO-ORDER-001"),
@@ -264,19 +273,23 @@ async def run(base_url: str, timeout_seconds: float) -> dict[str, Any]:
         breakdown_task, breakdown = await _submit_and_wait(
             client,
             order=breakdown_order,
+            driver_id="D-001",
+            route_id="xinping-road",
             anomaly_type="VEHICLE_BREAKDOWN",
-            description="V-001 发动机故障，无法继续配送，请计算替代车辆与接驳路线。",
+            description="新物冷链-01 在新平路 K3.2 发动机故障，无法继续配送，请计算替代车辆与接驳路线。",
             vehicle_status="BROKEN",
-            idempotency_key="task9-offline-breakdown-v1",
+            idempotency_key=f"task9-offline-breakdown-{run_id}",
             timeout_seconds=timeout_seconds,
         )
         blocked_task, blocked = await _submit_and_wait(
             client,
             order=blocked_order,
+            driver_id="D-007",
+            route_id="xinping-road",
             anomaly_type="ROAD_BLOCKED",
             description="新平路东河桥段 E04 塌方阻断，请重新计算可行路线。",
             vehicle_status="NORMAL",
-            idempotency_key="task9-offline-road-blocked-v1",
+            idempotency_key=f"task9-offline-road-blocked-{run_id}",
             timeout_seconds=timeout_seconds,
         )
     breakdown_summary = _verify_breakdown(breakdown)

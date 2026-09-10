@@ -144,6 +144,7 @@ def blocked_state() -> dict[str, object]:
 async def test_vehicle_breakdown_reassigns_vehicle_and_continues_to_routing(graph, breakdown_state) -> None:
     result = await graph.ainvoke(breakdown_state)
 
+    assert result["sandtable_context_loaded"] is True
     assert result["capacity_state"]["capacity_status"] == "REASSIGNED"
     assert result["selected_vehicle_id"] == "V-005"
     assert result["selected_driver_id"] == "D-003"

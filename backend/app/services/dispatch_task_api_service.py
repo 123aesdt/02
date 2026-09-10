@@ -18,6 +18,7 @@ from app.api.v1.schemas import (
 from app.events.broker import TaskEventBroker
 from app.events.models import TaskEvent, TaskEventType
 from app.idempotency.service import IdempotencyService
+from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
@@ -161,6 +162,7 @@ class DispatchTaskApiService:
         if task.status not in {"APPROVED", "COMPLETED", "REVIEW_REQUIRED"}:
             return {"task_id": task.task_id, "order_id": task.order_id, "ready": False, "status": status}
         with self._session_factory() as session:
+            anomaly = session.get(Anomaly, task.anomaly_id) if task.anomaly_id is not None else None
             dispatch = session.scalar(select(Dispatch).where(Dispatch.task_id == task.id))
             evidence_rows = (
                 []
@@ -184,6 +186,7 @@ class DispatchTaskApiService:
                 "order_id": task.order_id,
                 "ready": True,
                 "status": status,
+                "anomaly_type": None if anomaly is None else anomaly.anomaly_type,
                 "dispatch": None
                 if dispatch is None
                 else {

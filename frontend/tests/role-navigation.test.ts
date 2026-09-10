@@ -41,7 +41,9 @@ describe("canonical permission-driven navigation", () => {
     expect(labels(["SUPERVISOR"])).toEqual(expect.arrayContaining(["调度主管台", "待复核", "运行态", "系统监控", "审计证据"]));
     expect(labels(["OPERATOR"])).toEqual(expect.arrayContaining(["运行中心", "智能体中心", "运行态", "系统监控", "运维审计"]));
     expect(labels(["AUDITOR"])).toEqual(expect.arrayContaining(["审计中心", "记忆中心", "运行态", "系统监控"]));
-    expect(labels(["ADMIN"])).toEqual(expect.arrayContaining(["系统总览", "异常中心", "智能调度", "运行中心", "审计中心"]));
+    expect(labels(["ADMIN"])).toEqual(expect.arrayContaining(["系统总览", "车辆态势地图", "异常中心", "智能调度", "运行中心", "审计中心"]));
+    expect(labels(["SUPERVISOR"])).toContain("车辆态势地图");
+    expect(labels(["EMPLOYEE"])).not.toContain("车辆态势地图");
     expect(labels(["ADMIN"])).not.toContain("用户管理");
   });
 });

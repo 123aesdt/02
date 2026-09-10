@@ -104,12 +104,12 @@ test("V2-F product surfaces expose live V2 evidence without mock fallback", asyn
     await page.goto(`/dispatch/${encodeURIComponent(overrideTaskId)}`);
     await expect(page.getByRole("region", { name: "Runtime Thread" })).toBeVisible();
     await page.getByRole("region", { name: "Runtime Thread" }).screenshot({ path: path.join(screenshotDir, "dispatch-runtime-thread.png") });
-    await expect(page.getByTestId("runtime-intervention")).toContainText("ELIGIBLE");
+    await expect(page.getByTestId("runtime-intervention")).toContainText("可干预");
     await page.getByTestId("runtime-intervention").screenshot({ path: path.join(screenshotDir, "intervention-eligible.png") });
     await page.locator(".checkpoint-timeline").screenshot({ path: path.join(screenshotDir, "checkpoint-timeline.png") });
 
     const dialog = await openOverrideDialog(page, overrideTaskId, "BROKEN");
-    await dialog.getByLabel("Reason").fill("人工确认车辆爆胎");
+    await dialog.getByLabel("干预原因").fill("人工确认车辆爆胎");
     await dialog.getByRole("button", { name: "确认干预" }).click();
     const applied = page.locator('[data-submission-state="APPLIED"]');
     await expect(applied).toContainText(`V${before.state_version} → V${before.state_version + 1}`);
@@ -121,11 +121,11 @@ test("V2-F product surfaces expose live V2 evidence without mock fallback", asyn
     workerOnePaused = false;
     unpauseWorkerTwo();
     workerTwoStopped = false;
-    await expect(page.getByTestId("capacity-evidence").getByText("BROKEN", { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("capacity-evidence").getByText("故障", { exact: true })).toBeVisible({ timeout: 30_000 });
     await page.getByTestId("capacity-evidence").screenshot({ path: path.join(screenshotDir, "capacity-broken.png") });
     const finalResult = await waitForTaskReady(request, overrideTaskId);
     expect(finalResult.status).toBe("REVIEW_REQUIRED");
-    await expect(page.locator(".runtime-override-history")).toContainText("APPLIED");
+    await expect(page.locator(".runtime-override-history")).toContainText("已应用");
     await page.locator(".runtime-override-history").screenshot({ path: path.join(screenshotDir, "override-history.png") });
   } finally {
     if (workerOnePaused) try { unpauseWorkerOne(); } catch { /* final restoration */ }

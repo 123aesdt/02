@@ -7,7 +7,7 @@ from app.sandtable.seed_data import DRIVERS, ORDERS, ROAD_EDGES, ROAD_NODES, STA
 
 def test_new_county_seed_has_the_approved_inventory() -> None:
     assert (len(STATIONS), len(ROAD_NODES), len(ROAD_EDGES)) == (8, 18, 26)
-    assert (len(DRIVERS), len(VEHICLES), len(ORDERS)) == (10, 12, 12)
+    assert (len(DRIVERS), len(VEHICLES), len(ORDERS)) == (10, 20, 12)
     assert all(isinstance(row, MappingProxyType) for rows in (STATIONS, ROAD_NODES, ROAD_EDGES, DRIVERS, VEHICLES, ORDERS) for row in rows)
     edge = next(item for item in ROAD_EDGES if item["edge_id"] == "E04")
     vehicle = next(item for item in VEHICLES if item["vehicle_id"] == "V-005")
@@ -22,7 +22,7 @@ def test_all_approved_rows_match_the_business_id_sorted_contract() -> None:
         "5e4effa3e21e7e3ca0c2b33aca8d2fad8ea48900840a0e095f7a8c545d9244d8",
         "77a70b955cb5adeab07e579afe62f8338a17816ad2a28c09b88b1ad99edc80e7",
         "16d6a233b76612c7bbdb0bf9e7db9b7abf04fb0f56400559384b7993c97fa882",
-        "eaf03d013068ac8a2344af603a00eb4ddc457b17f19523118b726f2532c3e601",
+        "6a265823b410ac4bdb6e869bb82b660e2af14b62c73b7261943d62a1b11eb44e",
         "09afe3b7b87bff3d1343f23af76391786719685df28103eb0a8200711525b38f",
     )
     actual_digests = tuple(

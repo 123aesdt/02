@@ -23,12 +23,58 @@ from app.models.order import Order
 from app.models.runtime_thread import RuntimeThread
 from app.models.task import DispatchTask
 from app.providers.embedding.fake import FakeEmbeddingProvider
-from app.sandtable.seed_data import ORDERS, STATIONS
+from app.sandtable.seed_data import ORDERS, STATIONS, VEHICLES
 from app.sandtable.sqlalchemy_repository import seed_new_county_sandtable
 
 DEVELOPMENT_RUNTIME_PROFILES = frozenset({"local", "test", "docker-dev"})
 DEMO_RUNTIME_STATUSES = ("RUNNING", "STABLE", "OVERRIDING", "TERMINAL")
 DEMO_DELIVERY_EMPLOYEE_SUBJECT_IDS = ("CF-DEMO-001", "CF-DEMO-006")
+
+DEMO_REPORT_ROUTES = (
+    ("ROUTE-01", "新平县中心仓", "城东配送站"),
+    ("ROUTE-02", "新平县中心仓", "102 国道东口"),
+    ("ROUTE-03", "新平县中心仓", "北岭村驿站"),
+    ("ROUTE-04", "新平县中心仓", "河西乡服务站"),
+    ("ROUTE-05", "新平县中心仓", "南山村服务点"),
+    ("ROUTE-06", "新平冷链中心", "102 国道中段"),
+    ("ROUTE-07", "新平县中心仓", "双河村路口"),
+    ("ROUTE-08", "新平县中心仓", "城东电商服务点"),
+    ("ROUTE-09", "北岭村驿站", "102 国道西口"),
+    ("ROUTE-10", "县域车辆维修站", "102 国道中段"),
+)
+
+
+def _demo_report_source_spec(position: int) -> MappingProxyType:
+    suffix = f"{position:03d}"
+    route_id, origin, destination = DEMO_REPORT_ROUTES[(position - 1) // 2]
+    task_id = (
+        "DEMO-TASK-REPORT-VEHICLE"
+        if position == 1
+        else "DEMO-TASK-REPORT-ROAD"
+        if position == 8
+        else f"DEMO-TASK-REPORT-{suffix}"
+    )
+    idempotency_key = (
+        "demo-report-source-vehicle"
+        if position == 1
+        else "demo-report-source-road"
+        if position == 8
+        else f"demo-report-source-{suffix}"
+    )
+    return MappingProxyType(
+        {
+            "task_id": task_id,
+            "order_no": f"DEMO-REPORT-ORDER-{suffix}",
+            "idempotency_key": idempotency_key,
+            "vehicle_id": f"V-{suffix}",
+            "route_id": route_id,
+            "origin": origin,
+            "destination": destination,
+        }
+    )
+
+
+DEMO_REPORT_SOURCE_TASKS = tuple(_demo_report_source_spec(position) for position in range(1, 21))
 
 DEMO_EMPLOYEE_ACCOUNTS = (
     MappingProxyType({"employee_id": "CF-DEMO-001", "display_name": "张师傅", "role": "EMPLOYEE"}),
@@ -413,6 +459,77 @@ def seed_demo_execution_case(
         )
 
 
+def seed_docker_e2e_case(session: Session) -> None:
+    order = session.scalar(select(Order).where(Order.order_no == "ORDER-E2E-RAIN-001"))
+    if order is None:
+        order = Order(
+            order_no="ORDER-E2E-RAIN-001",
+            status="IN_TRANSIT",
+            driver_id="driver-li",
+            vehicle_id="vehicle-001",
+            route_id="xinping-road",
+            origin="新平县中心仓",
+            destination="大山镇卫生院",
+        )
+        session.add(order)
+        session.flush()
+    anomaly = session.scalar(select(Anomaly).where(Anomaly.anomaly_no == "ANOM-E2E-RAIN-001"))
+    if anomaly is None:
+        session.add(
+            Anomaly(
+                anomaly_no="ANOM-E2E-RAIN-001",
+                order_id=order.id,
+                anomaly_type="rain_slippery",
+                severity="HIGH",
+                description="李师傅在雨天经过新平路，道路出现湿滑风险。",
+                status="OPEN",
+            )
+        )
+
+
+def seed_demo_report_source_tasks(session: Session) -> None:
+    for spec in DEMO_REPORT_SOURCE_TASKS:
+        order = session.scalar(select(Order).where(Order.order_no == spec["order_no"]))
+        vehicle = next((row for row in VEHICLES if row["vehicle_id"] == spec["vehicle_id"]), None)
+        driver_id = vehicle["assigned_driver_id"] if vehicle and vehicle["assigned_driver_id"] else "D-001"
+        if order is None:
+            order = Order(
+                order_no=spec["order_no"],
+                status="IN_TRANSIT",
+                driver_id=driver_id,
+                vehicle_id=spec["vehicle_id"],
+                route_id=spec["route_id"],
+                origin=spec["origin"],
+                destination=spec["destination"],
+            )
+            session.add(order)
+            session.flush()
+        else:
+            order.status = "IN_TRANSIT"
+            order.driver_id = driver_id
+            order.vehicle_id = spec["vehicle_id"]
+            order.route_id = spec["route_id"]
+            order.origin = spec["origin"]
+            order.destination = spec["destination"]
+        task = session.scalar(
+            select(DispatchTask).where(DispatchTask.idempotency_key == spec["idempotency_key"])
+        )
+        if task is None:
+            task = DispatchTask(
+                task_id=spec["task_id"],
+                order_id=order.id,
+                anomaly_id=None,
+                status="IN_PROGRESS",
+                idempotency_key=spec["idempotency_key"],
+                assignee_subject_id="CF-DEMO-001",
+            )
+            session.add(task)
+        else:
+            task.order_id = order.id
+            task.status = "IN_PROGRESS"
+            task.assignee_subject_id = "CF-DEMO-001"
+
+
 def seed_database(session_factory=None, runtime_profile: str | None = None) -> None:
     profile = runtime_profile or get_settings().runtime_profile
     if profile not in DEVELOPMENT_RUNTIME_PROFILES:
@@ -422,6 +539,8 @@ def seed_database(session_factory=None, runtime_profile: str | None = None) -> N
         seed_demo_employee_accounts(session)
         migrate_legacy_demo_business_case_orders(session)
         seed_new_county_sandtable(session)
+        seed_demo_report_source_tasks(session)
+        seed_docker_e2e_case(session)
         seed_demo_business_cases(session)
         session.commit()
 

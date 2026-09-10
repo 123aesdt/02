@@ -7,15 +7,34 @@ function Stop-Acceptance([string]$Message) {
 }
 
 function Get-MySqlScalar([string]$Query) {
-    $output = @(& $dockerCommand compose --env-file $envFile exec -T mysql mysql -N `
-        ("-u{0}" -f $dockerEnv.MYSQL_USER) ("-p{0}" -f $dockerEnv.MYSQL_PASSWORD) `
-        -D $dockerEnv.MYSQL_DATABASE -e $Query)
-    if ($LASTEXITCODE -ne 0) { throw 'MySQL 验收查询失败。' }
+    $nativeErrorPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = @(& $dockerCommand compose --env-file $envFile exec -T mysql mysql -N `
+            ("-u{0}" -f $dockerEnv.MYSQL_USER) ("-p{0}" -f $dockerEnv.MYSQL_PASSWORD) `
+            -D $dockerEnv.MYSQL_DATABASE -e $Query 2>&1)
+        $nativeExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $nativeErrorPreference
+    }
+    if ($nativeExitCode -ne 0) { throw 'MySQL 验收查询失败。' }
     $values = @($output | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ -match '^\d+$' })
     if ($values.Count -ne 1) { throw 'MySQL 验收查询未返回唯一数字。' }
     return [int]$values[0]
 }
-
+function Invoke-MySqlCommand([string]$Query) {
+    $nativeErrorPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $dockerCommand compose --env-file $envFile exec -T mysql mysql -N `
+            ("-u{0}" -f $dockerEnv.MYSQL_USER) ("-p{0}" -f $dockerEnv.MYSQL_PASSWORD) `
+            -D $dockerEnv.MYSQL_DATABASE -e $Query *> $null
+        $nativeExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $nativeErrorPreference
+    }
+    if ($nativeExitCode -ne 0) { throw 'MySQL 沙盘基线重置失败。' }
+}
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $envFile = Join-Path $projectRoot '.docker.env'
 if (-not (Test-Path -LiteralPath $envFile)) { Stop-Acceptance '缺少 .docker.env，无法启动真实依赖验收。' }
@@ -29,6 +48,10 @@ $dockerEnv = @{}
 Get-Content -LiteralPath $envFile | ForEach-Object {
     if ($_ -match '^(?<key>[^=]+)=(?<value>.*)$') { $dockerEnv[$Matches.key] = $Matches.value }
 }
+Invoke-MySqlCommand "UPDATE fleet_vehicles SET status='AVAILABLE', version=version+1, updated_at=UTC_TIMESTAMP(6) WHERE vehicle_id='V-005' AND status<>'AVAILABLE'; UPDATE road_edges SET status='OPEN', congestion_factor=1.00, version=version+1, updated_at=UTC_TIMESTAMP(6) WHERE edge_id='E04' AND (status<>'OPEN' OR congestion_factor<>1.00);"
+$baselineVehicle = Get-MySqlScalar "SELECT COUNT(*) FROM fleet_vehicles WHERE vehicle_id='V-005' AND status='AVAILABLE';"
+$baselineRoad = Get-MySqlScalar "SELECT COUNT(*) FROM road_edges WHERE edge_id='E04' AND status='OPEN' AND congestion_factor=1.00;"
+if ($baselineVehicle -ne 1 -or $baselineRoad -ne 1) { throw '虚拟沙盘基线状态校验失败。' }
 $python = Join-Path $projectRoot '.venv\Scripts\python.exe'
 $previousProfile = $env:RUNTIME_PROFILE
 $previousToken = $env:E2E_ACCESS_TOKEN

@@ -182,7 +182,7 @@ class RoutePlanResponse(_StrictEvidenceResponse):
     visited_node_count: int | None = None
     routing_status: str | None = None
     algorithm: str
-    road_network_version: int
+    road_network_version: int | None = None
     network_nodes: list[RoadNodeResponse]
     network_edges: list[RoadEdgeResponse]
 
@@ -192,6 +192,7 @@ class TaskResultResponse(BaseModel):
     order_id: int
     ready: bool
     status: str
+    anomaly_type: str | None = None
     dispatch: DispatchResultResponse | None = None
     audit: AuditResultResponse | None = None
     publication: PublicationResultResponse | None = None

@@ -52,7 +52,7 @@ def test_seed_is_idempotent_preserves_user_rows_and_loads_demo_context(sqlite_fa
         assert (context.order_no, context.cargo_weight_kg, context.cargo_type) == ("DEMO-ORDER-001", Decimal("700.00"), "COLD_CHAIN")
         assert (context.origin_node_id, context.destination_node_id, context.current_vehicle_id, context.current_driver_id) == ("N01", "N06", "V-001", "D-001")
         assert session.scalar(select(func.count()).select_from(RoadEdge)) == 26
-        assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 13
+        assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 21
         assert session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "USER-V-001")) is not None
 
 

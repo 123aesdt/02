@@ -123,6 +123,25 @@ async def test_capacity_agent_reads_canonical_vehicle_status():
 
 
 @pytest.mark.asyncio
+async def test_capacity_agent_preserves_legacy_flow_without_sandtable_context():
+    state = _state()
+    state["sandtable_context_loaded"] = False
+    service = CapacityService(InMemoryCapacityProvider({}), limited_threshold=0.8, unavailable_threshold=1.0)
+
+    patch = await capacity_node(state, service)
+
+    assert patch["capacity_state"] == {
+        "driver_available": True,
+        "vehicle_available": True,
+        "load_ratio": 0.0,
+        "station_load_ratio": None,
+        "capacity_status": "AVAILABLE",
+        "risk_level": "low",
+        "reason": None,
+        "provider_name": "legacy_compatibility",
+    }
+
+@pytest.mark.asyncio
 async def test_graph_intake_memory_environment_capacity_flow():
     graph = build_graph(
         GraphDependencies(

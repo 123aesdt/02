@@ -55,6 +55,7 @@ def test_docker_runtime_declares_real_infrastructure_and_distinct_workers() -> N
     assert "RUNTIME_CHECKPOINT_INTERRUPT_AFTER: environment" in compose
     assert "WORKER_CONSUMER_NAME: worker-1" in compose
     assert "WORKER_CONSUMER_NAME: worker-2" in compose
+    assert "WORKER_PENDING_MIN_IDLE_MS: 4000" in compose
 
 
 def test_docker_runtime_adds_observability_without_changing_checkpoint_redis() -> None:
@@ -180,6 +181,8 @@ def test_docker_test_script_filters_mysql_client_warning_lines() -> None:
     assert "REROUTED" in text
     assert "XPENDING countyflow:dispatch:tasks countyflow-workers" in text
     assert "[System.Text.Encoding]::UTF8.GetBytes($body)" in text
+    assert "--role SUPERVISOR" in text
+    assert "$env:E2E_ACCESS_TOKEN = $supervisorToken" in text
 
 
 def test_docker_websocket_e2e_requires_eight_agent_graph_evidence() -> None:
@@ -216,10 +219,15 @@ def test_checkpoint_integration_and_recovery_harnesses_cover_real_acceptance() -
         "memory_mutation_count",
         "national-102",
         "memory-rain-li",
+        "李师傅在雨天经过新平路，道路出现湿滑风险",
         "APPROVED",
         "REROUTE",
     ):
         assert evidence in recovery_source
+    kill_index = recovery_source.index('docker("kill", container_id("worker-1"))')
+    unpause_index = recovery_source.index('docker("unpause", container_id("worker-2"))')
+    started_index = recovery_source.index("recovery_started_at = time.perf_counter()")
+    assert kill_index < unpause_index < started_index
 
 
 def test_docker_runtime_exposes_read_only_runtime_thread_panel() -> None:
@@ -255,6 +263,9 @@ def test_v2_d2_browser_harness_is_api_mode_and_restores_runtime_safely() -> None
     ):
         assert evidence in source
 
+    docker_support = (PROJECT_ROOT / "frontend" / "e2e" / "support" / "docker.ts").read_text(encoding="utf-8")
+    assert 'container("stop", "-t", "1", "countyflow-ai-worker-1-1")' in docker_support
+    assert 'container("start", "countyflow-ai-worker-1-1")' in docker_support
 
 def test_observability_harness_covers_targets_provisioning_failures_and_overhead() -> None:
     runner = PROJECT_ROOT / "scripts" / "test-observability.ps1"
@@ -271,6 +282,7 @@ def test_observability_harness_covers_targets_provisioning_failures_and_overhead
     assert "real_dispatch_task_id" in integration_source
     assert "agent_execution_delta" in integration_source
     assert "graph_query_delta" in integration_source
+    assert '"anomaly_description": "李师傅在雨天经过新平路，道路出现湿滑风险。"' in integration_source
     failure_source = failures.read_text(encoding="utf-8")
     for evidence in ("neo4j", "worker-1", "worker-2", "prometheus", "grafana", "finally"):
         assert evidence in failure_source
@@ -288,16 +300,20 @@ def test_observability_harness_covers_targets_provisioning_failures_and_overhead
     assert "test-observability.ps1" in docker_test
     assert "test-observability.ps1" in check_script
     assert "observability_alert_e2e.py" in runner.read_text(encoding="utf-8")
+    assert "Wait-ObservabilityDependencySeries" in runner.read_text(encoding="utf-8")
+    assert "series.dependency_up" in runner.read_text(encoding="utf-8")
 
 
 def test_observability_browser_specs_are_api_mode_and_cover_unavailable_states() -> None:
     live = (PROJECT_ROOT / "frontend" / "e2e" / "observability-live.spec.ts").read_text(encoding="utf-8")
     failures = (PROJECT_ROOT / "frontend" / "e2e" / "observability-failures.spec.ts").read_text(encoding="utf-8")
-    assert "LIVE OBSERVABILITY" in live
-    assert "VERIFIED ACCEPTANCE" in live
-    assert 'getByText("DEMO DATA", { exact: true })).toHaveCount(0)' in live
-    assert "Monitoring unavailable" in failures
-    assert "Monitoring permission required" in failures
+    assert "实时可观测性" in live
+    assert "已通过验收" in live
+    assert 'getByText("演示数据", { exact: true })).toHaveCount(0)' in live
+    assert "监控暂不可用" in failures
+    assert "需要监控读取权限" in failures
+    assert 'authenticatePage(page, "OPERATOR", "/monitor")' in live
+    assert failures.count('authenticatePage(page, "OPERATOR", "/monitor")') == 2
 
 
 def test_current_browser_harnesses_and_dashboard_use_eleven_service_topology() -> None:

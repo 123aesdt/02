@@ -38,7 +38,7 @@ async def dispatch_node(
             state.get("recommended_action"),
             state.get("analysis_mode"),
             state.get("issue_subtype"),
-            state.get("vehicle_id"),
+            state.get("vehicle_id") if state.get("original_vehicle_weight_tons") is not None else None,
             state.get("candidate_vehicles", []),
             state.get("incident_node_id"),
             {

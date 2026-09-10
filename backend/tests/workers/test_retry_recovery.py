@@ -14,6 +14,7 @@ from app.dispatch.service import DispatchService
 from app.graph.builder import build_graph
 from app.graph.dependencies import GraphDependencies
 from app.idempotency.service import IdempotencyService
+from app.locks.redis_execution_lock import RedisExecutionLock
 from app.models.audit import AuditRecord
 from app.models.dispatch import Dispatch
 from app.models.task import DispatchTask
@@ -158,6 +159,29 @@ async def test_recovery_does_not_execute_graph_after_retry_limit(redis_client: F
     await worker.recover_once()
 
     assert graph.invocations == 1
+
+
+@pytest.mark.asyncio
+async def test_recovery_does_not_dlq_message_while_original_execution_lock_is_active(redis_client: FakeRedis):
+    active_lock = RedisExecutionLock(redis_client, ttl_ms=1_000)
+    handle = await active_lock.acquire("idem-task-retry-worker")
+    queue = _queue(redis_client, "worker-recovery")
+    worker = DispatchWorker(
+        queue,
+        _FailingGraph(),
+        read_count=1,
+        block_ms=1,
+        retry_policy=_policy(),
+        execution_lock=RedisExecutionLock(redis_client, ttl_ms=1_000),
+    )
+
+    result = await worker._recover_message(
+        StreamMessage("3-0", _task(), 3, {"stream": STREAM_NAME})
+    )
+
+    assert (result.terminal_status, result.lock_acquired, result.moved_to_dlq) == ("LOCKED", False, False)
+    assert await redis_client.xlen(DLQ_STREAM_NAME) == 0
+    await active_lock.release(handle)
 
 
 @pytest.mark.asyncio

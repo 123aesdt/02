@@ -681,6 +681,38 @@ async def test_execution_lock_released_after_failure(redis_client: FakeRedis):
 
 
 @pytest.mark.asyncio
+async def test_worker_renews_execution_lock_while_graph_is_running(redis_client: FakeRedis):
+    temp, engine, factory = _database()
+    started = asyncio.Event()
+    finish = asyncio.Event()
+
+    class SlowGraph:
+        async def ainvoke(self, state: dict[str, object]) -> dict[str, object]:
+            started.set()
+            await finish.wait()
+            return {"audit_result": {"audit_status": "APPROVED"}, "requires_manual_review": False}
+
+    competing_graph = _ApprovedGraph()
+    first_worker = _worker(_Queue(), SlowGraph(), factory, redis_client, ttl_ms=100)
+    second_worker = _worker(_Queue(), competing_graph, factory, redis_client, ttl_ms=100)
+    try:
+        first = asyncio.create_task(first_worker.process_message(_message("1-0")))
+        await started.wait()
+        await asyncio.sleep(0.25)
+
+        competing_result = await second_worker.process_message(_message("2-0"))
+        finish.set()
+        first_result = await first
+
+        assert competing_result.lock_acquired is False
+        assert competing_graph.invocations == 0
+        assert first_result.acknowledged is True
+    finally:
+        finish.set()
+        engine.dispose()
+        temp.cleanup()
+
+@pytest.mark.asyncio
 async def test_cancelled_worker_does_not_release_other_workers_lock(redis_client: FakeRedis):
     temp, engine, factory = _database()
     started = asyncio.Event()

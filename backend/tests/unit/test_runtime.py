@@ -192,7 +192,8 @@ def test_docker_runtime_wires_mysql_sandtable_fleet_and_road_services(monkeypatc
     assert capacity_service_provider is capacity_provider
     assert capacity_repository is fleet_allocation_repository
     assert capacity_thresholds == {"limited_threshold": 0.8, "unavailable_threshold": 1.0}
-    assert captured["routing"][0] is None
+    route_provider = captured["routing"][0]
+    assert route_provider.resolve_route_reference("建议改走102国道") == "national-102"
     assert len(road_repositories) == 1
     assert captured["snapshot_repository"] is road_repositories[0]
     assert estimator._road_network is road_repositories[0]

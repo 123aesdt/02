@@ -25,7 +25,7 @@ it("draws each API edge once and applies blocked, pickup, recommended, then orig
     network_nodes: nodes,
     network_edges: [edge("E01", "仓前路", "N01", "N02"), edge("E04", "新平路东河桥段", "N02", "N03", "BLOCKED"), edge("E05", "新平路东段", "N03", "N05"), edge("E07", "北环支路", "N02", "N04"), edge("E07", "重复的北环支路", "N02", "N04"), edge("E09", "城东联络线", "N04", "N05"), edge("E20", "维修站接驳线", "N04", "N05")],
   }}/>) });
-  expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("-1 -1 7 4");
+  expect(container.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 960 360");
   expect(container.querySelectorAll("[data-edge-id]")).toHaveLength(6);
   expect(container.querySelector('[data-edge-id="E04"]')?.getAttribute("data-route-state")).toBe("blocked");
   expect(container.querySelector('[data-edge-id="E07"]')?.getAttribute("data-route-state")).toBe("pickup");

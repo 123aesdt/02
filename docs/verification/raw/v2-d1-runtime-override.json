@@ -183,7 +183,7 @@
     "mysql": true,
     "redis_8": true
   },
-  "required_ttl_ms": 2143.996,
+  "required_ttl_ms": 2148.059,
   "stale_version": {
     "blocked": 20,
     "samples": 20,
@@ -191,40 +191,40 @@
   },
   "timings_ms": {
     "authorization_ms": {
-      "average": 3.15,
-      "minimum": 2.665,
-      "p95": 3.85,
-      "p99_or_maximum": 3.924
+      "average": 3.157,
+      "minimum": 2.344,
+      "p95": 4.014,
+      "p99_or_maximum": 4.107
     },
     "checkpoint_read_ms": {
-      "average": 2.462,
-      "minimum": 2.213,
-      "p95": 2.792,
-      "p99_or_maximum": 2.804
+      "average": 2.504,
+      "minimum": 2.087,
+      "p95": 3.056,
+      "p99_or_maximum": 3.061
     },
     "lock_ms": {
-      "average": 0.856,
-      "minimum": 0.698,
-      "p95": 1.056,
-      "p99_or_maximum": 1.125
+      "average": 0.844,
+      "minimum": 0.616,
+      "p95": 1.061,
+      "p99_or_maximum": 1.122
     },
     "promotion_ms": {
-      "average": 21.292,
-      "minimum": 18.375,
-      "p95": 24.574,
-      "p99_or_maximum": 24.971
+      "average": 20.25,
+      "minimum": 16.638,
+      "p95": 23.756,
+      "p99_or_maximum": 26.717
     },
     "state_update_ms": {
-      "average": 12.857,
-      "minimum": 11.318,
-      "p95": 15.084,
-      "p99_or_maximum": 15.285
+      "average": 12.63,
+      "minimum": 11.152,
+      "p95": 13.894,
+      "p99_or_maximum": 14.073
     },
     "total_ms": {
-      "average": 122.595,
-      "minimum": 110.634,
-      "p95": 134.216,
-      "p99_or_maximum": 143.996
+      "average": 120.871,
+      "minimum": 108.537,
+      "p95": 133.856,
+      "p99_or_maximum": 148.059
     }
   }
 }

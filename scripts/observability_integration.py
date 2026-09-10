@@ -71,7 +71,7 @@ def api_json(path: str) -> tuple[int, dict[str, object]]:
     with urllib.request.urlopen(request, timeout=10) as response:
         payload = json.load(response)
         if not isinstance(payload, dict):
-            raise RuntimeError("CountyFlow API returned a non-object payload")
+            raise TypeError("CountyFlow API returned a non-object payload")
         return response.status, payload
 
 
@@ -88,7 +88,7 @@ def submit_real_dispatch() -> str:
                 "vehicle_id": "vehicle-001",
                 "route_id": "xinping-road",
                 "anomaly_type": "rain_slippery",
-                "anomaly_description": "V2-G1 real metrics integration workload",
+                "anomaly_description": "李师傅在雨天经过新平路，道路出现湿滑风险。",
                 "idempotency_key": f"v2g1-metrics-{uuid4().hex}",
             },
             ensure_ascii=False,

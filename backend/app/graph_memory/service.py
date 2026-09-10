@@ -1,3 +1,4 @@
+import asyncio
 from time import perf_counter
 
 from app.graph_memory.extractor import GraphMemoryContext
@@ -35,11 +36,14 @@ class GraphMemoryService:
         facts = await self._repository.find_related(keys, limit=self._result_limit)
         paths: list[GraphPath] = []
         seen_paths: set[tuple[str, ...]] = set()
-        for key in keys:
-            remaining = self._result_limit - len(paths)
-            if remaining <= 0:
-                break
-            for path in await self._repository.find_paths(key, max_hops=self._max_hops, limit=remaining):
+        path_batches = await asyncio.gather(
+            *(
+                self._repository.find_paths(key, max_hops=self._max_hops, limit=self._result_limit)
+                for key in keys
+            )
+        )
+        for batch in path_batches:
+            for path in batch:
                 identity = tuple(entity.entity_key for entity in path.entities)
                 if identity not in seen_paths:
                     seen_paths.add(identity)

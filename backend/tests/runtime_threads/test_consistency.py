@@ -124,6 +124,14 @@ class _RecordStore:
         return self.records[:limit]
 
 
+class _EventuallyVisibleRecordStore(_RecordStore):
+    async def list_bounded(self, thread_id, limit):
+        self.limits.append(limit)
+        if len(self.limits) == 1:
+            return []
+        return self.records[:limit]
+
+
 class _PromotingRepository:
     def __init__(self, thread):
         self.thread = thread
@@ -157,6 +165,30 @@ def _canonical_a() -> RuntimeThreadSnapshot:
         next_node="node_b",
         checkpoint_size_bytes=512,
     )
+
+
+@pytest.mark.asyncio
+async def test_runner_waits_for_a_synchronously_durable_checkpoint_to_become_visible():
+    class Graph:
+        async def astream(self, state, **kwargs):
+            yield {"node_a": {"last_completed_node": "node_a", "completed_node_count": 1}}
+
+    repository = _PromotingRepository(_thread())
+    store = _EventuallyVisibleRecordStore([_record("checkpoint-a", parent_id=None, node="node_a", count=1)])
+    runner = CheckpointedGraphRunner(
+        Graph(),
+        repository,
+        store,
+        node_order=("node_a", "node_b"),
+        max_checkpoint_bytes=1_048_576,
+        worker_consumer="worker-1",
+    )
+
+    await runner.run_new(_thread(), {"value": 0})
+
+    assert repository.thread.current_checkpoint_id == "checkpoint-a"
+    assert repository.thread.checkpoint_count == 1
+    assert store.limits == [10, 10]
 
 
 @pytest.mark.asyncio

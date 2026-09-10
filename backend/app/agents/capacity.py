@@ -76,7 +76,8 @@ async def capacity_node(
     fleet_allocation_service: FleetAllocationService | None = None,
     road_network_snapshot_service: RoadNetworkSnapshotService | None = None,
 ) -> dict[str, object]:
-    if capacity_service is None:
+    legacy_compatibility = state.get("sandtable_context_loaded") is False
+    if capacity_service is None or legacy_compatibility:
         available = state.get("vehicle_status", "NORMAL") == "NORMAL"
         capacity_state: CapacityState = {
             "driver_available": available,
@@ -86,7 +87,7 @@ async def capacity_node(
             "capacity_status": "AVAILABLE" if available else "UNAVAILABLE",
             "risk_level": "low" if available else "high",
             "reason": None,
-            "provider_name": "sandtable_graph",
+            "provider_name": "legacy_compatibility" if legacy_compatibility else "sandtable_graph",
         }
     else:
         try:
@@ -117,7 +118,11 @@ async def capacity_node(
             }
         capacity_state = capacity_result_to_state(result)
 
-    if state.get("vehicle_status") in {"BROKEN", "UNAVAILABLE", "MAINTENANCE"} and fleet_allocation_service is not None:
+    if (
+        not legacy_compatibility
+        and state.get("vehicle_status") in {"BROKEN", "UNAVAILABLE", "MAINTENANCE"}
+        and fleet_allocation_service is not None
+    ):
         snapshot_state = state.get("road_network_snapshot")
         road_network_snapshot = (
             road_network_snapshot_service.restore(snapshot_state) if road_network_snapshot_service is not None and snapshot_state is not None else None

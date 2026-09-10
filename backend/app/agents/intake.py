@@ -16,11 +16,17 @@ def intake_node(
         return {"requires_manual_review": True, "error_code": "INTAKE_VALIDATION_ERROR", "error_message": "Anomaly description is required."}
     patch: dict[str, object] = {"normalized_anomaly": normalized, "requires_manual_review": False}
     if sandtable_context_service is not None:
+        patch["sandtable_context_loaded"] = False
         try:
             context = sandtable_context_service.resolve(state["order_id"], state["anomaly_type"], normalized, state.get("vehicle_id"))
+        except LookupError:
+            if not state.get("started_at"):
+                patch["started_at"] = datetime.now(UTC).isoformat()
+            return patch
         except RoadLocationUnresolved:
             return {
                 **patch,
+                "sandtable_context_loaded": True,
                 "requires_manual_review": True,
                 "error_code": "ROAD_LOCATION_UNRESOLVED",
                 "error_message": "The reported road location could not be resolved uniquely.",
@@ -29,6 +35,7 @@ def intake_node(
             vehicle_weight = format(error.context.vehicle_weight_tons, "f")
             return {
                 **patch,
+                "sandtable_context_loaded": True,
                 "vehicle_id": error.context.current_vehicle_id,
                 "driver_id": error.context.current_driver_id or state["driver_id"],
                 "vehicle_weight_tons": vehicle_weight,
@@ -42,6 +49,7 @@ def intake_node(
         snapshot_state = road_network_snapshot_service.capture() if road_network_snapshot_service is not None else None
         patch.update(
             {
+                "sandtable_context_loaded": True,
                 "cargo_weight_kg": format(context.cargo_weight_kg, "f"),
                 "cargo_type": context.cargo_type,
                 "origin_node_id": context.origin_node_id,

@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { runtimeConfig } from "../config/runtime";
-import type { DemoEmployee } from "./demo-employees";
+import { FIXED_DEMO_EMPLOYEES, type DemoEmployee } from "./demo-employees";
 import { useAuth } from "./auth-state";
 import { localizeRole } from "./principal-view";
+
+const FIXED_DEMO_EMPLOYEE_IDS = new Set(FIXED_DEMO_EMPLOYEES.map((employee) => employee.employee_id));
 
 export function DemoEmployeeSwitcher({
   enabled,
@@ -20,18 +22,22 @@ export function DemoEmployeeSwitcher({
   onSelect: (employeeId: string) => Promise<void> | void;
 }) {
   if (!enabled) return null;
+  const selectableEmployees = [
+    ...FIXED_DEMO_EMPLOYEES,
+    ...employees.filter((employee) => !FIXED_DEMO_EMPLOYEE_IDS.has(employee.employee_id)),
+  ];
   return <label className="demo-employee-switcher">
     <span>演示身份</span>
     <select
       aria-label="切换演示员工"
       value={currentEmployeeId ?? ""}
-      disabled={pending || employees.length === 0}
+      disabled={pending}
       onChange={(event) => {
         if (event.target.value) void onSelect(event.target.value);
       }}
     >
       <option value="">选择演示员工</option>
-      {employees.map((employee) => <option key={employee.employee_id} value={employee.employee_id}>
+      {selectableEmployees.map((employee) => <option key={employee.employee_id} value={employee.employee_id}>
         {employee.display_name} · {localizeRole(employee.role)}
       </option>)}
     </select>

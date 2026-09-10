@@ -25,6 +25,8 @@ def payload() -> dict[str, object]:
         "location_text": "新平路南段物流站入口",
         "reported_vehicle_status": "BROKEN",
         "severity": "HIGH",
+        "incident_node_id": "N04",
+        "affected_edge_id": None,
         "idempotency_key": "driver-report-uuid",
     }
 
@@ -70,6 +72,8 @@ def test_employee_report_returns_202_and_uses_authenticated_subject() -> None:
         "message": "问题已上报，AI 调度已启动。",
     }
     assert service.subject_id == "employee-1"
+    assert service.commands[0].incident_node_id == "N04"
+    assert service.commands[0].affected_edge_id is None
     assert any(
         event.event_type.value == "ANOMALY_REPORT"
         and event.reason_code == "ANOMALY_REPORT_ACCEPTED"

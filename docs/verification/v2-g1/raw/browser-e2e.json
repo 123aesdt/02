@@ -2,13 +2,13 @@
   "config": {
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
-      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\node_modules\\@playwright\\test\\cli.js",
       "test",
       "e2e/observability-live.spec.ts",
       "e2e/observability-failures.spec.ts"
     ],
-    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
-    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+    "configFile": "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -24,7 +24,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
+        "outputDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -32,7 +32,7 @@
         },
         "id": "",
         "name": "",
-        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
+        "testDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -49,7 +49,7 @@
       [
         "json",
         {
-          "outputFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\docs\\verification\\v2-g1\\raw\\browser-e2e.json"
+          "outputFile": "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\docs\\verification\\v2-g1\\raw\\browser-e2e.json"
         }
       ]
     ],
@@ -73,7 +73,7 @@
       "line": 0,
       "specs": [
         {
-          "title": "API mode renders Monitoring unavailable and never demo data",
+          "title": "API 模式显示监控不可用且不回退演示数据",
           "ok": true,
           "tags": [],
           "tests": [
@@ -88,12 +88,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 354,
+                  "duration": 936,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:27:53.776Z",
+                  "startTime": "2026-09-09T01:50:31.118Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -101,13 +101,13 @@
               "status": "expected"
             }
           ],
-          "id": "0b7179683bc460b78b0d-31bf870dd70d4146ac43",
+          "id": "0b7179683bc460b78b0d-51384382e09c1712cfe9",
           "file": "observability-failures.spec.ts",
-          "line": 3,
+          "line": 5,
           "column": 1
         },
         {
-          "title": "monitor:read denial is explicit",
+          "title": "明确显示缺少监控读取权限",
           "ok": true,
           "tags": [],
           "tests": [
@@ -122,12 +122,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 238,
+                  "duration": 299,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:27:54.928Z",
+                  "startTime": "2026-09-09T01:50:32.421Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -135,9 +135,9 @@
               "status": "expected"
             }
           ],
-          "id": "0b7179683bc460b78b0d-c8c1181b73c5d5f7e4b4",
+          "id": "0b7179683bc460b78b0d-16b5dfb58d162cb3c04f",
           "file": "observability-failures.spec.ts",
-          "line": 10,
+          "line": 12,
           "column": 1
         }
       ]
@@ -149,7 +149,7 @@
       "line": 0,
       "specs": [
         {
-          "title": "live observability remains separate from VERIFIED ACCEPTANCE",
+          "title": "实时可观测性与验收基线保持分离",
           "ok": true,
           "tags": [],
           "tests": [
@@ -164,12 +164,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 379,
+                  "duration": 453,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-08-29T05:27:55.190Z",
+                  "startTime": "2026-09-09T01:50:32.748Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -177,9 +177,9 @@
               "status": "expected"
             }
           ],
-          "id": "bfa15ac83659b49a5896-b0e1473015085bb195ba",
+          "id": "bfa15ac83659b49a5896-0f5c369e5192ca593b06",
           "file": "observability-live.spec.ts",
-          "line": 6,
+          "line": 8,
           "column": 1
         }
       ]
@@ -187,8 +187,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-08-29T05:27:53.413Z",
-    "duration": 2383.586,
+    "startTime": "2026-09-09T01:50:30.714Z",
+    "duration": 2703.93,
     "expected": 3,
     "skipped": 0,
     "unexpected": 0,

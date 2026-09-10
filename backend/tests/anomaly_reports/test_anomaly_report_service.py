@@ -15,6 +15,7 @@ from app.models.anomaly import Anomaly
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.order import Order
 from app.models.task import DispatchTask
+from app.sandtable.sqlalchemy_repository import seed_new_county_sandtable
 from app.services.dispatch_task_api_service import DispatchTaskApiService
 from app.streams.errors import QueueConnectionError
 
@@ -144,6 +145,30 @@ async def test_submit_derives_dispatch_context_and_persists_report(sqlite_factor
         "anomaly_description": "新平路连续降雨，路面明显湿滑。",
         "vehicle_status": "NORMAL",
     }
+
+
+@pytest.mark.asyncio
+async def test_submit_persists_structured_road_location(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+    seed_source_tasks(sqlite_factory)
+
+    result = await build_service(sqlite_factory, CapturingQueue()).submit(
+        command(
+            anomaly_type="ROAD_BLOCKED",
+            description="新平路东河桥段发生塌方，车辆无法通行。",
+            location_text="新平路东河桥段",
+            incident_node_id=None,
+            affected_edge_id="E04",
+        ),
+        principal_subject_id="CF-DEMO-001",
+    )
+
+    with sqlite_factory() as session:
+        anomaly = session.scalar(select(Anomaly).where(Anomaly.id == result.anomaly_id))
+    assert anomaly is not None
+    assert anomaly.incident_node_id is None
+    assert anomaly.affected_edge_id == "E04"
 
 
 @pytest.mark.asyncio

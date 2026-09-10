@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from app.graph_memory.extractor import DeterministicGraphTripleExtractor, GraphMemoryContext
@@ -57,6 +59,39 @@ async def test_graph_memory_service_returns_bounded_two_hop_paths():
     assert all(1 <= len(path["relations"]) <= 2 for path in paths)
     assert len(paths) <= 10
 
+
+@pytest.mark.asyncio
+async def test_graph_memory_path_queries_run_concurrently_and_keep_the_public_result_bounded():
+    class ConcurrentPathRepository(FakeGraphMemoryRepository):
+        def __init__(self) -> None:
+            super().__init__()
+            self.active = 0
+            self.peak = 0
+            self.limits: list[int] = []
+
+        async def find_paths(self, start_key: str, *, max_hops: int, limit: int):
+            self.active += 1
+            self.peak = max(self.peak, self.active)
+            self.limits.append(limit)
+            await asyncio.sleep(0)
+            self.active -= 1
+            return []
+
+    repository = ConcurrentPathRepository()
+    service = GraphMemoryService(repository, DeterministicGraphTripleExtractor(), result_limit=10)
+
+    await service.recall(
+        GraphMemoryContext(
+            driver_id="driver-li",
+            vehicle_id="vehicle-001",
+            route_id="xinping-road",
+            anomaly_type="vehicle_breakdown",
+            text="李师傅驾驶车辆发生故障",
+        )
+    )
+
+    assert repository.peak > 1
+    assert set(repository.limits) == {10}
 
 def test_graph_memory_service_rejects_unbounded_search_configuration():
     with pytest.raises(ValueError, match="max_hops"):

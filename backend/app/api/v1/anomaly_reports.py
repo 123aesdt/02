@@ -55,6 +55,8 @@ async def report_anomaly(
         reported_vehicle_status=payload.reported_vehicle_status.value,
         severity=payload.severity.value,
         idempotency_key=payload.idempotency_key,
+        incident_node_id=payload.incident_node_id,
+        affected_edge_id=payload.affected_edge_id,
     )
     try:
         result = await service.submit(command, principal_subject_id=principal.subject_id)

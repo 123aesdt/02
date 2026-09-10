@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-29T05:18:28.907874+00:00",
+  "timestamp": "2026-09-09T01:40:56.912191+00:00",
   "targets": {
     "backend": "up",
     "worker-1": "up",
@@ -15,8 +15,8 @@
     "countyflow_worker_messages_total",
     "countyflow_dependency_up"
   ],
-  "real_dispatch_task_id": "TASK-f2fc259281574852b20d093f77d1dbd",
+  "real_dispatch_task_id": "TASK-81c17c6905f0488999c2a44a360dbae",
   "agent_execution_delta": 8.0,
-  "graph_query_delta": 1.0,
+  "graph_query_delta": 2.0,
   "passed": true
 }

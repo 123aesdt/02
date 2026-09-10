@@ -59,11 +59,47 @@ it("renders the persisted Dijkstra reroute calculation and dynamic network evide
   expect(container.textContent).toContain("13.20 公里 · 24 分钟");
   expect(container.textContent).toContain("+3.20 公里");
   expect(container.textContent).toContain("+4 分钟");
+  const map = container.querySelector('svg[aria-label="根据接口节点坐标计算的县域道路与调度路线"]');
+  expect(map?.getAttribute("viewBox")).toBe("0 0 960 360");
+  expect(container.querySelector('[data-node-id="N01"] circle')?.getAttribute("cx")).toBe("48");
+  expect(container.querySelector('[data-node-id="N01"] circle')?.getAttribute("cy")).toBe("316");
+  expect(container.querySelector('[data-node-id="N08"] circle')?.getAttribute("cx")).toBe("480");
+  expect(container.querySelector('[data-node-id="N08"] circle')?.getAttribute("cy")).toBe("44");
+  expect(container.querySelector('[data-node-id="N06"] circle')?.getAttribute("cx")).toBe("912");
+  expect(container.querySelector('[data-node-id="N06"] circle')?.getAttribute("cy")).toBe("316");
+  const steps = container.querySelector('[aria-label="路线重新计算步骤"]');
+  expect(steps?.querySelectorAll("li")).toHaveLength(4);
+  expect(steps?.textContent).toContain("读取虚拟道路网络9 个节点 · 9 条道路");
+  expect(steps?.textContent).toContain("应用异常约束封锁 E04");
+  expect(steps?.textContent).toContain("执行 Dijkstra 搜索访问 8 个节点");
+  expect(steps?.textContent).toContain("输出新路线5 条道路 · 13.20 公里");
+  expect(container.textContent).toContain("已避开堵塞道路 E04");
   expect(container.querySelector('[data-edge-id="E04"]')?.getAttribute("data-route-state")).toBe("blocked");
   expect(container.querySelector('[data-edge-id="E07"]')?.getAttribute("data-route-state")).toBe("recommended");
   await act(async () => { root.unmount(); });
 });
 
+it("does not claim a blocked road was avoided when Dijkstra finds no reachable route", async () => {
+  const container = document.createElement("div"); document.body.append(container); const root = createRoot(container);
+  await act(async () => { root.render(<RoutePlanResultPanel routePlan={{
+    original_path: null,
+    recommended_path: null,
+    candidate_routes: [],
+    blocked_edge_ids: ["E04"],
+    distance_delta_km: null,
+    eta_delta_minutes: null,
+    visited_node_count: 14,
+    routing_status: "NO_REACHABLE_ROUTE",
+    algorithm: "DIJKSTRA_V1",
+    road_network_version: 8,
+    network_nodes: [],
+    network_edges: [],
+  }}/>); });
+
+  expect(container.textContent).toContain("未找到可用新路线，需要人工复核");
+  expect(container.textContent).not.toContain("已避开堵塞道路 E04");
+  await act(async () => { root.unmount(); });
+});
 it("renders the backend audit result and all returned checks", async () => {
   const container = document.createElement("div"); document.body.append(container); const root = createRoot(container);
   await act(async () => { root.render(<AuditEvidencePanel events={[event("AUDIT_COMPLETED", { audit_result: { audit_status: "APPROVED", passed: true, reason: "All evidence persisted", checks: { route_consistency: true, memory_consistency: true, fallback_consistency: true, dispatch_execution: true }, dispatch_id: 31, requires_manual_review: true, audit_record_id: 42 } })]}/>); });

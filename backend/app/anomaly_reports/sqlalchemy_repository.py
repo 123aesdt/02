@@ -12,6 +12,7 @@ from app.anomaly_reports.models import (
     SourceTaskContext,
 )
 from app.models.anomaly import Anomaly
+from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.task import DispatchTask
 from app.workspace_reads.sqlalchemy_repository import MY_TASK_STATUS_GROUPS
@@ -29,14 +30,23 @@ class SqlAlchemyAnomalyReportRepository:
             order = session.get(Order, task.order_id)
             if order is None:
                 return None
+            vehicle = (
+                None
+                if order.vehicle_id is None
+                else session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == order.vehicle_id))
+            )
+            driver_id = order.driver_id or (None if vehicle is None else vehicle.assigned_driver_id)
+            route_id = order.route_id
+            if route_id is None and order.origin_station_id and order.destination_station_id:
+                route_id = f"SANDTABLE-{order.origin_station_id}-{order.destination_station_id}"
             return SourceTaskContext(
                 task_id=task.task_id,
                 task_group=self._task_group(task.status),
                 assignee_subject_id=task.assignee_subject_id,
                 order_id=order.id,
-                driver_id=order.driver_id,
+                driver_id=driver_id,
                 vehicle_id=order.vehicle_id,
-                route_id=order.route_id,
+                route_id=route_id,
             )
 
     def get_report_by_key(self, idempotency_key: str) -> PersistedAnomalyReport | None:
@@ -65,6 +75,8 @@ class SqlAlchemyAnomalyReportRepository:
                 location_text=command.location_text,
                 reported_vehicle_status=command.reported_vehicle_status,
                 report_idempotency_key=command.idempotency_key,
+                incident_node_id=command.incident_node_id,
+                affected_edge_id=command.affected_edge_id,
             )
             session.add(anomaly)
             try:
@@ -110,4 +122,6 @@ class SqlAlchemyAnomalyReportRepository:
             severity=anomaly.severity,
             idempotency_key=anomaly.report_idempotency_key or "",
             reported_by_subject_id=anomaly.reported_by_subject_id or "",
+            incident_node_id=anomaly.incident_node_id,
+            affected_edge_id=anomaly.affected_edge_id,
         )

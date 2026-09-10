@@ -162,6 +162,7 @@ class DispatchGraphState(TypedDict):
     vehicle_weight_tons: NotRequired[str]
     original_vehicle_weight_tons: NotRequired[str]
     active_vehicle_weight_tons: NotRequired[str]
+    sandtable_context_loaded: NotRequired[bool]
     normalized_anomaly: NotRequired[str]
     memory_results: NotRequired[list[MemoryRecallState]]
     graph_memory_facts: NotRequired[list[GraphFactState]]

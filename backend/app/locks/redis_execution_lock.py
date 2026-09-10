@@ -44,6 +44,28 @@ class RedisExecutionLock:
             raise ExecutionLockError("Redis execution lock acquire failed.") from error
         return LockHandle(key, token, acquired is True or acquired == b"OK")
 
+    @property
+    def renewal_interval_seconds(self) -> float:
+        return max(self._ttl_ms / 3000, 0.001)
+
+    async def renew(self, handle: LockHandle) -> bool:
+        if not handle.acquired:
+            return False
+
+        async def compare_and_extend(pipe: object) -> bool:
+            value = await pipe.get(handle.key)
+            if value != handle.token.encode():
+                return False
+            pipe.multi()
+            pipe.pexpire(handle.key, self._ttl_ms)
+            return True
+
+        try:
+            renewed = await self._client.transaction(compare_and_extend, handle.key, value_from_callable=True)
+        except RedisError as error:
+            raise ExecutionLockError("Redis execution lock renewal failed.") from error
+        return renewed is True
+
     async def release(self, handle: LockHandle) -> bool:
         if not handle.acquired:
             return False

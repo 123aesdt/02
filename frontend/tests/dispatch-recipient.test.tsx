@@ -32,14 +32,14 @@ const auth: AuthContextValue = {
   switchDemoEmployee: vi.fn(),
 };
 
-async function render(): Promise<{ root: Root; container: HTMLDivElement }> {
+async function render(authValue: AuthContextValue = auth): Promise<{ root: Root; container: HTMLDivElement }> {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
     root.render(
       <MemoryRouter>
-        <AuthContext.Provider value={auth}>
+        <AuthContext.Provider value={authValue}>
           <DispatchSubmissionButton />
         </AuthContext.Provider>
       </MemoryRouter>,
@@ -54,6 +54,20 @@ afterEach(() => {
 });
 
 describe("dispatch recipient", () => {
+  it("keeps the fixed delivery employees available when the API list is empty", async () => {
+    const { root, container } = await render({
+      ...auth,
+      demoEmployees: [],
+    });
+    const select = container.querySelector<HTMLSelectElement>('select[aria-label="接收员工"]');
+
+    expect(select).not.toBeNull();
+    expect([...select!.options].map((option) => [option.value, option.textContent])).toEqual([
+      ["CF-DEMO-001", "张师傅 · 配送员工"],
+      ["CF-DEMO-006", "陈师傅 · 配送员工"],
+    ]);
+    await act(async () => { root.unmount(); });
+  });
   it("submits the selected delivery employee and excludes dispatchers", async () => {
     dispatchApi.createDispatchTask.mockResolvedValue({ task_id: "TASK-server-1" });
     const { root, container } = await render();

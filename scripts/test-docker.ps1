@@ -42,6 +42,8 @@ try {
     $env:AUTH_AUDIENCE = $dockerEnv.AUTH_AUDIENCE
     $dispatcherToken = (& $python (Join-Path $projectRoot 'scripts\create_dev_token.py') --role DISPATCHER).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $dispatcherToken) { Stop-DockerTest 'Unable to create the short-lived Docker test identity.' }
+    $supervisorToken = (& $python (Join-Path $projectRoot 'scripts\create_dev_token.py') --role SUPERVISOR).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $supervisorToken) { Stop-DockerTest 'Unable to create the short-lived Docker review identity.' }
 } finally {
     if ($null -eq $previousProfile) { Remove-Item Env:RUNTIME_PROFILE -ErrorAction SilentlyContinue } else { $env:RUNTIME_PROFILE = $previousProfile }
     if ($null -eq $previousSecret) { Remove-Item Env:DEVELOPMENT_JWT_SECRET -ErrorAction SilentlyContinue } else { $env:DEVELOPMENT_JWT_SECRET = $previousSecret }
@@ -104,7 +106,7 @@ if ($dispatchCount -ne '1' -or $auditCount -ne '1') { Stop-DockerTest 'MySQL dup
 
 $collections = Invoke-RestMethod -Uri 'http://localhost:6333/collections' -TimeoutSec 5
 if ($collections.result.collections.name -notcontains 'entity_resolution_memory') { Stop-DockerTest 'Qdrant entity memory collection is missing。' }
-$env:E2E_ACCESS_TOKEN = $dispatcherToken
+$env:E2E_ACCESS_TOKEN = $supervisorToken
 try {
     & $python (Join-Path $projectRoot 'scripts\docker_ws_e2e.py') --order-id $orderId --anomaly-id $anomalyId
 } finally {

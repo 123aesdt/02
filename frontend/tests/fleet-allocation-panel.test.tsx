@@ -70,7 +70,7 @@ it("renders a semantic candidate table with complete evidence for every vehicle"
   expect(table?.querySelector("caption")?.textContent).toContain("车辆候选证据表");
   expect(table?.querySelector("thead")).not.toBeNull();
   expect(table?.querySelector("tbody")).not.toBeNull();
-  expect(table?.querySelectorAll('thead th[scope="col"]')).toHaveLength(10);
+  expect(table?.querySelectorAll('thead th[scope="col"]')).toHaveLength(11);
   expect(selectedRow?.querySelector('th[scope="row"]')?.textContent).toBe("V-005");
   expect(selectedRow?.querySelector('[data-field="driver"]')?.textContent).toContain("D-003");
   expect(selectedRow?.querySelector('[data-field="driver"]')?.textContent).toContain("在岗");
@@ -84,5 +84,38 @@ it("renders a semantic candidate table with complete evidence for every vehicle"
   expect(peerRow?.querySelector('[data-field="score-components"]')?.textContent).toContain("道路风险扣分0.4");
   expect(excludedRow?.querySelector('[data-field="pickup-distance"]')?.textContent).toBe("未提供");
   expect(excludedRow?.querySelector('[data-field="score-components"]')?.textContent).toBe("未提供");
+  await act(async () => { root.unmount(); });
+});
+
+it("shows candidate totals and a deterministic ranking for dispatchable replacement vehicles", async () => {
+  const { container, root } = await renderPanel();
+  const selectedCard = container.querySelector(".fleet-transfer-card.is-selected");
+  const tableRows = [...container.querySelectorAll<HTMLTableRowElement>(".fleet-candidate-table tbody tr")];
+  const selectedRow = container.querySelector('[data-vehicle-id="V-005"]');
+  const peerRow = container.querySelector('[data-vehicle-id="县配测试车-X9"]');
+
+  expect(container.querySelector(".fleet-candidate-heading")?.textContent).toContain("候选 4 辆 · 可调度 2 辆 · 已排除 2 辆");
+  expect(selectedCard?.textContent).toContain("综合排名第 1");
+  expect(tableRows.slice(0, 2).map((row) => row.dataset.vehicleId)).toEqual(["V-005", "县配测试车-X9"]);
+  expect(selectedRow?.querySelector('[data-field="rank"]')?.textContent).toBe("第 1 名");
+  expect(peerRow?.querySelector('[data-field="rank"]')?.textContent).toBe("第 2 名");
+  expect(container.querySelector('[data-vehicle-id="V-001"] [data-field="rank"]')?.textContent).toBe("—");
+  await act(async () => { root.unmount(); });
+});
+it("states clearly when no replacement vehicle or pickup route is available", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(<FleetAllocationPanel allocation={{
+    ...allocation,
+    target_vehicle_id: null,
+    target_driver_id: null,
+    vehicle_reassigned: false,
+    pickup_route: null,
+    candidate_vehicles: allocation.candidate_vehicles.map((candidate) => ({ ...candidate, eligible: false })),
+  }}/>); });
+
+  expect(container.querySelector(".fleet-transfer")?.textContent).toContain("无可用接替车辆");
+  expect(container.querySelector(".fleet-transfer")?.textContent).not.toContain("等待接驳路线");
   await act(async () => { root.unmount(); });
 });

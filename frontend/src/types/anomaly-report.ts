@@ -22,6 +22,8 @@ export interface AnomalyReportFormInput {
   location_text: string;
   reported_vehicle_status: ReportedVehicleStatus;
   severity: AnomalyReportSeverity;
+  incident_node_id?: string | null;
+  affected_edge_id?: string | null;
 }
 
 export interface AnomalyReportRequest extends AnomalyReportFormInput {
