@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.dispatch import Dispatch
+from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.runtime_thread import RuntimeThread
 from app.models.task import DispatchTask
@@ -97,6 +98,26 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
     assert repository.list_reviews(limit=20, before_id=None).provenance == "DEMO"
     assert repository.list_runtime_threads(limit=20, before_id=None, status=None).provenance == "DEMO"
     assert repository.count_domains().provenance == "MIXED"
+
+
+def test_development_seed_keeps_visible_fault_and_dispatch_pairs(sqlite_factory):
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        vehicles = {
+            row.vehicle_id: (row.status, row.status_reason)
+            for row in session.scalars(
+                select(FleetVehicle).where(FleetVehicle.vehicle_id.in_(("V-013", "V-015", "V-016", "V-019")))
+            )
+        }
+
+    assert vehicles == {
+        "V-013": ("BROKEN", "制动系统告警，等待道路救援"),
+        "V-015": ("DISPATCHING", "紧急补位任务调度中"),
+        "V-016": ("BROKEN", "电池高压系统异常，已停止运营"),
+        "V-019": ("DISPATCHING", "冷链订单跨仓接驳调度中"),
+    }
 
 
 def test_development_seed_creates_stable_docker_e2e_case(sqlite_factory):

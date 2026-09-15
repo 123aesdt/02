@@ -157,7 +157,14 @@ const vehicleLegendItems = [
   { label: "故障", visualState: "fault" },
 ] as const;
 
-function createVehicleMarkerContent(vehicle: FleetPositionSnapshot, selected: boolean, showLabel: boolean): HTMLElement {
+type VehicleDispatchRole = "incident" | "replacement" | null;
+
+function createVehicleMarkerContent(
+  vehicle: FleetPositionSnapshot,
+  selected: boolean,
+  showLabel: boolean,
+  dispatchRole: VehicleDispatchRole,
+): HTMLElement {
   const presentation = vehicleMarkerPresentation[vehicle.status];
   const root = document.createElement("button");
   root.type = "button";
@@ -165,6 +172,7 @@ function createVehicleMarkerContent(vehicle: FleetPositionSnapshot, selected: bo
   root.setAttribute("aria-label", `${vehicle.id}，${fleetStatusMeta[vehicle.status].label}`);
   root.dataset.vehicleId = vehicle.id;
   root.dataset.vehicleVisualState = presentation.visualState;
+  if (dispatchRole) root.dataset.dispatchRole = dispatchRole;
   root.dataset.amapRouteId = vehicle.routeId;
   root.dataset.amapProgress = String(vehicle.progress);
   root.style.setProperty("--vehicle-color", presentation.accent);
@@ -203,6 +211,13 @@ function createVehicleMarkerContent(vehicle: FleetPositionSnapshot, selected: bo
     label.dataset.vehicleStateLabel = "true";
     label.textContent = fleetStatusMeta[vehicle.status].label;
     root.append(label);
+  }
+  if (showLabel && dispatchRole) {
+    const roleLabel = document.createElement("span");
+    roleLabel.className = `amap-fleet-vehicle__dispatch-role is-${dispatchRole}`;
+    roleLabel.dataset.dispatchRoleLabel = dispatchRole;
+    roleLabel.textContent = dispatchRole === "incident" ? "故障来源" : "接管车辆";
+    root.append(roleLabel);
   }
   return root;
 }
@@ -812,7 +827,12 @@ export function AmapFleetMap({
 
     for (const vehicle of vehiclesToRender) {
       const selected = vehicle.id === selectedVehicleId;
-      const priority = selected || vehicle.status === "BROKEN" || vehicle.status === "DISPATCHING";
+      const dispatchRole = vehicle.id === operationSnapshot?.incident.vehicle_id
+        ? "incident"
+        : vehicle.id === operationSnapshot?.incident.replacement_vehicle_id
+          ? "replacement"
+          : null;
+      const priority = selected || dispatchRole !== null || vehicle.status === "BROKEN" || vehicle.status === "DISPATCHING";
       const route = routeById.get(vehicle.routeId) ?? fleetRoutes[0];
       const operationPathId = vehicleOperationPathId(vehicle.id, operationSnapshot);
       const path = operationPathId ? operationPathsRef.current[operationPathId] : roadPathsRef.current[route.id];
@@ -824,7 +844,7 @@ export function AmapFleetMap({
         }
         continue;
       }
-      const presentationKey = `${operationPathId ?? vehicle.routeId}:${vehicle.status}:${selected}:${showLabels && priority}`;
+      const presentationKey = `${operationPathId ?? vehicle.routeId}:${vehicle.status}:${selected}:${dispatchRole ?? "routine"}:${showLabels && priority}`;
       if (existing?.presentationKey === presentationKey) continue;
       if (existing) map.remove(existing.marker);
       const node = nodeById.get(vehicle.nodeId);
@@ -834,7 +854,7 @@ export function AmapFleetMap({
       const position = isMoving || !node
         ? pointAlongLngLatPath(path, operationProgress ?? vehicle.routeProgress ?? vehicle.progress / 100)
         : closestPointOnLngLatPath(path, fleetNodeLngLat(node));
-      const content = createVehicleMarkerContent(vehicle, selected, showLabels && priority);
+      const content = createVehicleMarkerContent(vehicle, selected, showLabels && priority, dispatchRole);
       if (!isFiniteLngLat(position)) continue;
       const offset = overlapOffsets.get(vehicle.id) ?? { x: 0, y: 0 };
       const phase = vehicle.routePhase ?? vehicle.routeProgress ?? vehicle.progress / 100;

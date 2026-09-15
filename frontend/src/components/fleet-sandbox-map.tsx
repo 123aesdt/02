@@ -14,10 +14,11 @@ import {
 import { fleetEdgePath, fleetRouteGeometry, fleetRoutePath, fullFleetMapViewBox } from "../features/fleet-sandbox/fleet-map-geometry";
 import { fleetOperationRouteSpecs, fleetVehicleTripDetails } from "../features/fleet-sandbox/fleet-operation-presentation";
 import { canonicalFleetVehicleId, fleetNodeById as nodeById, fleetPositionForVehicle, fleetRouteById as routeById, fleetSimulationTick, type FleetPositionSnapshot } from "../features/fleet-sandbox/fleet-simulation";
-import type { RoutePlanResponse, VehicleAllocationResponse } from "../services/api/dispatch-adapter";
+import type { DispatchImpactResponse, RoutePlanResponse, VehicleAllocationResponse } from "../services/api/dispatch-adapter";
 import type { TaskEvent } from "../types/task-events";
 import type { VehicleOperationSnapshot } from "../types/vehicle-operations";
 import { AmapFleetMap, type AmapLoadState } from "./amap-fleet-map";
+import { FleetDispatchImpactCard } from "./fleet-dispatch-impact-card";
 import { MapErrorBoundary } from "./map-error-boundary";
 import { VehicleOperationTimeline } from "./vehicle-operation-timeline";
 
@@ -25,6 +26,7 @@ interface FleetSandboxMapProps {
   anomalyType: string | null | undefined;
   allocation: VehicleAllocationResponse | null | undefined;
   routePlan: RoutePlanResponse | null | undefined;
+  dispatchImpact?: DispatchImpactResponse | null;
   connection: "CONNECTED" | "RECONNECTING" | "DISCONNECTED";
   reportedVehicleId?: string | null;
   taskStatus?: string | null;
@@ -51,7 +53,7 @@ function zoomViewBox(value: string, zoom: number, offset: { x: number; y: number
 }
 
 
-export function FleetSandboxMap({ anomalyType, allocation, routePlan, connection, reportedVehicleId, taskStatus, events = [], operationSnapshot = null }: FleetSandboxMapProps) {
+export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchImpact = null, connection, reportedVehicleId, taskStatus, events = [], operationSnapshot = null }: FleetSandboxMapProps) {
   const normalizedAnomaly = anomalyType?.trim().toUpperCase();
   const originalVehicleId = taskVehicleId(allocation?.original_vehicle_id) ?? taskVehicleId(reportedVehicleId);
   const targetVehicleId = taskVehicleId(allocation?.target_vehicle_id);
@@ -314,6 +316,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, connection
         <span className="fleet-map-coordinate">嵩明县杨林物流走廊 · {Math.round(zoom * 100)}%</span>
         <span className={`fleet-map-provider is-${amapState.toLowerCase()}`}><i/>{amapState === "READY" ? "高德实时路网" : amapState === "LOADING" ? "正在连接高德地图" : "本地地图保障模式"}</span>
         <span className="fleet-map-attribution">{amapState === "READY" ? "地图服务 © 高德地图 · CountyFlow 调度覆盖物" : "遥感影像 © Esri · 业务路网为演示叠加"}</span>
+        {dispatchImpact ? <FleetDispatchImpactCard impact={dispatchImpact}/> : null}
         {runtimeConfig.amap?.enabled ? <MapErrorBoundary onFallback={() => setAmapState("FALLBACK")}><AmapFleetMap
           apiKey={runtimeConfig.amap.key}
           securityCode={runtimeConfig.amap.securityCode}

@@ -61,6 +61,13 @@ const resultByTask = {
     task_id: "TASK-FAULT", order_id: 16, ready: true, status: "COMPLETED", anomaly_type: "VEHICLE_BREAKDOWN", dispatch: null, audit: null,
     vehicle_allocation: { original_vehicle_id: "V-001", target_vehicle_id: "V-005", target_driver_id: "D-003", vehicle_reassigned: true, candidate_vehicles: [], pickup_route: { objective: "FASTEST", node_ids: ["N15", "N04"], edge_ids: ["E20"], distance_km: "2.80", estimated_minutes: 6, risk_cost: "0", visited_node_count: 2, scoring_formula: null }, scoring_formula: "FLEET_SCORE_V1" },
     route_plan: routePlan,
+    dispatch_impact: {
+      incident_vehicle_id: "V-001", replacement_vehicle_id: "V-005", replacement_driver_id: "D-003",
+      pickup_distance_km: "2.80", pickup_eta_minutes: 6,
+      route_distance_delta_km: "3.20", route_eta_delta_minutes: 4,
+      total_distance_delta_km: "6.00", total_delay_minutes: 10,
+      calculation_status: "CALCULATED",
+    },
   },
 } as const;
 
@@ -280,6 +287,16 @@ describe("administrator fleet live map page", () => {
     expect(view.container.querySelector('[data-fleet-vehicle-id="V-005"][data-fleet-status="IN_TRANSIT"]')).not.toBeNull();
     expect(view.container.textContent).toContain("故障车辆 V-001");
     expect(view.container.textContent).toContain("已派出替代车辆 V-005");
+    const dispatchImpact = view.container.querySelector('[data-dispatch-impact="CALCULATED"]');
+    expect(dispatchImpact).not.toBeNull();
+    expect(dispatchImpact?.querySelector('[data-impact-role="incident"]')?.textContent).toContain("V-001");
+    expect(dispatchImpact?.querySelector('[data-impact-role="replacement"]')?.textContent).toContain("V-005");
+    expect(dispatchImpact?.querySelector('[data-impact-metric="pickup"]')?.textContent).toContain("+2.80 km");
+    expect(dispatchImpact?.querySelector('[data-impact-metric="pickup"]')?.textContent).toContain("+6 分钟");
+    expect(dispatchImpact?.querySelector('[data-impact-metric="route"]')?.textContent).toContain("+3.20 km");
+    expect(dispatchImpact?.querySelector('[data-impact-metric="route"]')?.textContent).toContain("+4 分钟");
+    expect(dispatchImpact?.querySelector('[data-impact-metric="total"]')?.textContent).toContain("+6.00 km");
+    expect(dispatchImpact?.querySelector('[data-impact-metric="total"]')?.textContent).toContain("预计晚到 10 分钟");
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-dispatch-state="RESCUE"]')).not.toBeNull();
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-map-priority="critical"]')).not.toBeNull();
     expect(view.container.querySelectorAll('[data-fleet-route-id][data-map-priority="background"].is-visible').length).toBeGreaterThanOrEqual(8);

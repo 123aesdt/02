@@ -1,5 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from uuid import uuid4
 
 from pydantic import ValidationError
@@ -7,6 +8,7 @@ from sqlalchemy import select
 
 from app.api.v1.schemas import (
     CreateDispatchTaskRequest,
+    DispatchImpactResponse,
     PathResponse,
     RealRoadRouteResponse,
     RoadEdgeResponse,
@@ -186,6 +188,7 @@ class DispatchTaskApiService:
             route_plan = None
             if route_visible and dispatch is not None:
                 vehicle_allocation, route_plan = self._evidence_responses(dispatch, evidence_rows)
+            dispatch_impact = self._dispatch_impact(vehicle_allocation, route_plan)
             return {
                 "task_id": task.task_id,
                 "order_id": task.order_id,
@@ -225,7 +228,60 @@ class DispatchTaskApiService:
                 },
                 "vehicle_allocation": vehicle_allocation,
                 "route_plan": route_plan,
+                "dispatch_impact": dispatch_impact,
             }
+
+    @classmethod
+    def _dispatch_impact(
+        cls,
+        allocation: dict[str, object] | None,
+        route_plan: dict[str, object] | None,
+    ) -> dict[str, object] | None:
+        if allocation is None or route_plan is None:
+            return None
+        if allocation.get("vehicle_reassigned") is not True:
+            return None
+        incident_vehicle_id = allocation.get("original_vehicle_id")
+        replacement_vehicle_id = allocation.get("target_vehicle_id")
+        if not isinstance(incident_vehicle_id, str) or not isinstance(replacement_vehicle_id, str):
+            return None
+        pickup_route = allocation.get("pickup_route")
+        pickup = pickup_route if isinstance(pickup_route, Mapping) else {}
+        pickup_distance = cls._decimal(pickup.get("distance_km"))
+        route_distance = cls._decimal(route_plan.get("distance_delta_km"))
+        pickup_minutes = cls._integer(pickup.get("estimated_minutes"))
+        route_minutes = cls._integer(route_plan.get("eta_delta_minutes"))
+        complete = all(value is not None for value in (pickup_distance, route_distance, pickup_minutes, route_minutes))
+        impact = DispatchImpactResponse(
+            incident_vehicle_id=incident_vehicle_id,
+            replacement_vehicle_id=replacement_vehicle_id,
+            replacement_driver_id=allocation.get("target_driver_id") if isinstance(allocation.get("target_driver_id"), str) else None,
+            pickup_distance_km=cls._decimal_text(pickup_distance),
+            pickup_eta_minutes=pickup_minutes,
+            route_distance_delta_km=cls._decimal_text(route_distance),
+            route_eta_delta_minutes=route_minutes,
+            total_distance_delta_km=cls._decimal_text(pickup_distance + route_distance) if complete else None,
+            total_delay_minutes=pickup_minutes + route_minutes if complete else None,
+            calculation_status="CALCULATED" if complete else "PARTIAL",
+        )
+        return impact.model_dump(mode="json")
+
+    @staticmethod
+    def _decimal(value: object) -> Decimal | None:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            return None
+
+    @staticmethod
+    def _decimal_text(value: Decimal | None) -> str | None:
+        return None if value is None else format(value.quantize(Decimal("0.01")), "f")
+
+    @staticmethod
+    def _integer(value: object) -> int | None:
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
 
     @classmethod
     def _evidence_responses(

@@ -257,6 +257,10 @@ describe("AMap fleet map", () => {
     expect(movingVehicle?.querySelector("[data-vehicle-heading-indicator]")).not.toBeNull();
     expect(vehicleContent("V-002")?.querySelector("[data-vehicle-state-label]")?.textContent).toBe("调度中");
     expect(vehicleContent("V-005")?.querySelector("[data-vehicle-state-label]")?.textContent).toBe("故障");
+    expect(vehicleContent("V-001")?.dataset.dispatchRole).toBe("incident");
+    expect(vehicleContent("V-001")?.querySelector("[data-dispatch-role-label]")?.textContent).toBe("故障来源");
+    expect(vehicleContent("V-005")?.dataset.dispatchRole).toBe("replacement");
+    expect(vehicleContent("V-005")?.querySelector("[data-dispatch-role-label]")?.textContent).toBe("接管车辆");
     const selectedInfo = infoWindowOptions.at(-1)?.content as HTMLElement | undefined;
     expect(infoWindowOptions.at(-1)?.closeWhenClickMap).toBe(false);
     expect(infoWindowOptions.at(-1)?.anchor).toBe("middle-left");

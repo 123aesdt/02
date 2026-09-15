@@ -209,6 +209,19 @@ class RoutePlanResponse(_StrictEvidenceResponse):
     real_road_route: RealRoadRouteResponse | None = None
 
 
+class DispatchImpactResponse(_StrictEvidenceResponse):
+    incident_vehicle_id: str
+    replacement_vehicle_id: str
+    replacement_driver_id: str | None = None
+    pickup_distance_km: str | None = None
+    pickup_eta_minutes: int | None = None
+    route_distance_delta_km: str | None = None
+    route_eta_delta_minutes: int | None = None
+    total_distance_delta_km: str | None = None
+    total_delay_minutes: int | None = None
+    calculation_status: Literal["CALCULATED", "PARTIAL"]
+
+
 class TaskResultResponse(BaseModel):
     task_id: str
     order_id: int
@@ -220,6 +233,7 @@ class TaskResultResponse(BaseModel):
     publication: PublicationResultResponse | None = None
     vehicle_allocation: VehicleAllocationResponse | None = None
     route_plan: RoutePlanResponse | None = None
+    dispatch_impact: DispatchImpactResponse | None = None
 
 
 class DispatchPublicationResponse(BaseModel):

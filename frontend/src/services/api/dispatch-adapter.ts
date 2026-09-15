@@ -210,6 +210,20 @@ export interface RoutePlanResponse {
   network_edges: RoadEdgeResponse[];
   real_road_route?: RealRoadRouteResponse | null;
 }
+
+export interface DispatchImpactResponse {
+  incident_vehicle_id: string;
+  replacement_vehicle_id: string;
+  replacement_driver_id: string | null;
+  pickup_distance_km: string | null;
+  pickup_eta_minutes: number | null;
+  route_distance_delta_km: string | null;
+  route_eta_delta_minutes: number | null;
+  total_distance_delta_km: string | null;
+  total_delay_minutes: number | null;
+  calculation_status: "CALCULATED" | "PARTIAL";
+}
+
 export interface TaskResultResponse {
   task_id: string;
   order_id: number;
@@ -221,6 +235,7 @@ export interface TaskResultResponse {
   publication?: PublicationResultResponse | null;
   vehicle_allocation?: VehicleAllocationResponse | null;
   route_plan?: RoutePlanResponse | null;
+  dispatch_impact?: DispatchImpactResponse | null;
 }
 
 export interface DispatchAdapter {

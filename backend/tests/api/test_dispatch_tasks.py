@@ -881,10 +881,43 @@ def test_supervisor_reads_persisted_fleet_and_route_evidence_snapshot() -> None:
             "longitude": "103.044800",
             "latitude": "25.226500",
         }
+        assert body["dispatch_impact"] == {
+            "incident_vehicle_id": "V-001",
+            "replacement_vehicle_id": "V-005",
+            "replacement_driver_id": "D-003",
+            "pickup_distance_km": "2.80",
+            "pickup_eta_minutes": 6,
+            "route_distance_delta_km": "3.20",
+            "route_eta_delta_minutes": 4,
+            "total_distance_delta_km": "6.00",
+            "total_delay_minutes": 10,
+            "calculation_status": "CALCULATED",
+        }
     finally:
         asyncio.run(redis.aclose())
         engine.dispose()
         temp.cleanup()
+
+
+def test_dispatch_impact_is_hidden_when_vehicle_is_not_reassigned() -> None:
+    impact = DispatchTaskApiService._dispatch_impact(
+        {
+            "original_vehicle_id": "V-001",
+            "target_vehicle_id": "V-001",
+            "target_driver_id": "D-001",
+            "vehicle_reassigned": False,
+            "pickup_route": {
+                "distance_km": "0.00",
+                "estimated_minutes": 0,
+            },
+        },
+        {
+            "distance_delta_km": "3.20",
+            "eta_delta_minutes": 4,
+        },
+    )
+
+    assert impact is None
 
 
 def test_manual_review_result_keeps_persisted_calculation_evidence_visible() -> None:

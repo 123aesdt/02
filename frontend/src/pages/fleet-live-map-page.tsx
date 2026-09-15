@@ -48,6 +48,7 @@ function FleetLiveTaskMap({ taskId, anomaly }: { taskId: string; anomaly: Anomal
       anomalyType={task.result?.anomaly_type ?? anomaly.anomaly_type}
       allocation={task.result?.vehicle_allocation}
       routePlan={task.result?.route_plan}
+      dispatchImpact={task.result?.dispatch_impact}
       connection={realtime.connection}
       reportedVehicleId={anomaly.vehicle_id}
       taskStatus={task.status.status}

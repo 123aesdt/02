@@ -48,6 +48,14 @@ DEMO_EMPLOYEE_SUBJECT_BY_DRIVER_ID = {
     "D-002": "CF-DEMO-001",
     "D-003": "CF-DEMO-006",
 }
+DEMO_FLEET_VISUAL_STATES = MappingProxyType(
+    {
+        "V-013": ("BROKEN", "制动系统告警，等待道路救援"),
+        "V-015": ("DISPATCHING", "紧急补位任务调度中"),
+        "V-016": ("BROKEN", "电池高压系统异常，已停止运营"),
+        "V-019": ("DISPATCHING", "冷链订单跨仓接驳调度中"),
+    }
+)
 
 DEMO_REPORT_ROUTES = (
     ("ROUTE-01", "新平县中心仓", "城东配送站"),
@@ -585,6 +593,21 @@ def migrate_legacy_employee_operation_case(session: Session) -> bool:
     return True
 
 
+def seed_demo_fleet_visual_states(session: Session) -> None:
+    vehicles = {
+        vehicle.vehicle_id: vehicle
+        for vehicle in session.scalars(
+            select(FleetVehicle).where(FleetVehicle.vehicle_id.in_(tuple(DEMO_FLEET_VISUAL_STATES)))
+        )
+    }
+    for vehicle_id, (status, reason) in DEMO_FLEET_VISUAL_STATES.items():
+        vehicle = vehicles.get(vehicle_id)
+        if vehicle is None:
+            continue
+        vehicle.status = status
+        vehicle.status_reason = reason
+
+
 def seed_database(session_factory=None, runtime_profile: str | None = None) -> None:
     profile = runtime_profile or get_settings().runtime_profile
     if profile not in DEVELOPMENT_RUNTIME_PROFILES:
@@ -594,6 +617,7 @@ def seed_database(session_factory=None, runtime_profile: str | None = None) -> N
         seed_demo_employee_accounts(session)
         migrate_legacy_demo_business_case_orders(session)
         seed_new_county_sandtable(session)
+        seed_demo_fleet_visual_states(session)
         seed_vehicle_operation_resources(session)
         seed_demo_business_cases(session)
         seed_demo_report_source_tasks(session)
