@@ -40,7 +40,7 @@
 - Consumes: `AnomalyReportCommand.incident_node_id`, `AnomalyReportCommand.affected_edge_id`, `Order.origin`, and `Order.destination`.
 - Produces: optional `CreateDispatchTaskRequest.incident_node_id`, optional `CreateDispatchTaskRequest.affected_edge_id`, matching optional Redis payload keys, and graph input `affected_edge_ids: list[str]`.
 
-- [ ] **Step 1: Write failing anomaly propagation tests**
+- [x] **Step 1: Write failing anomaly propagation tests**
 
 Extend the structured road-location test to assert:
 
@@ -50,17 +50,17 @@ assert message.payload["incident_node_id"] is None
 assert message.payload["affected_edge_id"] == "E04"
 ```
 
-- [ ] **Step 2: Run the propagation tests and confirm failure**
+- [x] **Step 2: Run the propagation tests and confirm failure**
 
 Run: `pytest backend/tests/anomaly_reports/test_anomaly_report_service.py::test_submit_persists_structured_road_location backend/tests/workers/test_dispatch_worker.py::test_task_message_to_graph_input_preserves_reported_vehicle_status -q`
 
 Expected: FAIL because the current payload omits structured road location.
 
-- [ ] **Step 3: Extend the API, Redis, submission, and graph-input contracts**
+- [x] **Step 3: Extend the API, Redis, submission, and graph-input contracts**
 
 Add optional `incident_node_id` and `affected_edge_id` fields, publish them from `DispatchTaskApiService`, retain backward-compatible parsing in `DispatchTaskMessage._payload`, and convert the singular edge to `affected_edge_ids` in `task_message_to_graph_input`.
 
-- [ ] **Step 4: Write and run a failing name-fallback repository test**
+- [x] **Step 4: Write and run a failing name-fallback repository test**
 
 Create an order with null station IDs but `origin="新平县中心仓"` and `destination="北岭村驿站"`; assert `SqlAlchemySandtableRepository.load()` returns `origin_node_id="N01"` and `destination_node_id="N11"`.
 
@@ -68,7 +68,7 @@ Run: `pytest backend/tests/sandtable/test_sqlalchemy_repository.py -q`
 
 Expected: FAIL because the repository currently searches only by station ID.
 
-- [ ] **Step 5: Implement unique node-name fallback and verify Task 1**
+- [x] **Step 5: Implement unique node-name fallback and verify Task 1**
 
 Resolve a missing station first by `RoadNode.name`; accept exactly one match and otherwise raise the existing incomplete-context `LookupError`. Run:
 
@@ -76,7 +76,7 @@ Resolve a missing station first by `RoadNode.name`; accept exactly one match and
 
 Expected: PASS.
 
-- [ ] **Step 6: Inspect and commit Task 1**
+- [x] **Step 6: Inspect and commit Task 1**
 
 Run `git diff -- backend/app backend/tests`, then commit with `fix: preserve road anomaly routing context`.
 
@@ -262,4 +262,3 @@ Replace the obsolete statement that routing never uses AMap with the precise hyb
 - [ ] **Step 5: Inspect and commit the final slice**
 
 Review `git diff --stat`, `git diff --check`, and `git status --short`; commit with `test: verify published AMap rerouting flow`.
-

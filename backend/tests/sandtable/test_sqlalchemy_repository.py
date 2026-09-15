@@ -140,6 +140,31 @@ def test_service_resolves_only_approved_aliases_and_blocks_e04(sqlite_factory) -
             service.resolve(order_id, "ROAD_BLOCKED", "新平路有道路问题", None)
 
 
+def test_load_resolves_virtual_order_endpoints_by_unique_road_node_name(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        order = Order(
+            order_no="DEMO-REPORT-ORDER-NAME-FALLBACK",
+            status="IN_TRANSIT",
+            driver_id="D-003",
+            vehicle_id="V-005",
+            route_id="ROUTE-03",
+            origin="新平县中心仓",
+            destination="北岭村驿站",
+            cargo_weight_kg=Decimal("0.00"),
+            cargo_type="GENERAL",
+            origin_station_id=None,
+            destination_station_id=None,
+        )
+        session.add(order)
+        session.commit()
+
+        context = SqlAlchemySandtableRepository(session).load(order.id)
+
+    assert context.origin_node_id == "N01"
+    assert context.destination_node_id == "N11"
+
+
 def test_service_rejects_request_vehicle_that_differs_from_order_assignment(sqlite_factory) -> None:
     with sqlite_factory() as session:
         seed_new_county_sandtable(session)

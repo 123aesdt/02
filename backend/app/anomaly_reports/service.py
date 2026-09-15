@@ -89,6 +89,8 @@ class AnomalyReportService:
             idempotency_key=dispatch_key,
             vehicle_status=normalized.reported_vehicle_status,
             assignee_employee_id=principal_subject_id,
+            incident_node_id=normalized.incident_node_id,
+            affected_edge_id=normalized.affected_edge_id,
         )
         try:
             accepted = await self._dispatch_service.submit(

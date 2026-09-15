@@ -15,6 +15,8 @@ class CreateDispatchTaskRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=128)
     vehicle_status: Literal["NORMAL", "BROKEN", "UNAVAILABLE", "MAINTENANCE"] = "NORMAL"
     assignee_employee_id: str | None = Field(default=None, min_length=1, max_length=32)
+    incident_node_id: str | None = Field(default=None, min_length=1, max_length=64)
+    affected_edge_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class CreateDispatchTaskResponse(BaseModel):

@@ -97,6 +97,8 @@ class DispatchTaskApiService:
                 "anomaly_type": request.anomaly_type,
                 "anomaly_description": request.anomaly_description,
                 "vehicle_status": request.vehicle_status,
+                "incident_node_id": request.incident_node_id,
+                "affected_edge_id": request.affected_edge_id,
             },
             current_correlation_id(),
         )
@@ -123,6 +125,8 @@ class DispatchTaskApiService:
                 "anomaly_type": request.anomaly_type,
                 "anomaly_description": request.anomaly_description,
                 "vehicle_status": request.vehicle_status,
+                "incident_node_id": request.incident_node_id,
+                "affected_edge_id": request.affected_edge_id,
             },
             current_correlation_id(),
         )

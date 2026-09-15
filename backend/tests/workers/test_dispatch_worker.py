@@ -33,7 +33,13 @@ async def redis_client():
     await client.aclose()
 
 
-def _task(task_id: str = "task-001", *, vehicle_status: str = "NORMAL") -> DispatchTaskMessage:
+def _task(
+    task_id: str = "task-001",
+    *,
+    vehicle_status: str = "NORMAL",
+    incident_node_id: str | None = None,
+    affected_edge_id: str | None = None,
+) -> DispatchTaskMessage:
     return DispatchTaskMessage(
         schema_version="1",
         task_id=task_id,
@@ -48,6 +54,8 @@ def _task(task_id: str = "task-001", *, vehicle_status: str = "NORMAL") -> Dispa
             "anomaly_type": "rain_slippery",
             "anomaly_description": "李师傅在雨天经过新平路，道路出现湿滑风险。",
             "vehicle_status": vehicle_status,
+            "incident_node_id": incident_node_id,
+            "affected_edge_id": affected_edge_id,
         },
     )
 
@@ -56,6 +64,15 @@ def test_task_message_to_graph_input_preserves_reported_vehicle_status():
     state = task_message_to_graph_input(_task(vehicle_status="BROKEN"))
 
     assert state["vehicle_status"] == "BROKEN"
+
+
+def test_task_message_to_graph_input_preserves_structured_road_location():
+    state = task_message_to_graph_input(
+        _task(incident_node_id="N04", affected_edge_id="E04")
+    )
+
+    assert state["incident_node_id"] == "N04"
+    assert state["affected_edge_ids"] == ["E04"]
 
 
 def _message() -> StreamMessage:
@@ -336,6 +353,8 @@ def test_task_message_to_graph_input():
         "anomaly_type": "rain_slippery",
         "anomaly_description": "李师傅在雨天经过新平路，道路出现湿滑风险。",
         "vehicle_status": "NORMAL",
+        "incident_node_id": None,
+        "affected_edge_ids": [],
     }
 
 

@@ -145,6 +145,8 @@ async def test_submit_derives_dispatch_context_and_persists_report(sqlite_factor
         "anomaly_type": "ROAD_HAZARD",
         "anomaly_description": "新平路连续降雨，路面明显湿滑。",
         "vehicle_status": "NORMAL",
+        "incident_node_id": None,
+        "affected_edge_id": None,
     }
 
 
@@ -153,8 +155,9 @@ async def test_submit_persists_structured_road_location(sqlite_factory) -> None:
     with sqlite_factory() as session:
         seed_new_county_sandtable(session)
     seed_source_tasks(sqlite_factory)
+    queue = CapturingQueue()
 
-    result = await build_service(sqlite_factory, CapturingQueue()).submit(
+    result = await build_service(sqlite_factory, queue).submit(
         command(
             anomaly_type="ROAD_BLOCKED",
             description="新平路东河桥段发生塌方，车辆无法通行。",
@@ -170,6 +173,8 @@ async def test_submit_persists_structured_road_location(sqlite_factory) -> None:
     assert anomaly is not None
     assert anomaly.incident_node_id is None
     assert anomaly.affected_edge_id == "E04"
+    assert queue.messages[0].payload["incident_node_id"] is None
+    assert queue.messages[0].payload["affected_edge_id"] == "E04"
 
 
 @pytest.mark.asyncio

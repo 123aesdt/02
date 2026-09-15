@@ -13,6 +13,8 @@ class DispatchTaskPayload(TypedDict):
     anomaly_type: str
     anomaly_description: str
     vehicle_status: NotRequired[str]
+    incident_node_id: NotRequired[str | None]
+    affected_edge_id: NotRequired[str | None]
 
 
 @dataclass(frozen=True)
@@ -101,7 +103,7 @@ class DispatchTaskMessage:
         vehicle_status = value.get("vehicle_status", "NORMAL")
         if not isinstance(vehicle_status, str) or not vehicle_status:
             raise QueueMessageError("Stream message field vehicle_status is invalid.")
-        return {
+        payload: DispatchTaskPayload = {
             "driver_id": cls._required_text(value, "driver_id"),
             "vehicle_id": cls._required_text(value, "vehicle_id"),
             "route_id": cls._required_text(value, "route_id"),
@@ -109,6 +111,20 @@ class DispatchTaskMessage:
             "anomaly_description": cls._required_text(value, "anomaly_description"),
             "vehicle_status": vehicle_status,
         }
+        if "incident_node_id" in value:
+            payload["incident_node_id"] = cls._optional_text(value, "incident_node_id")
+        if "affected_edge_id" in value:
+            payload["affected_edge_id"] = cls._optional_text(value, "affected_edge_id")
+        return payload
+
+    @staticmethod
+    def _optional_text(raw: dict[object, object], field: str) -> str | None:
+        value = raw.get(field)
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value:
+            raise QueueMessageError(f"Stream message field {field} is invalid.")
+        return value
 
 
 @dataclass(frozen=True)

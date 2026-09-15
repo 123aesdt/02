@@ -129,10 +129,18 @@ class SqlAlchemySandtableRepository:
             order = session.get(Order, order_id)
             if order is None:
                 raise LookupError(f"订单不存在: {order_id}")
-            origin = session.scalar(select(LogisticsStation).where(LogisticsStation.station_id == order.origin_station_id))
-            destination = session.scalar(select(LogisticsStation).where(LogisticsStation.station_id == order.destination_station_id))
+            origin_node_id = self._endpoint_node_id(
+                session,
+                station_id=order.origin_station_id,
+                endpoint_name=order.origin,
+            )
+            destination_node_id = self._endpoint_node_id(
+                session,
+                station_id=order.destination_station_id,
+                endpoint_name=order.destination,
+            )
             vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == order.vehicle_id))
-            if origin is None or destination is None or vehicle is None:
+            if origin_node_id is None or destination_node_id is None or vehicle is None:
                 raise LookupError(f"订单沙盘上下文不完整: {order.order_no}")
             version = session.scalar(select(func.max(RoadEdge.version))) or 0
             return SandtableTaskContext(
@@ -140,8 +148,8 @@ class SqlAlchemySandtableRepository:
                 order.order_no,
                 order.cargo_weight_kg or Decimal("0.00"),
                 order.cargo_type or "GENERAL",
-                origin.road_node_id,
-                destination.road_node_id,
+                origin_node_id,
+                destination_node_id,
                 vehicle.vehicle_id,
                 vehicle.assigned_driver_id,
                 None,
@@ -152,6 +160,24 @@ class SqlAlchemySandtableRepository:
         finally:
             if owns:
                 session.close()
+
+    @staticmethod
+    def _endpoint_node_id(
+        session: Session,
+        *,
+        station_id: str | None,
+        endpoint_name: str,
+    ) -> str | None:
+        if station_id is not None:
+            station = session.scalar(
+                select(LogisticsStation).where(LogisticsStation.station_id == station_id)
+            )
+            if station is not None:
+                return station.road_node_id
+        nodes = session.scalars(
+            select(RoadNode).where(RoadNode.name == endpoint_name)
+        ).all()
+        return nodes[0].node_id if len(nodes) == 1 else None
 
     def set_edge_status(self, edge_id: str, status: str) -> int:
         owns = callable(self._session)

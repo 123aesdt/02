@@ -91,6 +91,12 @@ def task_message_to_graph_input(task: DispatchTaskMessage) -> DispatchGraphState
         "anomaly_type": task.payload["anomaly_type"],
         "anomaly_description": task.payload["anomaly_description"],
         "vehicle_status": task.payload.get("vehicle_status", "NORMAL"),
+        "incident_node_id": task.payload.get("incident_node_id"),
+        "affected_edge_ids": (
+            [task.payload["affected_edge_id"]]
+            if task.payload.get("affected_edge_id") is not None
+            else []
+        ),
     }
     if task.correlation_id is not None:
         state["correlation_id"] = task.correlation_id
