@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     environment_provider: Literal["development", "docker-development", "http"] = "development"
     capacity_provider: Literal["in-memory", "real"] = "in-memory"
     routing_provider: Literal["in-memory", "real"] = "in-memory"
+    amap_web_service_key: SecretStr = SecretStr("")
+    amap_route_api_base_url: str = "https://restapi.amap.com/v5/direction/driving"
+    amap_route_timeout_seconds: float = 0.8
+    amap_route_cb_failure_threshold: int = 3
+    amap_route_cb_recovery_seconds: float = 5.0
     database_backend: Literal["sqlite", "mysql"] = "sqlite"
     redis_backend: Literal["fake", "server"] = "server"
     qdrant_backend: Literal["memory", "server"] = "server"
@@ -277,6 +282,10 @@ class Settings(BaseSettings):
             raise ValueError("observability sample interval must be positive")
         if self.observability_probe_timeout_seconds <= 0:
             raise ValueError("observability probe timeout must be positive")
+        if self.amap_route_timeout_seconds <= 0 or self.amap_route_timeout_seconds >= 1:
+            raise ValueError("AMap route timeout must be greater than 0 and below 1 second")
+        if self.amap_route_cb_failure_threshold <= 0 or self.amap_route_cb_recovery_seconds <= 0:
+            raise ValueError("AMap route circuit-breaker settings must be positive")
         if self.backend_processes <= 0:
             raise ValueError("backend_processes must be positive")
         if self.runtime_profile == "production" and self.metrics_enabled and self.backend_processes > 1 and not self.prometheus_multiproc_dir:

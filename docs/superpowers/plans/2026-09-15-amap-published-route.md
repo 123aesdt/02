@@ -99,29 +99,29 @@ Run `git diff -- backend/app backend/tests`, then commit with `fix: preserve roa
 **Interfaces:**
 - Produces: `GeoPoint(node_id: str | None, longitude: Decimal, latitude: Decimal)`, `RealRoadRoute(provider: str, source: str, status: str, coordinate_system: str, mapping_version: str, distance_meters: int | None, duration_seconds: int | None, waypoints: tuple[GeoPoint, ...], polyline: tuple[GeoPoint, ...], fallback_reason: str | None)`, `DrivingRouteProvider.plan(origin, destination, waypoints)`, and `RealRoadRouteService.plan(node_ids)`.
 
-- [ ] **Step 1: Write failing coordinate and provider parsing tests**
+- [x] **Step 1: Write failing coordinate and provider parsing tests**
 
 Assert `N01` maps to `103.044800,25.226500`; feed an injected `httpx.MockTransport` a V5 response containing two paths and assert the provider selects the lowest-duration valid path, parses step polylines in order, and never exposes the request key.
 
-- [ ] **Step 2: Run the provider tests and confirm import failure**
+- [x] **Step 2: Run the provider tests and confirm import failure**
 
 Run: `pytest backend/tests/real_routes/test_amap_provider.py -q`
 
 Expected: FAIL because `app.real_routes` does not exist.
 
-- [ ] **Step 3: Implement immutable models, coordinate mapping, protocol, and HTTP provider**
+- [x] **Step 3: Implement immutable models, coordinate mapping, protocol, and HTTP provider**
 
 Call `GET /v5/direction/driving` with GCJ-02 coordinates, `alternative_route=2`, explicit `httpx.Timeout`, and key only in request params. Normalize timeout, HTTP, response-status, and malformed-payload failures to existing `ProviderTimeout` or `ProviderUnavailable` exceptions without including the URL or key.
 
-- [ ] **Step 4: Write failing service fallback tests**
+- [x] **Step 4: Write failing service fallback tests**
 
 Assert that missing provider configuration and provider failure both return `source="CLIENT_WAYPOINT_FALLBACK"`, `status="CLIENT_MATCH_REQUIRED"`, the complete mapped waypoint sequence, and a safe fixed reason.
 
-- [ ] **Step 5: Implement the service and configuration wiring**
+- [x] **Step 5: Implement the service and configuration wiring**
 
 Add secret `amap_web_service_key`, URL, 0.8-second timeout, and circuit-breaker settings. Add only variable names/defaults to `.env.example` and Docker backend/worker environment. The service must return immediately with client fallback when no key is configured.
 
-- [ ] **Step 6: Run and commit Task 2**
+- [x] **Step 6: Run and commit Task 2**
 
 Run: `pytest backend/tests/real_routes backend/tests/unit/test_docker_runtime_files.py -q`
 

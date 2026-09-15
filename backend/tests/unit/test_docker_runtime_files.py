@@ -253,6 +253,21 @@ def test_frontend_build_receives_complete_amap_web_configuration() -> None:
         assert f"ENV {variable}=" in frontend_dockerfile
         assert f"{variable}=" in frontend_example
 
+
+def test_backend_and_workers_receive_server_side_amap_configuration() -> None:
+    compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    root_example = (PROJECT_ROOT / ".env.example").read_text(encoding="utf-8")
+
+    for variable in (
+        "AMAP_WEB_SERVICE_KEY",
+        "AMAP_ROUTE_API_BASE_URL",
+        "AMAP_ROUTE_TIMEOUT_SECONDS",
+        "AMAP_ROUTE_CB_FAILURE_THRESHOLD",
+        "AMAP_ROUTE_CB_RECOVERY_SECONDS",
+    ):
+        assert f"{variable}:" in compose
+        assert f"{variable}=" in root_example
+
 def test_verified_runtime_builder_forwards_root_amap_environment_without_values() -> None:
     launcher = (PROJECT_ROOT / "scripts" / "start-full.ps1").read_text(encoding="utf-8")
     builder = (PROJECT_ROOT / "scripts" / "build-full-runtime-images.ps1").read_text(encoding="utf-8")
