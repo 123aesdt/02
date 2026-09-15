@@ -154,6 +154,25 @@ class RoadEdgeResponse(_StrictEvidenceResponse):
     version: int
 
 
+class GeoPointResponse(_StrictEvidenceResponse):
+    node_id: str | None = None
+    longitude: str
+    latitude: str
+
+
+class RealRoadRouteResponse(_StrictEvidenceResponse):
+    provider: Literal["AMAP"]
+    source: Literal["AMAP_WEB_SERVICE", "CLIENT_WAYPOINT_FALLBACK"]
+    status: Literal["VERIFIED", "CLIENT_MATCH_REQUIRED"]
+    coordinate_system: Literal["GCJ02"]
+    mapping_version: str
+    distance_meters: int | None = None
+    duration_seconds: int | None = None
+    waypoints: list[GeoPointResponse]
+    polyline: list[GeoPointResponse]
+    fallback_reason: str | None = None
+
+
 class RouteCandidateResponse(_StrictEvidenceResponse):
     route_id: str
     route_name: str
@@ -187,6 +206,7 @@ class RoutePlanResponse(_StrictEvidenceResponse):
     road_network_version: int | None = None
     network_nodes: list[RoadNodeResponse]
     network_edges: list[RoadEdgeResponse]
+    real_road_route: RealRoadRouteResponse | None = None
 
 
 class TaskResultResponse(BaseModel):

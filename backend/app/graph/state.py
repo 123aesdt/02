@@ -199,6 +199,7 @@ class DispatchGraphState(TypedDict):
     eta_delta_minutes: NotRequired[int]
     road_network_nodes: NotRequired[list[dict[str, object]]]
     road_network_edges: NotRequired[list[dict[str, object]]]
+    real_road_route: NotRequired[dict[str, object]]
     candidate_routes: NotRequired[list[RouteCandidateState]]
     recommended_route: NotRequired[str]
     identified_issue: NotRequired[str]

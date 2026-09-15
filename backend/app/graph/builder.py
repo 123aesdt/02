@@ -108,6 +108,7 @@ def build_graph(
     graph_memory_service = dependencies.graph_memory_service if dependencies else None
     environment_service = dependencies.environment_service if dependencies else None
     routing_service = dependencies.routing_service if dependencies else None
+    real_road_route_service = dependencies.real_road_route_service if dependencies else None
     sandtable_context_service = dependencies.sandtable_context_service if dependencies else None
     fleet_allocation_service = dependencies.fleet_allocation_service if dependencies else None
     road_network_snapshot_service = dependencies.road_network_snapshot_service if dependencies else None
@@ -127,7 +128,13 @@ def build_graph(
         return await capacity_node(state, capacity_service, fleet_allocation_service, road_network_snapshot_service)
 
     async def routing(state: DispatchGraphState) -> dict[str, object]:
-        return await routing_node(state, routing_service, issue_recommendation_service, road_network_snapshot_service)
+        return await routing_node(
+            state,
+            routing_service,
+            issue_recommendation_service,
+            road_network_snapshot_service,
+            real_road_route_service,
+        )
 
     async def dispatch(state: DispatchGraphState) -> dict[str, object]:
         return await dispatch_node(state, dispatch_service)

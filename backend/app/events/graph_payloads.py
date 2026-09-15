@@ -84,6 +84,44 @@ def _project_path(value: object) -> object:
     return projected
 
 
+def _project_geo_point(source: Mapping[str, object]) -> dict[str, object] | None:
+    longitude = _text(source.get("longitude"))
+    latitude = _text(source.get("latitude"))
+    if longitude is _INVALID or latitude is _INVALID:
+        return None
+    projected: dict[str, object] = {
+        "longitude": longitude,
+        "latitude": latitude,
+    }
+    _put(projected, source, "node_id", _nullable_text)
+    return projected
+
+
+def _project_real_road_route(value: object) -> object:
+    if not isinstance(value, Mapping):
+        return _INVALID
+    projected: dict[str, object] = {}
+    for key in (
+        "provider",
+        "source",
+        "status",
+        "coordinate_system",
+        "mapping_version",
+        "fallback_reason",
+    ):
+        _put(projected, value, key, _nullable_text)
+    for key in ("distance_meters", "duration_seconds"):
+        _put(projected, value, key, _nullable_integer)
+    for key in ("waypoints", "polyline"):
+        _put(
+            projected,
+            value,
+            key,
+            lambda item: _project_sequence(item, _project_geo_point),
+        )
+    return projected
+
+
 def _project_fleet_score_components(value: object) -> object:
     if value is None:
         return None
@@ -255,6 +293,7 @@ def project_routing_event(patch: Mapping[str, object]) -> dict[str, object]:
     _put(projected, patch, "blocked_edge_ids", _string_list)
     _put(projected, patch, "original_path", _project_path)
     _put(projected, patch, "recommended_path", _project_path)
+    _put(projected, patch, "real_road_route", _project_real_road_route)
     _put(projected, patch, "distance_delta_km", _nullable_number)
     _put(projected, patch, "eta_delta_minutes", _nullable_integer)
     _put(projected, patch, "routing_status", _nullable_text)

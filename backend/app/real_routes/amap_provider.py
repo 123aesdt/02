@@ -20,8 +20,7 @@ class AmapDrivingRouteProvider:
         self._api_key = api_key
         self._base_url = base_url
         self._timeout_seconds = timeout_seconds
-        self._owns_client = client is None
-        self._client = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout_seconds))
+        self._client = client
 
     async def plan(
         self,
@@ -40,11 +39,7 @@ class AmapDrivingRouteProvider:
             params["waypoints"] = ";".join(self._coordinate(point) for point in waypoints)
         try:
             async with asyncio.timeout(self._timeout_seconds):
-                response = await self._client.get(
-                    self._base_url,
-                    params=params,
-                    timeout=self._timeout_seconds,
-                )
+                response = await self._get(params)
             response.raise_for_status()
             payload = response.json()
             candidates = self._candidates(payload)
@@ -59,9 +54,21 @@ class AmapDrivingRouteProvider:
         except (httpx.HTTPError, KeyError, TypeError, ValueError, InvalidOperation) as error:
             raise ProviderResponseError("AMap route provider response invalid") from error
 
-    async def aclose(self) -> None:
-        if self._owns_client:
-            await self._client.aclose()
+    async def _get(self, params: dict[str, str]) -> httpx.Response:
+        if self._client is not None:
+            return await self._client.get(
+                self._base_url,
+                params=params,
+                timeout=self._timeout_seconds,
+            )
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(self._timeout_seconds)
+        ) as client:
+            return await client.get(
+                self._base_url,
+                params=params,
+                timeout=self._timeout_seconds,
+            )
 
     @staticmethod
     def _coordinate(point: GeoPoint) -> str:

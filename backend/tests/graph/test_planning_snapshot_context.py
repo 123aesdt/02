@@ -10,6 +10,8 @@ from app.fleet.models import FleetDriverSnapshot, FleetVehicleSnapshot
 from app.fleet.service import DijkstraTravelTimeEstimator, FleetAllocationService
 from app.graph.builder import build_graph
 from app.graph.dependencies import GraphDependencies
+from app.real_routes.demo_coordinates import demo_geo_points
+from app.real_routes.models import RealRoadRoute
 from app.road_network.dijkstra import DijkstraPathFinder
 from app.road_network.models import RoadEdgeSnapshot, RoadNetworkSnapshot, RoadNodeSnapshot
 from app.road_network.service import RoadNetworkSnapshotService
@@ -73,6 +75,27 @@ class _StaticRoadProvider:
         return self._snapshot
 
 
+class _CapturingRealRoadRouteService:
+    def __init__(self) -> None:
+        self.node_ids: tuple[str, ...] | None = None
+
+    async def plan(self, node_ids) -> RealRoadRoute:
+        self.node_ids = tuple(node_ids)
+        points = demo_geo_points(self.node_ids)
+        return RealRoadRoute(
+            provider="AMAP",
+            source="CLIENT_WAYPOINT_FALLBACK",
+            status="CLIENT_MATCH_REQUIRED",
+            coordinate_system="GCJ02",
+            mapping_version="DEMO_AMAP_V1",
+            distance_meters=None,
+            duration_seconds=None,
+            waypoints=points,
+            polyline=points,
+            fallback_reason="AMap Web Service is not configured.",
+        )
+
+
 @pytest.mark.asyncio
 async def test_original_path_uses_original_vehicle_weight_and_recommendation_uses_replacement_weight() -> None:
     service = RoutingService(
@@ -114,12 +137,36 @@ async def test_original_path_uses_original_vehicle_weight_and_recommendation_use
         },
     }
 
-    result = await routing_node(state, service)
+    real_road_service = _CapturingRealRoadRouteService()
+    result = await routing_node(
+        state,
+        service,
+        real_road_route_service=real_road_service,
+    )
 
     assert result["original_path"]["edge_ids"] == ["DETOUR-A-1", "DETOUR-A-2"]
     assert result["recommended_path"]["edge_ids"] == ["DIRECT-A"]
     assert result["distance_delta_km"] == "-3.00"
     assert result["eta_delta_minutes"] == -5
+    assert real_road_service.node_ids == ("N04", "N06")
+    assert result["real_road_route"] == {
+        "provider": "AMAP",
+        "source": "CLIENT_WAYPOINT_FALLBACK",
+        "status": "CLIENT_MATCH_REQUIRED",
+        "coordinate_system": "GCJ02",
+        "mapping_version": "DEMO_AMAP_V1",
+        "distance_meters": None,
+        "duration_seconds": None,
+        "waypoints": [
+            {"node_id": "N04", "longitude": "103.079000", "latitude": "25.246000"},
+            {"node_id": "N06", "longitude": "103.135000", "latitude": "25.261000"},
+        ],
+        "polyline": [
+            {"node_id": "N04", "longitude": "103.079000", "latitude": "25.246000"},
+            {"node_id": "N06", "longitude": "103.135000", "latitude": "25.261000"},
+        ],
+        "fallback_reason": "AMap Web Service is not configured.",
+    }
 
 
 class _MutableRoadProvider:

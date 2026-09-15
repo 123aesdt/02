@@ -807,6 +807,24 @@ def _persist_task_7_evidence(service: DispatchTaskApiService) -> None:
                         "eta_delta_minutes": 4,
                         "routing_status": "ROUTED",
                         "visited_node_count": 8,
+                        "real_road_route": {
+                            "provider": "AMAP",
+                            "source": "AMAP_WEB_SERVICE",
+                            "status": "VERIFIED",
+                            "coordinate_system": "GCJ02",
+                            "mapping_version": "DEMO_AMAP_V1",
+                            "distance_meters": 14200,
+                            "duration_seconds": 1680,
+                            "waypoints": [
+                                {"node_id": "N01", "longitude": "103.044800", "latitude": "25.226500"},
+                                {"node_id": "N06", "longitude": "103.135000", "latitude": "25.261000"},
+                            ],
+                            "polyline": [
+                                {"node_id": None, "longitude": "103.044800", "latitude": "25.226500"},
+                                {"node_id": None, "longitude": "103.135000", "latitude": "25.261000"},
+                            ],
+                            "fallback_reason": None,
+                        },
                         "network_nodes": [
                             {"node_id": "N01", "name": "中心仓", "x_km": "0.00", "y_km": "0.00", "node_type": "STATION"},
                             {"node_id": "N06", "name": "城东站", "x_km": "10.00", "y_km": "2.00", "node_type": "STATION"},
@@ -855,6 +873,14 @@ def test_supervisor_reads_persisted_fleet_and_route_evidence_snapshot() -> None:
         assert "E04" not in body["route_plan"]["recommended_path"]["edge_ids"]
         assert body["route_plan"]["network_nodes"][0]["x_km"] == "0.00"
         assert body["route_plan"]["network_edges"][0]["status"] == "BLOCKED"
+        assert body["route_plan"]["real_road_route"]["source"] == "AMAP_WEB_SERVICE"
+        assert body["route_plan"]["real_road_route"]["status"] == "VERIFIED"
+        assert body["route_plan"]["real_road_route"]["distance_meters"] == 14200
+        assert body["route_plan"]["real_road_route"]["waypoints"][0] == {
+            "node_id": "N01",
+            "longitude": "103.044800",
+            "latitude": "25.226500",
+        }
     finally:
         asyncio.run(redis.aclose())
         engine.dispose()

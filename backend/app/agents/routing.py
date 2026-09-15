@@ -1,6 +1,8 @@
 from decimal import Decimal
 
 from app.graph.state import DispatchGraphState, RouteCandidateState
+from app.real_routes.models import GeoPoint, RealRoadRoute
+from app.real_routes.service import RealRoadRouteService
 from app.recommendations.service import IssueRecommendationService
 from app.road_network.models import PathResult
 from app.road_network.service import RoadNetworkSnapshotService
@@ -60,6 +62,29 @@ def _path_to_state(path: PathResult | None) -> dict[str, object] | None:
         "estimated_minutes": path.estimated_minutes,
         "risk_cost": str(path.risk_cost),
         "visited_node_count": path.visited_node_count,
+    }
+
+
+def _geo_point_to_state(point: GeoPoint) -> dict[str, str | None]:
+    return {
+        "node_id": point.node_id,
+        "longitude": format(point.longitude, "f"),
+        "latitude": format(point.latitude, "f"),
+    }
+
+
+def _real_road_route_to_state(route: RealRoadRoute) -> dict[str, object]:
+    return {
+        "provider": route.provider,
+        "source": route.source,
+        "status": route.status,
+        "coordinate_system": route.coordinate_system,
+        "mapping_version": route.mapping_version,
+        "distance_meters": route.distance_meters,
+        "duration_seconds": route.duration_seconds,
+        "waypoints": [_geo_point_to_state(point) for point in route.waypoints],
+        "polyline": [_geo_point_to_state(point) for point in route.polyline],
+        "fallback_reason": route.fallback_reason,
     }
 
 
@@ -125,6 +150,7 @@ async def routing_node(
     routing_service: RoutingService | None,
     recommendation_service: IssueRecommendationService | None = None,
     road_network_snapshot_service: RoadNetworkSnapshotService | None = None,
+    real_road_route_service: RealRoadRouteService | None = None,
 ) -> dict[str, object]:
     if routing_service is None:
         return {}
@@ -139,7 +165,7 @@ async def routing_node(
             road_network_snapshot=snapshot,
         )
         candidate_routes = [route_candidate_to_state(candidate) for candidate in result.candidate_routes]
-        return {
+        patch = {
             **_recommendation_patch(state, result, candidate_routes, recommendation_service),
             **(
                 {
@@ -170,6 +196,11 @@ async def routing_node(
             "road_network_nodes": result.road_network_nodes,
             "road_network_edges": result.road_network_edges,
         }
+        if result.recommended_path is not None and real_road_route_service is not None:
+            patch["real_road_route"] = _real_road_route_to_state(
+                await real_road_route_service.plan(result.recommended_path.node_ids)
+            )
+        return patch
     result = await routing_service.route(
         state["route_id"],
         state.get("memory_results", []),

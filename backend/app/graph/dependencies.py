@@ -7,6 +7,7 @@ from app.fleet.service import FleetAllocationService
 from app.graph_memory.service import GraphMemoryService
 from app.memory.service import EntityMemoryService
 from app.observability.recorder import MetricsRecorder, NoOpMetricsRecorder
+from app.real_routes.service import RealRoadRouteService
 from app.recommendations.service import IssueRecommendationService
 from app.road_network.service import RoadNetworkSnapshotService
 from app.routing.service import RoutingService
@@ -23,6 +24,7 @@ class GraphDependencies:
     graph_memory_service: GraphMemoryService | None = None
     environment_service: EnvironmentService | None = None
     routing_service: RoutingService | None = None
+    real_road_route_service: RealRoadRouteService | None = None
     sandtable_context_service: SandtableContextService | None = None
     fleet_allocation_service: FleetAllocationService | None = None
     road_network_snapshot_service: RoadNetworkSnapshotService | None = None

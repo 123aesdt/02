@@ -24,6 +24,8 @@ from app.observability.runtime import get_process_observability
 from app.providers.embedding.fake import FakeEmbeddingProvider
 from app.providers.environment import EnvironmentProvider, EnvironmentResult, HttpEnvironmentProvider, StaticRouteFallbackProvider
 from app.publications.service import DispatchPublicationService
+from app.real_routes.amap_provider import AmapDrivingRouteProvider
+from app.real_routes.service import RealRoadRouteService
 from app.road_network.dijkstra import DijkstraPathFinder
 from app.road_network.service import RoadNetworkSnapshotService
 from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
@@ -68,6 +70,26 @@ def build_environment_provider(settings: Settings) -> EnvironmentProvider:
             timeout_seconds=settings.environment_api_timeout_seconds,
         )
     return DockerDevelopmentEnvironmentProvider()
+
+
+def build_real_road_route_service(settings: Settings) -> RealRoadRouteService:
+    api_key = settings.amap_web_service_key.get_secret_value().strip()
+    provider = (
+        AmapDrivingRouteProvider(
+            api_key,
+            base_url=settings.amap_route_api_base_url,
+            timeout_seconds=settings.amap_route_timeout_seconds,
+        )
+        if api_key
+        else None
+    )
+    return RealRoadRouteService(
+        provider,
+        CircuitBreaker(
+            settings.amap_route_cb_failure_threshold,
+            settings.amap_route_cb_recovery_seconds,
+        ),
+    )
 
 
 def build_graph_memory_service(settings: Settings, neo4j_driver: object | None) -> GraphMemoryService | None:
@@ -133,6 +155,7 @@ def build_runtime_graph(
             road_network_provider=road_network_repository,
             path_finder=DijkstraPathFinder(),
         ),
+        real_road_route_service=build_real_road_route_service(settings),
         dispatch_service=DispatchService(session_factory),
         audit_service=AuditService(session_factory),
         metrics=actual_metrics,

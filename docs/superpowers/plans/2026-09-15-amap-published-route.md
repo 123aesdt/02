@@ -146,29 +146,29 @@ Expected: PASS. Inspect `git diff`, then commit with `feat: add bounded AMap rea
 - Consumes: `RealRoadRouteService.plan(node_ids: Sequence[str]) -> RealRoadRoute`.
 - Produces: graph-state and route-evidence key `real_road_route`, plus nullable API field `RoutePlanResponse.real_road_route`.
 
-- [ ] **Step 1: Write a failing routing-agent enrichment test**
+- [x] **Step 1: Write a failing routing-agent enrichment test**
 
 Inject a capturing real-road service, run a blocked-edge plan, and assert it receives the exact `recommended_path.node_ids`; assert the node patch includes the serialized result and retains `DIJKSTRA_V1` as the safety algorithm.
 
-- [ ] **Step 2: Run the routing-agent test and confirm failure**
+- [x] **Step 2: Run the routing-agent test and confirm failure**
 
 Run: `pytest backend/tests/graph/test_routing_agent.py -q`
 
 Expected: FAIL because the graph has no real-road dependency or state.
 
-- [ ] **Step 3: Wire and persist the enrichment**
+- [x] **Step 3: Wire and persist the enrichment**
 
 Add the dependency to `GraphDependencies`, invoke it only after a reachable recommended path exists, serialize Decimals with `format(value, "f")`, project safe event fields, and include `real_road_route` in the existing `ROUTE_CALCULATION` evidence payload.
 
-- [ ] **Step 4: Write a failing result reconstruction test**
+- [x] **Step 4: Write a failing result reconstruction test**
 
 Seed route evidence with a verified real-road result and assert `GET /api/v1/dispatch-tasks/{task_id}/result` returns the exact coordinate strings, source, status, distance, and duration.
 
-- [ ] **Step 5: Implement strict response models and reconstruction**
+- [x] **Step 5: Implement strict response models and reconstruction**
 
 Add strict `GeoPointResponse` and `RealRoadRouteResponse`, validate evidence through Pydantic, and keep malformed evidence behavior explicit by returning no route evidence rather than fabricating coordinates.
 
-- [ ] **Step 6: Run and commit Task 3**
+- [x] **Step 6: Run and commit Task 3**
 
 Run: `pytest backend/tests/graph/test_routing_agent.py backend/tests/api/test_dispatch_tasks.py -q`
 

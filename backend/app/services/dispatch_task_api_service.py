@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.api.v1.schemas import (
     CreateDispatchTaskRequest,
     PathResponse,
+    RealRoadRouteResponse,
     RoadEdgeResponse,
     RoadNodeResponse,
     RouteCandidateResponse,
@@ -278,6 +279,9 @@ class DispatchTaskApiService:
                     "road_network_version": route_row.road_network_version,
                     "network_nodes": cls._road_nodes(route_row.payload_json.get("network_nodes")),
                     "network_edges": cls._road_edges(route_row.payload_json.get("network_edges")),
+                    "real_road_route": cls._real_road_route(
+                        route_row.payload_json.get("real_road_route")
+                    ),
                 }
             )
         except (TypeError, ValueError, ValidationError):
@@ -370,6 +374,12 @@ class DispatchTaskApiService:
             "scoring_formula",
         )
         return PathResponse.model_validate(cls._pick(value, keys)).model_dump(mode="json")
+
+    @staticmethod
+    def _real_road_route(value: object) -> dict[str, object] | None:
+        if value is None:
+            return None
+        return RealRoadRouteResponse.model_validate(value).model_dump(mode="json")
 
     @staticmethod
     def _pick(source: Mapping[str, object], keys: Sequence[str]) -> dict[str, object]:

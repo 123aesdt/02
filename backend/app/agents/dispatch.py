@@ -55,6 +55,7 @@ async def dispatch_node(
                 "pickup_route": state.get("pickup_route"),
                 "road_network_nodes": state.get("road_network_nodes", []),
                 "road_network_edges": state.get("road_network_edges", []),
+                "real_road_route": state.get("real_road_route"),
                 "candidate_routes": state.get("candidate_routes", []),
                 "distance_delta_km": state.get("distance_delta_km"),
                 "eta_delta_minutes": state.get("eta_delta_minutes"),
