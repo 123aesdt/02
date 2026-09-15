@@ -1,5 +1,7 @@
 import { load } from "@amap/amap-jsapi-loader";
+import { CarFront, Navigation } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import { fleetNodes, fleetRoutes, fleetStatusMeta, type FleetMapNode, type FleetRoute } from "../features/fleet-sandbox/fleet-sandbox-data";
 import {
@@ -133,16 +135,64 @@ declare global {
 const routeById = new Map(fleetRoutes.map((route) => [route.id, route]));
 const nodeById = new Map(fleetNodes.map((node) => [node.id, node]));
 
+const vehicleMarkerPresentation: Record<FleetPositionSnapshot["status"], {
+  accent: string;
+  glow: string;
+  surface: string;
+  visualState: "moving" | "dispatching" | "standby" | "fault";
+}> = {
+  IN_TRANSIT: { accent: "#22d3ee", glow: "rgba(34, 211, 238, .42)", surface: "rgba(5, 50, 62, .92)", visualState: "moving" },
+  AVAILABLE: { accent: "#94a3b8", glow: "rgba(148, 163, 184, .28)", surface: "rgba(25, 38, 54, .9)", visualState: "standby" },
+  DISPATCHING: { accent: "#8b5cf6", glow: "rgba(139, 92, 246, .46)", surface: "rgba(41, 24, 79, .92)", visualState: "dispatching" },
+  BROKEN: { accent: "#ef4444", glow: "rgba(239, 68, 68, .46)", surface: "rgba(76, 22, 28, .92)", visualState: "fault" },
+  MAINTENANCE: { accent: "#64748b", glow: "rgba(100, 116, 139, .26)", surface: "rgba(28, 38, 52, .9)", visualState: "standby" },
+};
+
+const vehicleIconMarkup = renderToStaticMarkup(<CarFront aria-hidden="true" strokeWidth={1.8} />);
+const vehicleHeadingMarkup = renderToStaticMarkup(<Navigation aria-hidden="true" fill="currentColor" strokeWidth={1.5} />);
+const vehicleLegendItems = [
+  { label: "行驶中", visualState: "moving" },
+  { label: "调度中", visualState: "dispatching" },
+  { label: "待命", visualState: "standby" },
+  { label: "故障", visualState: "fault" },
+] as const;
+
 function createVehicleMarkerContent(vehicle: FleetPositionSnapshot, selected: boolean, showLabel: boolean): HTMLElement {
-  const color = fleetStatusMeta[vehicle.status].color;
+  const presentation = vehicleMarkerPresentation[vehicle.status];
   const root = document.createElement("button");
   root.type = "button";
   root.className = `amap-fleet-vehicle is-${vehicle.status.toLowerCase()} ${selected ? "is-selected" : ""}`;
   root.setAttribute("aria-label", `${vehicle.id}，${fleetStatusMeta[vehicle.status].label}`);
+  root.dataset.vehicleId = vehicle.id;
+  root.dataset.vehicleVisualState = presentation.visualState;
   root.dataset.amapRouteId = vehicle.routeId;
   root.dataset.amapProgress = String(vehicle.progress);
-  root.style.setProperty("--vehicle-color", color);
-  root.innerHTML = `<span class="amap-fleet-vehicle__pulse"></span><span class="amap-fleet-vehicle__truck"><i></i><b></b></span>${showLabel ? `<strong>${vehicle.id}</strong>` : ""}${vehicle.status === "BROKEN" ? '<em aria-hidden="true">!</em>' : ""}`;
+  root.style.setProperty("--vehicle-color", presentation.accent);
+  root.style.setProperty("--vehicle-glow", presentation.glow);
+  root.style.setProperty("--vehicle-surface", presentation.surface);
+
+  const radar = document.createElement("span");
+  radar.className = "amap-fleet-vehicle__radar";
+  radar.setAttribute("aria-hidden", "true");
+  const directional = document.createElement("span");
+  directional.className = "amap-fleet-vehicle__directional";
+  directional.setAttribute("aria-hidden", "true");
+  const heading = document.createElement("span");
+  heading.className = "amap-fleet-vehicle__heading";
+  heading.innerHTML = vehicleHeadingMarkup;
+  const glyph = document.createElement("span");
+  glyph.className = "amap-fleet-vehicle__glyph";
+  glyph.dataset.vehicleGlyph = "truck";
+  glyph.innerHTML = vehicleIconMarkup;
+  directional.append(heading, glyph);
+  root.append(radar, directional);
+
+  if (showLabel && (vehicle.status === "DISPATCHING" || vehicle.status === "BROKEN")) {
+    const label = document.createElement("strong");
+    label.dataset.vehicleStateLabel = "true";
+    label.textContent = fleetStatusMeta[vehicle.status].label;
+    root.append(label);
+  }
   return root;
 }
 
@@ -166,13 +216,27 @@ function createNodeMarkerContent(node: FleetMapNode): HTMLElement {
 function createVehicleInfoContent(vehicle: FleetPositionSnapshot): HTMLElement {
   const root = document.createElement("div");
   root.className = "amap-fleet-info";
+  root.dataset.vehicleVisualState = vehicleMarkerPresentation[vehicle.status].visualState;
+  root.style.setProperty("--vehicle-color", vehicleMarkerPresentation[vehicle.status].accent);
+  const heading = document.createElement("div");
+  heading.className = "amap-fleet-info__heading";
+  const statusDot = document.createElement("i");
+  statusDot.setAttribute("aria-hidden", "true");
   const title = document.createElement("strong");
-  title.textContent = `${vehicle.id} · ${fleetStatusMeta[vehicle.status].label}`;
+  title.textContent = vehicle.id;
+  heading.append(statusDot, title);
   const speed = document.createElement("span");
-  speed.textContent = `速度 ${vehicle.speedKph} km/h`;
+  speed.className = "amap-fleet-info__speed";
+  speed.textContent = `${vehicle.speedKph} km/h`;
+  const status = document.createElement("span");
+  status.className = "amap-fleet-info__status";
+  status.textContent = fleetStatusMeta[vehicle.status].label;
+  const route = document.createElement("span");
+  route.className = "amap-fleet-info__route";
+  route.textContent = vehicle.routeDisplayName;
   const location = document.createElement("small");
   location.textContent = vehicle.locationLabel;
-  root.append(title, speed, location);
+  root.append(heading, speed, status, route, location);
   return root;
 }
 
@@ -897,6 +961,11 @@ export function AmapFleetMap({
     {loadState === "READY" && roadPathCount < roadPlanningRoutes.length
       ? <div className="fleet-amap-routing" role="status"><i/>真实道路匹配 {roadPathCount}/{roadPlanningRoutes.length}</div>
       : null}
+    {loadState === "READY" ? <div className="amap-fleet-vehicle-legend" role="group" aria-label="车辆状态图例">
+      {vehicleLegendItems.map((item) => <div key={item.visualState} className={`is-${item.visualState}`}>
+        <CarFront aria-hidden="true" strokeWidth={1.8}/><span>{item.label}</span>
+      </div>)}
+    </div> : null}
     {loadState === "FALLBACK" ? <div className="fleet-amap-fallback" role="status">高德地图暂不可用，已切换本地卫星地图</div> : null}
   </div>;
 }

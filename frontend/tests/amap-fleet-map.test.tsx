@@ -91,6 +91,7 @@ describe("AMap fleet map", () => {
     const drivingCalls: unknown[][] = [];
     const markerOptions: Record<string, unknown>[] = [];
     const polylineOptions: Record<string, unknown>[] = [];
+    const infoWindowOptions: Record<string, unknown>[] = [];
     const markerPositionUpdates: unknown[] = [];
     const mapCenterUpdates: unknown[] = [];
     const mapStyleUpdates: string[] = [];
@@ -122,6 +123,12 @@ describe("AMap fleet map", () => {
       constructor(options: Record<string, unknown> = {}) {
         super(options);
         polylineOptions.push(options);
+      }
+    }
+    class FakeInfoWindow extends FakeOverlay {
+      constructor(options: Record<string, unknown> = {}) {
+        super(options);
+        infoWindowOptions.push(options);
       }
     }
     class FakeMap {
@@ -168,7 +175,7 @@ describe("AMap fleet map", () => {
       Marker: FakeMarker,
       Polyline: FakePolyline,
       Circle: FakeOverlay,
-      InfoWindow: FakeOverlay,
+      InfoWindow: FakeInfoWindow,
       Scale: FakeOverlay,
       ToolBar: FakeOverlay,
       Driving: FakeDriving,
@@ -191,9 +198,16 @@ describe("AMap fleet map", () => {
       routePhase: 0.5,
       routeDisplayName: "路线-01 · 调度中心—快递集散线",
     };
+    const vehicles: FleetPositionSnapshot[] = [
+      vehicle,
+      { ...vehicle, id: "V-002", status: "DISPATCHING", speedKph: 46 },
+      { ...vehicle, id: "V-003", status: "AVAILABLE", speedKph: 0 },
+      { ...vehicle, id: "V-004", status: "MAINTENANCE", speedKph: 0 },
+      { ...vehicle, id: "V-005", status: "BROKEN", speedKph: 0 },
+    ];
     const onFollowChange = vi.fn();
     const view = renderMap(vi.fn(), {
-      vehicles: [vehicle],
+      vehicles,
       routeIds: ["ROUTE-01"],
       roadPlanningRouteIds: ["ROUTE-01"],
       followVehicle: true,
@@ -225,6 +239,32 @@ describe("AMap fleet map", () => {
     expect(vehicleMarker?.bubble).toBe(true);
     expect((vehicleMarker?.content as HTMLElement).dataset.amapLng).toBe(String(expectedPosition[0]));
     expect((vehicleMarker?.content as HTMLElement).dataset.amapHeading).toMatch(/^-?\d+$/);
+    const vehicleContents = markerOptions
+      .map((options) => options.content as HTMLElement | undefined)
+      .filter((content): content is HTMLElement => Boolean(content?.classList.contains("amap-fleet-vehicle")));
+    const vehicleContent = (vehicleId: string) => vehicleContents.find((content) =>
+      content.getAttribute("aria-label")?.startsWith(vehicleId));
+    expect(vehicleContent("V-001")?.dataset.vehicleVisualState).toBe("moving");
+    expect(vehicleContent("V-002")?.dataset.vehicleVisualState).toBe("dispatching");
+    expect(vehicleContent("V-003")?.dataset.vehicleVisualState).toBe("standby");
+    expect(vehicleContent("V-004")?.dataset.vehicleVisualState).toBe("standby");
+    expect(vehicleContent("V-005")?.dataset.vehicleVisualState).toBe("fault");
+    expect(vehicleContent("V-001")?.querySelector('[data-vehicle-glyph="truck"] svg')).not.toBeNull();
+    expect(vehicleContent("V-002")?.querySelector("[data-vehicle-state-label]")?.textContent).toBe("调度中");
+    expect(vehicleContent("V-005")?.querySelector("[data-vehicle-state-label]")?.textContent).toBe("故障");
+    const selectedInfo = infoWindowOptions.at(-1)?.content as HTMLElement | undefined;
+    expect(selectedInfo?.textContent).toContain("V-001");
+    expect(selectedInfo?.textContent).toContain("40 km/h");
+    expect(selectedInfo?.textContent).toContain("行驶中");
+    expect(selectedInfo?.textContent).toContain("路线-01");
+    const legend = view.container.querySelector('[aria-label="车辆状态图例"]');
+    expect(Array.from(legend?.querySelectorAll("span") ?? []).map((item) => item.textContent)).toEqual([
+      "行驶中",
+      "调度中",
+      "待命",
+      "故障",
+    ]);
+    expect(legend?.querySelectorAll("svg")).toHaveLength(4);
     expect(view.container.querySelector("[data-road-route-count=\"1\"]")).not.toBeNull();
     expect(view.container.querySelector("[data-road-planned-count=\"1\"]")).not.toBeNull();
     expect(view.container.querySelector("[data-operation-road-count=\"3\"]")).not.toBeNull();
