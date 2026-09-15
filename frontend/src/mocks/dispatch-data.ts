@@ -1,5 +1,96 @@
-import type { DashboardSnapshot, DispatchDetail } from "../types/dispatch";
+import type { AgentRun, DashboardSnapshot, DispatchDetail } from "../types/dispatch";
 import type { RoutePlanResponse } from "../services/api/dispatch-adapter";
+
+const demoAgents: AgentRun[] = [
+  {
+    id: "intake", name: "接入智能体", status: "SUCCESS", elapsed: "12 ms",
+    output: "已规范化异常并锁定车辆 苏G·A8126",
+    work: {
+      input: "任务、车辆、起终点和异常描述",
+      action: "校验任务字段，建立标准调度上下文",
+      result: "已规范化异常并锁定车辆 苏G·A8126",
+      evidence: [{ label: "运单", value: "CF-20260821-00128" }, { label: "异常", value: "暴雨道路湿滑" }],
+      eventType: "INTAKE_COMPLETED", eventId: "demo-intake-01",
+    },
+  },
+  {
+    id: "memory", name: "实体记忆智能体", status: "SUCCESS", elapsed: "42 ms",
+    output: "召回 1 条历史处置记忆，最高相似度 95%",
+    work: {
+      input: "车辆、路线与异常特征",
+      action: "检索相似历史事件及其处置方案",
+      result: "召回 1 条历史处置记忆，最高相似度 95%",
+      evidence: [{ label: "记忆 ID", value: "memory-rain-li" }, { label: "历史处置", value: "建议改走 102 国道" }],
+      eventType: "MEMORY_COMPLETED", eventId: "demo-memory-02",
+    },
+  },
+  {
+    id: "graph_memory", name: "图记忆智能体", status: "SUCCESS", elapsed: "18 ms",
+    output: "召回 3 条关系事实和 1 条可解释路径",
+    work: {
+      input: "司机、车辆、路线等实体关系",
+      action: "召回关系事实与可解释路径",
+      result: "召回 3 条关系事实和 1 条可解释路径",
+      evidence: [{ label: "风险关系", value: "李师傅 → 新平路" }, { label: "替代关系", value: "102 国道 → 新平路" }],
+      eventType: "GRAPH_MEMORY_COMPLETED", eventId: "demo-graph-03",
+    },
+  },
+  {
+    id: "environment", name: "环境智能体", status: "FALLBACK", elapsed: "811 ms",
+    output: "环境服务超时，已使用静态安全规则继续规划",
+    work: {
+      input: "当前路线和外部环境服务",
+      action: "评估天气、道路状态与环境风险",
+      result: "环境服务超时，已使用静态安全规则继续规划",
+      evidence: [{ label: "天气", value: "暴雨" }, { label: "道路", value: "湿滑" }, { label: "风险", value: "高" }],
+      eventType: "ENVIRONMENT_FALLBACK", eventId: "demo-environment-04",
+    },
+  },
+  {
+    id: "capacity", name: "运力智能体", status: "SUCCESS", elapsed: "18 ms",
+    output: "司机与车辆可用，装载量处于安全范围",
+    work: {
+      input: "司机、车辆、载重和候选车队",
+      action: "核验当前运力并筛选可执行车辆",
+      result: "司机与车辆可用，装载量处于安全范围",
+      evidence: [{ label: "司机", value: "李师傅 · 可用" }, { label: "车辆载荷", value: "45%" }],
+      eventType: "CAPACITY_COMPLETED", eventId: "demo-capacity-05",
+    },
+  },
+  {
+    id: "routing", name: "路径智能体", status: "SUCCESS", elapsed: "31 ms",
+    output: "比较 3 条候选路线，推荐 102 国道",
+    work: {
+      input: "阻断道路、运力、记忆和路网快照",
+      action: "比较候选路线并检查道路连通性",
+      result: "比较 3 条候选路线，推荐 102 国道",
+      evidence: [{ label: "推荐路线", value: "102 国道" }, { label: "预计里程", value: "13.0 公里" }, { label: "评分", value: "92" }],
+      eventType: "ROUTING_COMPLETED", eventId: "demo-routing-06",
+    },
+  },
+  {
+    id: "dispatch", name: "调度智能体", status: "SUCCESS", elapsed: "27 ms",
+    output: "调度已执行：李师傅将按 102 国道行驶",
+    work: {
+      input: "最终车辆和路线决策",
+      action: "持久化调度结果并生成执行版本",
+      result: "调度已执行：李师傅将按 102 国道行驶",
+      evidence: [{ label: "目标路线", value: "national-102" }, { label: "执行版本", value: "1" }],
+      eventType: "DISPATCH_COMPLETED", eventId: "demo-dispatch-07",
+    },
+  },
+  {
+    id: "audit", name: "审核智能体", status: "APPROVED", elapsed: "14 ms",
+    output: "4 项校验通过，允许自动发布",
+    work: {
+      input: "路线、运力、降级和调度证据",
+      action: "逐项审核并决定是否自动发布",
+      result: "4 项校验通过，允许自动发布",
+      evidence: [{ label: "审核结论", value: "通过" }, { label: "人工复核", value: "否" }],
+      eventType: "AUDIT_COMPLETED", eventId: "demo-audit-08",
+    },
+  },
+];
 
 export const dashboardSnapshot: DashboardSnapshot = {
   metrics: [
@@ -17,16 +108,7 @@ export const dashboardSnapshot: DashboardSnapshot = {
     { id: "ANM-20260821-014", taskId: "TASK-20260821-0039", orderId: "CF-20260821-00124", type: "站点积压", risk: "MEDIUM", driver: "刘师傅", route: "308县道", status: "人工复核", occurredAt: "18:56" },
     { id: "ANM-20260821-013", taskId: "TASK-20260821-0038", orderId: "CF-20260821-00123", type: "运力不足", risk: "LOW", driver: "王师傅", route: "102国道", status: "已完成调度", occurredAt: "18:31" },
   ],
-  agents: [
-    { id: "intake", name: "接入", status: "SUCCESS", elapsed: "12 毫秒", output: "异常上下文已规范化" },
-    { id: "memory", name: "实体记忆", status: "SUCCESS", elapsed: "42 毫秒", output: "memory-rain-li" },
-    { id: "graph_memory", name: "图记忆", status: "SUCCESS", elapsed: "18 毫秒", output: "3 条图事实" },
-    { id: "environment", name: "环境", status: "FALLBACK", elapsed: "811 毫秒", output: "静态路线规则", detail: "主要服务超时" },
-    { id: "capacity", name: "运力", status: "SUCCESS", elapsed: "18 毫秒", output: "可用" },
-    { id: "routing", name: "路径规划", status: "SUCCESS", elapsed: "31 毫秒", output: "national-102" },
-    { id: "dispatch", name: "调度", status: "SUCCESS", elapsed: "27 毫秒", output: "已执行改道" },
-    { id: "audit", name: "审核", status: "APPROVED", elapsed: "14 毫秒", output: "调度完成" },
-  ],
+  agents: demoAgents,
 };
 
 export const mockRoutePlan: RoutePlanResponse = {

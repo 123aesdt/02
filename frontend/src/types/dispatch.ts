@@ -19,6 +19,21 @@ export interface AgentRun {
   elapsed: string;
   output: string;
   detail?: string;
+  work?: AgentWork;
+}
+
+export interface AgentEvidence {
+  label: string;
+  value: string;
+}
+
+export interface AgentWork {
+  input: string;
+  action: string;
+  result: string;
+  evidence: AgentEvidence[];
+  eventType: string;
+  eventId: string;
 }
 
 export interface RouteCandidate {

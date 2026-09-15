@@ -5,10 +5,11 @@ import { runtimeConfig } from "../config/runtime";
 import { TaskEventClient } from "../services/task-event-client";
 import type { AgentRun, AgentStatus } from "../types/dispatch";
 import type { TaskEvent } from "../types/task-events";
+import { buildAgentWork, formatAgentElapsed } from "../utils/agent-work";
 
 const nodes = ["intake", "entity_memory", "graph_memory", "environment", "capacity", "routing", "dispatch", "audit"];
 const names: Record<string, string> = { intake: "接入智能体", entity_memory: "实体记忆智能体", graph_memory: "图记忆智能体", environment: "环境智能体", capacity: "运力智能体", routing: "路径智能体", dispatch: "调度智能体", audit: "审核智能体" };
-const initialAgents: AgentRun[] = nodes.map((id) => ({ id, name: names[id], status: "WAITING", elapsed: "—", output: "等待真实事件" }));
+const initialAgents: AgentRun[] = nodes.map((id) => ({ id, name: names[id], status: "WAITING", elapsed: "—", output: "等待接收任务事件" }));
 
 function mapStatus(event: TaskEvent): AgentStatus {
   if (event.event_type.endsWith("_STARTED")) return "RUNNING";
@@ -34,6 +35,22 @@ export function useTaskEvents(taskId: string, onTerminal: () => void) {
     return () => client.close();
   }, [session.status, taskId, onTerminal]);
   const taskEvents = events.filter((event) => event.task_id === taskId);
-  const agents = taskEvents.reduce<AgentRun[]>((current, event) => !nodes.includes(event.node) ? current : current.map((agent) => agent.id === event.node ? { ...agent, status: mapStatus(event), output: event.event_type, detail: Object.keys(event.data).length ? JSON.stringify(event.data) : undefined } : agent), initialAgents);
+  const startedAt = new Map<string, string>();
+  const agents = taskEvents.reduce<AgentRun[]>((current, event) => {
+    if (!nodes.includes(event.node)) return current;
+    if (event.event_type.endsWith("_STARTED")) startedAt.set(event.node, event.timestamp);
+    const work = buildAgentWork(event.node, event);
+    const elapsed = event.event_type.endsWith("_STARTED")
+      ? "运行中"
+      : formatAgentElapsed(startedAt.get(event.node), event.timestamp);
+    return current.map((agent) => agent.id === event.node ? {
+      ...agent,
+      status: mapStatus(event),
+      elapsed,
+      output: work.result,
+      detail: event.event_type,
+      work,
+    } : agent);
+  }, initialAgents);
   return { agents, connection, events: taskEvents };
 }

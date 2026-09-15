@@ -502,3 +502,119 @@ async def test_dispatch_event_rejects_wrong_typed_identifiers_without_stringifyi
         "executed": True,
     }
     assert "dispatch-secret-must-not-leak" not in json.dumps(event)
+
+
+@pytest.mark.asyncio
+async def test_agent_events_expose_safe_work_evidence_for_the_pipeline() -> None:
+    import json
+
+    broker = InMemoryTaskEventBroker()
+    adapter = GraphEventAdapter(broker)
+    await adapter.publish_completed(
+        "TASK-AGENT-WORK",
+        "intake",
+        {
+            "normalized_anomaly": "新平路东河桥段发生塌方",
+            "sandtable_context_loaded": True,
+            "vehicle_id": "V-002",
+            "origin_node_id": "N01",
+            "destination_node_id": "N06",
+            "affected_edge_ids": ["E04"],
+            "authorization": "sensitive-intake-value",
+        },
+    )
+    await adapter.publish_completed(
+        "TASK-AGENT-WORK",
+        "entity_memory",
+        {
+            "memory_results": [
+                {
+                    "memory_id": "MEM-001",
+                    "similarity_score": 0.91,
+                    "route_id": "ROUTE-01",
+                    "historical_resolution": "历史上采用北环线绕行",
+                    "metadata": {"authorization": "sensitive-memory-value"},
+                }
+            ]
+        },
+    )
+    await adapter.publish_completed(
+        "TASK-AGENT-WORK",
+        "environment",
+        {
+            "weather": "rain",
+            "road_condition": "blocked",
+            "environment_risk": "high",
+            "fallback_used": False,
+            "fallback_reason": None,
+            "environment_provider": "demo_environment",
+            "environment_elapsed_ms": 18.4,
+            "authorization": "sensitive-environment-value",
+        },
+    )
+    await adapter.publish_completed(
+        "TASK-AGENT-WORK",
+        "audit",
+        {
+            "audit_result": {
+                "audit_status": "APPROVED",
+                "passed": True,
+                "reason": "Audit checks passed.",
+                "checks": {
+                    "route_connectivity": True,
+                    "blocked_edge_exclusion": True,
+                },
+                "dispatch_id": 228,
+                "requires_manual_review": False,
+                "audit_record_id": 243,
+                "authorization": "sensitive-audit-value",
+            }
+        },
+    )
+
+    intake, memory, environment, audit = [
+        event.to_dict() for event in await broker.history("TASK-AGENT-WORK")
+    ]
+
+    assert intake["data"] == {
+        "normalized_anomaly": "新平路东河桥段发生塌方",
+        "sandtable_context_loaded": True,
+        "vehicle_id": "V-002",
+        "origin_node_id": "N01",
+        "destination_node_id": "N06",
+        "affected_edge_ids": ["E04"],
+    }
+    assert memory["data"] == {
+        "memory_results": [
+            {
+                "memory_id": "MEM-001",
+                "similarity_score": 0.91,
+                "route_id": "ROUTE-01",
+                "historical_resolution": "历史上采用北环线绕行",
+            }
+        ]
+    }
+    assert environment["data"] == {
+        "weather": "rain",
+        "road_condition": "blocked",
+        "environment_risk": "high",
+        "fallback_used": False,
+        "fallback_reason": None,
+        "environment_provider": "demo_environment",
+        "environment_elapsed_ms": 18.4,
+    }
+    assert audit["data"] == {
+        "audit_result": {
+            "audit_status": "APPROVED",
+            "passed": True,
+            "reason": "Audit checks passed.",
+            "checks": {
+                "route_connectivity": True,
+                "blocked_edge_exclusion": True,
+            },
+            "dispatch_id": 228,
+            "requires_manual_review": False,
+            "audit_record_id": 243,
+        }
+    }
+    assert "sensitive-" not in json.dumps([intake, memory, environment, audit])

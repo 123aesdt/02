@@ -5,7 +5,15 @@ from enum import Enum
 from typing import Protocol
 
 from app.events.broker import TaskEventBroker
-from app.events.graph_payloads import project_capacity_event, project_dispatch_event, project_routing_event
+from app.events.graph_payloads import (
+    project_audit_event,
+    project_capacity_event,
+    project_dispatch_event,
+    project_environment_event,
+    project_intake_event,
+    project_memory_event,
+    project_routing_event,
+)
 from app.events.models import TaskEvent, TaskEventType
 from app.graph.state import DispatchGraphState
 
@@ -94,6 +102,10 @@ class GraphEventAdapter:
         patch: Mapping[str, object],
         state: Mapping[str, object] | None = None,
     ) -> dict[str, object]:
+        if node == "intake":
+            return project_intake_event(patch)
+        if node == "entity_memory":
+            return project_memory_event(patch)
         if node == "graph_memory":
             return {
                 key: patch.get(key)
@@ -105,6 +117,8 @@ class GraphEventAdapter:
                     "graph_memory_paths",
                 )
             }
+        if node == "environment":
+            return project_environment_event(patch)
         if node == "routing":
             return project_routing_event(patch)
         if node == "capacity":
@@ -112,7 +126,7 @@ class GraphEventAdapter:
         if node == "dispatch":
             return project_dispatch_event(patch.get("dispatch_result"))
         if node == "audit":
-            return {"audit_result": patch.get("audit_result")}
+            return {"audit_result": project_audit_event(patch.get("audit_result"))}
         return {}
 
     @classmethod

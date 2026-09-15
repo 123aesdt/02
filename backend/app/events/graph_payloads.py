@@ -41,6 +41,16 @@ def _string_list(value: object) -> object:
     return items if all(isinstance(item, str) for item in items) else _INVALID
 
 
+def _boolean_mapping(value: object) -> object:
+    if not isinstance(value, Mapping):
+        return _INVALID
+    return {
+        key: item
+        for key, item in value.items()
+        if isinstance(key, str) and isinstance(item, bool)
+    }
+
+
 def _put(
     target: dict[str, object],
     source: Mapping[str, object],
@@ -237,6 +247,69 @@ def _project_road_edge(source: Mapping[str, object]) -> dict[str, object] | None
     for key in ("base_minutes", "version"):
         _put(projected, source, key, _integer)
     _put(projected, source, "bidirectional", _boolean)
+    return projected
+
+
+def _project_memory_result(source: Mapping[str, object]) -> dict[str, object] | None:
+    memory_id = _text(source.get("memory_id"))
+    if memory_id is _INVALID:
+        return None
+    projected: dict[str, object] = {"memory_id": memory_id}
+    for key in ("route_id", "historical_resolution"):
+        _put(projected, source, key, _nullable_text)
+    _put(projected, source, "similarity_score", _nullable_number)
+    return projected
+
+
+def project_intake_event(patch: Mapping[str, object]) -> dict[str, object]:
+    projected: dict[str, object] = {}
+    for key in (
+        "normalized_anomaly",
+        "vehicle_id",
+        "origin_node_id",
+        "destination_node_id",
+    ):
+        _put(projected, patch, key, _nullable_text)
+    _put(projected, patch, "sandtable_context_loaded", _boolean)
+    _put(projected, patch, "affected_edge_ids", _string_list)
+    return projected
+
+
+def project_memory_event(patch: Mapping[str, object]) -> dict[str, object]:
+    projected: dict[str, object] = {}
+    if "memory_results" in patch:
+        results = _project_sequence(patch["memory_results"], _project_memory_result)
+        if results is not _INVALID:
+            projected["memory_results"] = results
+    return projected
+
+
+def project_environment_event(patch: Mapping[str, object]) -> dict[str, object]:
+    projected: dict[str, object] = {}
+    for key in (
+        "weather",
+        "road_condition",
+        "environment_risk",
+        "fallback_reason",
+        "environment_provider",
+    ):
+        _put(projected, patch, key, _nullable_text)
+    _put(projected, patch, "fallback_used", _boolean)
+    _put(projected, patch, "environment_elapsed_ms", _nullable_number)
+    return projected
+
+
+def project_audit_event(result: object) -> dict[str, object]:
+    if not isinstance(result, Mapping):
+        return {}
+    projected: dict[str, object] = {}
+    for key in ("audit_status", "reason"):
+        _put(projected, result, key, _nullable_text)
+    for key in ("passed", "requires_manual_review"):
+        _put(projected, result, key, _boolean)
+    for key in ("dispatch_id", "audit_record_id"):
+        _put(projected, result, key, _nullable_integer)
+    _put(projected, result, "checks", _boolean_mapping)
     return projected
 
 
