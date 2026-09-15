@@ -316,8 +316,8 @@
 
 .amap-fleet-vehicle {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -326,31 +326,41 @@
   background: transparent;
   cursor: pointer;
   transform: translate(var(--vehicle-offset-x, 0), var(--vehicle-offset-y, 0));
-  transition: filter .18s ease, transform .18s ease;
+  transition: filter .2s ease, transform .2s ease;
 }
 
 .amap-fleet-vehicle__radar {
   position: absolute;
-  inset: 4px;
-  border: 1px solid color-mix(in srgb, var(--vehicle-color) 82%, white);
+  inset: 0;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--vehicle-surface) 84%, transparent);
-  box-shadow: 0 4px 10px rgba(1, 13, 25, .5), 0 0 12px var(--vehicle-glow);
+  background: color-mix(in srgb, var(--vehicle-surface) 18%, transparent);
+  box-shadow: 0 4px 12px rgba(1, 13, 25, .32), 0 0 18px var(--vehicle-glow);
+  pointer-events: none;
 }
 
-.amap-fleet-vehicle__radar::after {
-  content: "";
+.amap-fleet-vehicle__radar-ring {
   position: absolute;
-  inset: 4px;
-  border: 1px solid color-mix(in srgb, var(--vehicle-color) 58%, transparent);
   border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.amap-fleet-vehicle__radar-ring.is-outer {
+  inset: 2px;
+  border: 2px solid color-mix(in srgb, var(--vehicle-color) 76%, white);
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--vehicle-color) 24%, transparent), 0 0 10px var(--vehicle-glow);
+}
+
+.amap-fleet-vehicle__radar-ring.is-inner {
+  inset: 9px;
+  border: 1px solid color-mix(in srgb, var(--vehicle-color) 48%, white);
+  box-shadow: inset 0 0 8px color-mix(in srgb, var(--vehicle-color) 20%, transparent);
 }
 
 .amap-fleet-vehicle__directional {
   position: relative;
   z-index: 1;
-  width: 24px;
-  height: 31px;
+  width: 38px;
+  height: 50px;
   display: grid;
   place-items: center;
   transform: rotate(var(--vehicle-heading, 0deg));
@@ -359,62 +369,79 @@
 
 .amap-fleet-vehicle__heading {
   position: absolute;
-  top: -4px;
+  z-index: 2;
+  top: -8px;
   left: 50%;
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   color: var(--vehicle-color);
-  filter: drop-shadow(0 0 4px var(--vehicle-glow));
+  filter: drop-shadow(0 0 5px var(--vehicle-color));
   transform: translateX(-50%);
 }
 
 .amap-fleet-vehicle__heading svg,
-.amap-fleet-vehicle__glyph svg {
+.amap-fleet-vehicle__glyph img {
   width: 100%;
   height: 100%;
   display: block;
 }
 
 .amap-fleet-vehicle__glyph {
-  width: 21px;
-  height: 25px;
+  width: 35px;
+  height: 48px;
   display: grid;
   place-items: center;
-  padding: 3px;
-  border: 1px solid color-mix(in srgb, var(--vehicle-color) 76%, white);
-  border-radius: 7px;
-  color: #f8fdff;
-  background: var(--vehicle-surface);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1), 0 0 7px var(--vehicle-glow);
+  pointer-events: none;
+}
+
+.amap-fleet-vehicle__glyph img {
+  object-fit: contain;
+  filter: drop-shadow(0 4px 3px rgba(0, 8, 18, .62)) drop-shadow(0 0 5px var(--vehicle-color));
+  user-select: none;
+}
+
+.amap-fleet-vehicle.is-dispatching .amap-fleet-vehicle__glyph img,
+.amap-fleet-vehicle-legend .is-dispatching img {
+  filter: hue-rotate(76deg) saturate(1.25) drop-shadow(0 0 5px #8b5cf6);
+}
+
+.amap-fleet-vehicle:is(.is-available, .is-maintenance) .amap-fleet-vehicle__glyph img,
+.amap-fleet-vehicle-legend .is-standby img {
+  filter: grayscale(1) brightness(1.3) drop-shadow(0 0 4px #94a3b8);
+}
+
+.amap-fleet-vehicle.is-broken .amap-fleet-vehicle__glyph img,
+.amap-fleet-vehicle-legend .is-fault img {
+  filter: hue-rotate(170deg) saturate(1.5) drop-shadow(0 0 5px #ef4444);
 }
 
 .amap-fleet-vehicle > strong {
   position: absolute;
-  top: 3px;
-  left: 40px;
+  top: 9px;
+  left: 58px;
   min-width: max-content;
-  padding: 3px 7px;
-  border: 1px solid color-mix(in srgb, var(--vehicle-color) 72%, white);
-  border-radius: 5px;
-  color: color-mix(in srgb, var(--vehicle-color) 68%, white);
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--vehicle-color) 82%, white);
+  border-radius: 6px;
+  color: color-mix(in srgb, var(--vehicle-color) 74%, white);
   background: rgba(4, 18, 31, .94);
-  box-shadow: 0 5px 14px rgba(1, 10, 20, .42), 0 0 8px var(--vehicle-glow);
-  font-size: 10px;
+  box-shadow: 0 5px 14px rgba(1, 10, 20, .44), 0 0 10px var(--vehicle-glow);
+  font-size: 12px;
   font-weight: 800;
-  line-height: 15px;
+  line-height: 16px;
   letter-spacing: .04em;
   white-space: nowrap;
 }
 
 .amap-fleet-vehicle.is-selected {
-  z-index: 2;
-  filter: brightness(1.12);
-  transform: translate(var(--vehicle-offset-x, 0), var(--vehicle-offset-y, 0)) scale(1.12);
+  z-index: 3;
+  filter: brightness(1.14);
+  transform: translate(var(--vehicle-offset-x, 0), var(--vehicle-offset-y, 0)) scale(1.16);
 }
 
-.amap-fleet-vehicle.is-selected .amap-fleet-vehicle__radar {
-  outline: 1px solid color-mix(in srgb, var(--vehicle-color) 68%, white);
-  outline-offset: 4px;
+.amap-fleet-vehicle.is-selected .amap-fleet-vehicle__radar-ring.is-outer {
+  outline: 2px solid color-mix(in srgb, var(--vehicle-color) 64%, white);
+  outline-offset: 5px;
 }
 
 .amap-fleet-vehicle.is-selected .amap-fleet-vehicle__radar,
@@ -429,8 +456,8 @@
   right: 12px;
   bottom: 12px;
   display: flex;
-  gap: 12px;
-  padding: 9px 11px;
+  gap: 15px;
+  padding: 10px 13px;
   border: 1px solid rgba(122, 179, 205, .28);
   border-radius: 8px;
   color: #dbeaf2;
@@ -452,14 +479,11 @@
 .amap-fleet-vehicle-legend > div.is-dispatching { --legend-color: #8b5cf6; }
 .amap-fleet-vehicle-legend > div.is-fault { --legend-color: #ef4444; }
 
-.amap-fleet-vehicle-legend svg {
-  width: 17px;
-  height: 17px;
-  padding: 2px;
-  border: 1px solid color-mix(in srgb, var(--legend-color) 75%, white);
-  border-radius: 5px;
-  background: rgba(12, 31, 48, .94);
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--legend-color) 48%, transparent));
+.amap-fleet-vehicle-legend img {
+  width: 22px;
+  height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px var(--legend-color));
 }
 
 .amap-fleet-vehicle-legend span {

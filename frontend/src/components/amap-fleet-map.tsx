@@ -1,5 +1,5 @@
 import { load } from "@amap/amap-jsapi-loader";
-import { CarFront, Navigation } from "lucide-react";
+import { Navigation } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -148,8 +148,8 @@ const vehicleMarkerPresentation: Record<FleetPositionSnapshot["status"], {
   MAINTENANCE: { accent: "#64748b", glow: "rgba(100, 116, 139, .26)", surface: "rgba(28, 38, 52, .9)", visualState: "standby" },
 };
 
-const vehicleIconMarkup = renderToStaticMarkup(<CarFront aria-hidden="true" strokeWidth={1.8} />);
 const vehicleHeadingMarkup = renderToStaticMarkup(<Navigation aria-hidden="true" fill="currentColor" strokeWidth={1.5} />);
+const vehicleSpriteSrc = "/assets/fleet/vehicle-top-view.png";
 const vehicleLegendItems = [
   { label: "行驶中", visualState: "moving" },
   { label: "调度中", visualState: "dispatching" },
@@ -174,16 +174,27 @@ function createVehicleMarkerContent(vehicle: FleetPositionSnapshot, selected: bo
   const radar = document.createElement("span");
   radar.className = "amap-fleet-vehicle__radar";
   radar.setAttribute("aria-hidden", "true");
+  for (const ring of ["outer", "inner"] as const) {
+    const radarRing = document.createElement("i");
+    radarRing.className = `amap-fleet-vehicle__radar-ring is-${ring}`;
+    radarRing.dataset.vehicleRadarRing = ring;
+    radar.append(radarRing);
+  }
   const directional = document.createElement("span");
   directional.className = "amap-fleet-vehicle__directional";
   directional.setAttribute("aria-hidden", "true");
   const heading = document.createElement("span");
   heading.className = "amap-fleet-vehicle__heading";
+  heading.dataset.vehicleHeadingIndicator = "true";
   heading.innerHTML = vehicleHeadingMarkup;
   const glyph = document.createElement("span");
   glyph.className = "amap-fleet-vehicle__glyph";
-  glyph.dataset.vehicleGlyph = "truck";
-  glyph.innerHTML = vehicleIconMarkup;
+  const sprite = document.createElement("img");
+  sprite.src = vehicleSpriteSrc;
+  sprite.alt = "";
+  sprite.draggable = false;
+  sprite.dataset.vehicleSprite = "top-view";
+  glyph.append(sprite);
   directional.append(heading, glyph);
   root.append(radar, directional);
 
@@ -853,10 +864,10 @@ export function AmapFleetMap({
         }
         const info = new AMap.InfoWindow({
           content: createVehicleInfoContent(vehicle),
-          anchor: "bottom-center",
-          offset: [0, -24],
+          anchor: "middle-left",
+          offset: [46, 0],
           isCustom: true,
-          closeWhenClickMap: true,
+          closeWhenClickMap: false,
         });
         selectedInfoRef.current = info;
         const timerId = window.setTimeout(() => {
@@ -963,7 +974,7 @@ export function AmapFleetMap({
       : null}
     {loadState === "READY" ? <div className="amap-fleet-vehicle-legend" role="group" aria-label="车辆状态图例">
       {vehicleLegendItems.map((item) => <div key={item.visualState} className={`is-${item.visualState}`}>
-        <CarFront aria-hidden="true" strokeWidth={1.8}/><span>{item.label}</span>
+        <img src={vehicleSpriteSrc} alt="" data-vehicle-sprite="top-view"/><span>{item.label}</span>
       </div>)}
     </div> : null}
     {loadState === "FALLBACK" ? <div className="fleet-amap-fallback" role="status">高德地图暂不可用，已切换本地卫星地图</div> : null}

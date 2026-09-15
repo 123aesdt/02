@@ -75,7 +75,7 @@ export function fleetVehicleOverlapOffsets(
       offsets.set(ordered[0].id, { x: 0, y: 0 });
       continue;
     }
-    const radius = ordered.length > 4 ? 16 : 12;
+    const radius = ordered.length > 4 ? 48 : ordered.length > 2 ? 40 : 32;
     ordered.forEach((vehicle, index) => {
       const angle = -Math.PI / 2 + (Math.PI * 2 * index) / ordered.length;
       offsets.set(vehicle.id, {

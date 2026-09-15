@@ -36,6 +36,9 @@ describe("fleet motion geometry", () => {
 
     expect(offsets.get("V-001")).not.toEqual({ x: 0, y: 0 });
     expect(offsets.get("V-002")).not.toEqual(offsets.get("V-001"));
+    const first = offsets.get("V-001")!;
+    const second = offsets.get("V-002")!;
+    expect(Math.hypot(first.x - second.x, first.y - second.y)).toBeGreaterThanOrEqual(64);
     expect(offsets.get("V-003")).toEqual({ x: 0, y: 0 });
   });
 });

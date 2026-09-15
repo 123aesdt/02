@@ -249,10 +249,18 @@ describe("AMap fleet map", () => {
     expect(vehicleContent("V-003")?.dataset.vehicleVisualState).toBe("standby");
     expect(vehicleContent("V-004")?.dataset.vehicleVisualState).toBe("standby");
     expect(vehicleContent("V-005")?.dataset.vehicleVisualState).toBe("fault");
-    expect(vehicleContent("V-001")?.querySelector('[data-vehicle-glyph="truck"] svg')).not.toBeNull();
+    const movingVehicle = vehicleContent("V-001");
+    const topViewVehicle = movingVehicle?.querySelector<HTMLImageElement>('[data-vehicle-sprite="top-view"]');
+    expect(topViewVehicle?.getAttribute("src")).toBe("/assets/fleet/vehicle-top-view.png");
+    expect(topViewVehicle?.getAttribute("alt")).toBe("");
+    expect(movingVehicle?.querySelectorAll("[data-vehicle-radar-ring]")).toHaveLength(2);
+    expect(movingVehicle?.querySelector("[data-vehicle-heading-indicator]")).not.toBeNull();
     expect(vehicleContent("V-002")?.querySelector("[data-vehicle-state-label]")?.textContent).toBe("调度中");
     expect(vehicleContent("V-005")?.querySelector("[data-vehicle-state-label]")?.textContent).toBe("故障");
     const selectedInfo = infoWindowOptions.at(-1)?.content as HTMLElement | undefined;
+    expect(infoWindowOptions.at(-1)?.closeWhenClickMap).toBe(false);
+    expect(infoWindowOptions.at(-1)?.anchor).toBe("middle-left");
+    expect(infoWindowOptions.at(-1)?.offset).toEqual([46, 0]);
     expect(selectedInfo?.textContent).toContain("V-001");
     expect(selectedInfo?.textContent).toContain("40 km/h");
     expect(selectedInfo?.textContent).toContain("行驶中");
@@ -264,7 +272,7 @@ describe("AMap fleet map", () => {
       "待命",
       "故障",
     ]);
-    expect(legend?.querySelectorAll("svg")).toHaveLength(4);
+    expect(legend?.querySelectorAll('[data-vehicle-sprite="top-view"]')).toHaveLength(4);
     expect(view.container.querySelector("[data-road-route-count=\"1\"]")).not.toBeNull();
     expect(view.container.querySelector("[data-road-planned-count=\"1\"]")).not.toBeNull();
     expect(view.container.querySelector("[data-operation-road-count=\"3\"]")).not.toBeNull();
