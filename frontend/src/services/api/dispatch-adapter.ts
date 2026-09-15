@@ -176,6 +176,25 @@ export interface RouteCandidateResponse {
   road_network_version: number | null;
 }
 
+export interface GeoPointResponse {
+  node_id: string | null;
+  longitude: string;
+  latitude: string;
+}
+
+export interface RealRoadRouteResponse {
+  provider: "AMAP";
+  source: "AMAP_WEB_SERVICE" | "CLIENT_WAYPOINT_FALLBACK";
+  status: "VERIFIED" | "CLIENT_MATCH_REQUIRED";
+  coordinate_system: "GCJ02";
+  mapping_version: string;
+  distance_meters: number | null;
+  duration_seconds: number | null;
+  waypoints: GeoPointResponse[];
+  polyline: GeoPointResponse[];
+  fallback_reason: string | null;
+}
+
 export interface RoutePlanResponse {
   original_path: PathResponse | null;
   recommended_path: PathResponse | null;
@@ -189,6 +208,7 @@ export interface RoutePlanResponse {
   road_network_version: number | null;
   network_nodes: RoadNodeResponse[];
   network_edges: RoadEdgeResponse[];
+  real_road_route?: RealRoadRouteResponse | null;
 }
 export interface TaskResultResponse {
   task_id: string;

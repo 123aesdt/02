@@ -70,7 +70,7 @@ describe("Real dispatch API adapter", () => {
       baseUrl: "http://api.test", fetchImpl: vi.fn().mockResolvedValue(jsonResponse({
         task_id: "TASK-1", order_id: 128, ready: true, status: "COMPLETED", dispatch: null, audit: null,
         vehicle_allocation: { original_vehicle_id: "V-001", target_vehicle_id: "V-005", target_driver_id: "D-003", vehicle_reassigned: true, candidate_vehicles: [{ vehicle_id: "V-005", driver_id: "D-003", pickup_distance_km: "2.80", score: "93.4", exclusion_reasons: [] }], pickup_route: null, scoring_formula: "FLEET_SCORE_V1" },
-        route_plan: { original_path: null, recommended_path: null, candidate_routes: [], blocked_edge_ids: ["E04"], distance_delta_km: "3.20", eta_delta_minutes: 4, visited_node_count: 8, routing_status: "ROUTED", algorithm: "DIJKSTRA_V1", road_network_version: 7, network_nodes: [{ node_id: "N01", name: "中心仓", x_km: "0.00", y_km: "0.00", node_type: "DEPOT" }], network_edges: [] },
+        route_plan: { original_path: null, recommended_path: null, candidate_routes: [], blocked_edge_ids: ["E04"], distance_delta_km: "3.20", eta_delta_minutes: 4, visited_node_count: 8, routing_status: "ROUTED", algorithm: "DIJKSTRA_V1", road_network_version: 7, network_nodes: [{ node_id: "N01", name: "中心仓", x_km: "0.00", y_km: "0.00", node_type: "DEPOT" }], network_edges: [], real_road_route: { provider: "AMAP", source: "AMAP_WEB_SERVICE", status: "VERIFIED", coordinate_system: "GCJ02", mapping_version: "DEMO_AMAP_V1", distance_meters: 5820, duration_seconds: 710, waypoints: [{ node_id: "N01", longitude: "103.084211", latitude: "25.242106" }], polyline: [{ node_id: null, longitude: "103.084211", latitude: "25.242106" }], fallback_reason: null } },
       })),
     }));
 
@@ -82,6 +82,8 @@ describe("Real dispatch API adapter", () => {
     expect(result.route_plan?.network_nodes[0]?.x_km).toBe("0.00");
     expect(result.route_plan?.distance_delta_km).toBe("3.20");
     expect(typeof result.route_plan?.distance_delta_km).toBe("string");
+    expect(result.route_plan?.real_road_route?.status).toBe("VERIFIED");
+    expect(result.route_plan?.real_road_route?.polyline[0]?.longitude).toBe("103.084211");
   });
   it("publishes an approved dispatch through the authenticated task endpoint", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({

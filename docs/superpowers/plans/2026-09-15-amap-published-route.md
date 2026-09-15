@@ -183,35 +183,35 @@ Expected: PASS. Inspect `git diff`, then commit with `feat: persist published re
 - Modify: `frontend/src/pages/api-dispatch-detail-page.tsx`
 - Modify: `frontend/src/styles/index.css`
 - Modify: `frontend/tests/api-dispatch-adapter.test.ts`
-- Modify: `frontend/tests/dispatch-v2-evidence.test.tsx`
+- Modify: `frontend/tests/task-events-lifecycle.test.tsx`
 
 **Interfaces:**
 - Consumes: `RoutePlanResponse.real_road_route`, `RoutePlanResponse.recommended_path`, `PublicationResultResponse.status`, and frontend AMap runtime configuration.
 - Produces: `PublishedAmapRouteMap` with `READY`, `MATCHING`, and `FALLBACK` display states.
 
-- [ ] **Step 1: Write failing component tests**
+- [x] **Step 1: Write failing component tests**
 
 Mock the AMap loader. Assert a verified backend polyline creates an `AMap.Polyline`; assert `CLIENT_MATCH_REQUIRED` calls `AMap.Driving.search` with the persisted origin, destination, and intermediate waypoints; assert missing AMap configuration renders the local fallback and keeps route instructions visible.
 
-- [ ] **Step 2: Run the component tests and confirm failure**
+- [x] **Step 2: Run the component tests and confirm failure**
 
 Run: `npm test -- --run frontend/tests/published-amap-route-map.test.tsx`
 
 Expected: FAIL because the component and types do not exist.
 
-- [ ] **Step 3: Implement API types and the focused map component**
+- [x] **Step 3: Implement API types and the focused map component**
 
 Load AMap JS API 2.0 only when mounted, configure the existing security code before loading, draw start/end markers and a blue route, fit the view once, and clean up map/provider objects on unmount. Never make the component choose a different business route; it may only road-match persisted waypoints.
 
-- [ ] **Step 4: Write failing employee detail-page tests**
+- [x] **Step 4: Write failing employee detail-page tests**
 
 Render an employee with `dispatch:read` and a published result. Assert the page contains “已发布真实道路路线”, mounts the map, and does not contain the RuntimeWorkbench permission error. Render an unpublished result and assert the map is absent.
 
-- [ ] **Step 5: Integrate the employee-only published view and styles**
+- [x] **Step 5: Integrate the employee-only published view and styles**
 
 Show the map only when `!canPublish`, publication is `PUBLISHED`, and route evidence exists. Do not mount `RuntimeWorkbench` for employees. Keep supervisor live-map and evidence panels unchanged.
 
-- [ ] **Step 6: Run and commit Task 4**
+- [x] **Step 6: Run and commit Task 4**
 
 Run: `npm test -- --run frontend/tests/published-amap-route-map.test.tsx frontend/tests/api-dispatch-adapter.test.ts frontend/tests/dispatch-v2-evidence.test.tsx`
 

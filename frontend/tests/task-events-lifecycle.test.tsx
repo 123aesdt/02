@@ -293,4 +293,39 @@ describe("Task event lifecycle", () => {
     expect(container.textContent).toContain("从青云镇出发");
     await act(async () => { root.unmount(); });
   });
+
+  it("shows a published real-road route to the assigned driver without mounting the runtime workbench", async () => {
+    testRuntime.dataMode = "api";
+    vi.stubGlobal("WebSocket", FakeWebSocket as unknown as typeof WebSocket);
+    setAuthenticatedSession("employee-token", {
+      subject_id: "CF-DEMO-001", display_name: "李师傅", roles: ["EMPLOYEE"], permissions: ["dispatch:read"],
+      auth_method: "development_jwt", issued_at: "2026-09-15T09:00:00+08:00", expires_at: "2099-09-15T10:00:00+08:00",
+    });
+    taskApi.getTaskStatus.mockResolvedValue({ task_id: "TASK-DRIVER-1", order_id: 28, status: "COMPLETED", started_at: "2026-09-15T09:20:00+08:00", completed_at: "2026-09-15T09:22:00+08:00", created_at: "2026-09-15T09:20:00+08:00", ready: true, requires_manual_review: false });
+    taskApi.getTaskResult.mockResolvedValue({
+      task_id: "TASK-DRIVER-1", order_id: 28, status: "COMPLETED", ready: true, anomaly_type: "ROAD_BLOCKED",
+      dispatch: { dispatch_id: 224, dispatch_no: "DSP-224", original_route_id: "ROUTE-03", target_route_id: "ROUTE-REAL-01", status: "REROUTED", decision_reason: "已绕开施工路段", fallback_used: false, fallback_reason: null, version: 2, executed: true },
+      audit: { result: "APPROVED", reason: "路线连通且道路可执行", dispatch_id: 224, created_at: "2026-09-15T09:22:00+08:00" },
+      publication: { status: "PUBLISHED", route_id: "ROUTE-REAL-01", route_instruction: "避开新平路施工段，沿高德推荐道路驶往城东站。", published_at: "2026-09-15T09:30:00+08:00", published_by: "调度主管", recipient_employee_id: "CF-DEMO-001", recipient_display_name: "李师傅" },
+      route_plan: {
+        original_path: null,
+        recommended_path: { objective: "SAFEST", node_ids: ["N04", "N06", "N08"], edge_ids: ["E07", "E09"], distance_km: "5.80", estimated_minutes: 12, risk_cost: "0.20", visited_node_count: 6, scoring_formula: "ROUTE_SCORE_V1" },
+        candidate_routes: [], blocked_edge_ids: ["E04"], distance_delta_km: "0.80", eta_delta_minutes: 2, visited_node_count: 6, routing_status: "ROUTED", algorithm: "DIJKSTRA_V1", road_network_version: 8, network_nodes: [], network_edges: [],
+        real_road_route: {
+          provider: "AMAP", source: "AMAP_WEB_SERVICE", status: "VERIFIED", coordinate_system: "GCJ02", mapping_version: "DEMO_AMAP_V1", distance_meters: 5820, duration_seconds: 710,
+          waypoints: [{ node_id: "N04", longitude: "103.084211", latitude: "25.242106" }, { node_id: "N08", longitude: "103.135041", latitude: "25.261342" }],
+          polyline: [{ node_id: null, longitude: "103.084211", latitude: "25.242106" }, { node_id: null, longitude: "103.135041", latitude: "25.261342" }], fallback_reason: null,
+        },
+      },
+    });
+
+    const { root, container } = await render(<ApiDispatchDetailPage taskId="TASK-DRIVER-1" />);
+    await flush();
+
+    expect(container.querySelector(".published-route-map")).not.toBeNull();
+    expect(container.textContent).toContain("司机执行路线");
+    expect(container.textContent).toContain("避开新平路施工段");
+    expect(container.querySelector(".runtime-workbench")).toBeNull();
+    await act(async () => { root.unmount(); });
+  });
 });
