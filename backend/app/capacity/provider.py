@@ -43,7 +43,7 @@ class FleetCapacityProvider:
         driver = vehicle.driver
         return CapacitySnapshot(
             driver_available=driver is not None and driver.driver_id == driver_id and driver.status == "ON_DUTY",
-            vehicle_available=vehicle.status == "AVAILABLE",
+            vehicle_available=vehicle.status in {"AVAILABLE", "IN_TRANSIT"},
             load_ratio=float(vehicle.current_load_ratio),
             station_load_ratio=None,
             provider_name="sqlalchemy_fleet",

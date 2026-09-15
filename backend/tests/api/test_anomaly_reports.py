@@ -82,6 +82,30 @@ def test_employee_report_returns_202_and_uses_authenticated_subject() -> None:
     )
 
 
+def test_employee_road_block_report_preserves_the_affected_edge() -> None:
+    service = ReportService()
+    app = create_app(anomaly_report_service=service, **auth(Role.EMPLOYEE))
+    road_report = {
+        **payload(),
+        "anomaly_type": "ROAD_BLOCKED",
+        "description": "新平路东河桥段发生塌方，车辆无法通行。",
+        "location_text": "新平路东河桥段",
+        "reported_vehicle_status": "NORMAL",
+        "incident_node_id": None,
+        "affected_edge_id": "E04",
+    }
+
+    response = TestClient(app).post(
+        "/api/v1/anomaly-reports",
+        headers=headers(),
+        json=road_report,
+    )
+
+    assert response.status_code == 202
+    assert service.commands[0].incident_node_id is None
+    assert service.commands[0].affected_edge_id == "E04"
+
+
 def test_dispatcher_cannot_report_or_reach_service() -> None:
     service = ReportService()
     app = create_app(anomaly_report_service=service, **auth(Role.DISPATCHER))

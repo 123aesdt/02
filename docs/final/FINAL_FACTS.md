@@ -10,7 +10,7 @@
 
 本项目已经形成一套可部署、可恢复、可审计的异步县域物流异常识别与智能调度工程原型。核心链路由 FastAPI、Redis Streams、Worker、LangGraph、MySQL、Qdrant、Neo4j、WebSocket 和 React 组成；运行时线程、稳定检查点、人工覆盖、共享记忆、权限、限流与可观测性均有真实代码和自动化测试支撑。
 
-它还不能被描述为“开箱即用的生产系统”。当前 `docker-dev` Graph 的 Embedding 使用 deterministic fake provider，Environment 使用开发 Provider；Capacity 通过 `FleetCapacityProvider`/`SqlAlchemyFleetRepository` 读取 MySQL 虚拟车队，接驳估算和 Routing 通过 `SqlAlchemyRoadNetworkRepository` 与本地 Decimal Dijkstra 计算。`runtime_profile=production` 仍会对未完成的外部生产 Provider wiring 主动 fail fast；灾备备份、恢复、校验、演练与 RPO/RTO 证据不存在。2026-09-01 容器重建健康与司机上报 Playwright 1/1 属于 HISTORICAL VERIFIED；2026-09-08 当前 Task 9 真实双场景 Docker 验收因缺少 `.docker.env` 退出 2，状态为 `BLOCKED BY ENVIRONMENT`，没有当前容器健康结论。
+它还不能被描述为“开箱即用的生产系统”。当前 `docker-dev` Graph 的 Embedding 使用 deterministic fake provider，Environment 使用开发 Provider；Capacity 通过 `FleetCapacityProvider`/`SqlAlchemyFleetRepository` 读取 MySQL 虚拟车队，接驳估算和 Routing 通过 `SqlAlchemyRoadNetworkRepository` 与本地 Decimal Dijkstra 计算。`runtime_profile=production` 仍会对未完成的外部生产 Provider wiring 主动 fail fast；灾备备份、恢复、校验、演练与 RPO/RTO 证据不存在。2026-09-15 当前 Docker backend 健康、双 Worker 与 frontend 在线，数据库迁移、真实 Redis、四存储一致性和员工道路阻断自动发布 Playwright 均已有当前证据；这不会把虚拟业务数据或开发 Provider 描述成生产系统。
 
 ## 2. 事实状态定义
 
@@ -537,10 +537,10 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 
 ### 21.2 Frontend
 
-- 当前全量 Vitest：54 files、250 tests passed。
+- 当前全量 Vitest：69 files、322 tests passed。
 - ESLint：exit 0，0 error，2 个既有 Fast Refresh warning。
 - Build：成功，1919 modules transformed；主 JS 512.09 kB（gzip 150.14 kB）。
-- 当前仓库 Playwright spec：17 个；本轮没有声称全部 17 个均重新执行。
+- 当前仓库 Playwright 未全量重跑；本轮新增真实 Docker + AMap 道路阻断自动发布用例为 1/1 passed。
 - HISTORICAL VERIFIED（2026-09-01）：司机上报 Playwright spec 曾在真实本地 Docker 栈与 `http://localhost:5173` 上 1/1 passed；2026-09-08 当前 Task 9 真实双场景 Docker 验收仍因缺 `.docker.env` 阻断。
 
 ### 21.3 已知警告债务
@@ -570,6 +570,16 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 - 网络拦截 Playwright UI 回归专用证据：2/2 passed、4.7 秒；两个场景都验证未发布员工的 `dispatch.decision_reason`、`vehicle_allocation`、`route_plan` 不展示，主管发布后切回员工核对完整证据，并在刷新、重新登录后以同一组完整断言复核。车辆夹具逐项匹配固定沙盘（包括 V-005 剩余 900 kg、V-006 维护/休班/冷链不匹配），路线节点序列为 `N01→N02→N07→N08→N09→N06`。该证据位于 `docs/verification/fleet-rerouting/playwright-mocked.json`，是确定性 UI 权限与展示回归，不是实时服务或真实 Docker 浏览器验收。
 - `scripts/test-offline-fleet-routing.ps1` 于 2026-09-08 实际退出 2：`[BLOCKED BY ENVIRONMENT] 缺少 .docker.env，无法启动真实依赖验收。` 因此本轮没有声称公开 API → Redis Streams → Worker → MySQL 的真实双场景链已经重新通过。
 - Task 9 初次运行 `scripts/test.ps1` 时默认系统临时目录因 Windows ACL 产生 1 个 setup error；现有包装脚本没有传播 pytest 非零退出码，因此不能把该次外层 0 当作通过证据。当前可信完整基线仅采用主控制器直接 pytest、工作区 `--basetemp` 得到的 982/12/exit 0。
+
+### 21.6 2026-09-15 高德已发布路线增量
+
+- 道路阻断上报会完整保留 `affected_edge_id`；`E04` 进入 Redis 消息、Worker Graph、Dijkstra 规划、审核和持久化证据。
+- 当前任务车辆处于 `IN_TRANSIT` 时允许继续执行道路改线；`BROKEN`、`UNAVAILABLE`、`MAINTENANCE` 仍不可用。此前 V-002 被错误转人工的直接原因已由红绿回归测试覆盖。
+- 本地 Decimal Dijkstra 先确定并校验避开 `E04` 的业务路线；高德只把已选节点序列匹配到真实 GCJ-02 道路，不改变业务决策。
+- 服务端 `AMAP_WEB_SERVICE_KEY` 未配置时在 1 秒内返回 `CLIENT_MATCH_REQUIRED`，不因此转人工；员工端使用已配置的高德 JS Key/安全码完成道路匹配，失败时保留本地已发布路线。
+- 当前全量后端为 1073 passed、12 个明确 opt-in skip；Ruff 全过。前端为 69 files / 322 tests passed，ESLint 0 error，生产构建成功。
+- 当前 Docker 证据：migration exit 0；真实 Redis 5 passed；MySQL/Redis/Qdrant/Neo4j 四存储 1 passed；真实员工道路阻断 → Worker → 自动发布 → 高德 `READY` Playwright 1/1 passed。
+- 详细证据与截图见 `docs/verification/amap-published-route-results.md` 和 `docs/verification/screenshots/amap-published-driver-route.png`。
 
 ## 22. 历史集成、并发与性能证据
 
@@ -696,13 +706,13 @@ Checkpoint 与其他门槛属于 guardrail，不应全部称作 SLO。
 4. 不能声称 production runtime wiring 完成。
 5. 不能声称 exactly-once delivery。
 6. 不能声称灾备、备份恢复与 RPO/RTO 已完成。
-7. 不能声称全部 Docker 专项集成、全部 Playwright、故障注入或 Locust 已重新执行；2026-09-08 只重新验证了网络拦截的离线车辆/路线 UI 回归 2/2，真实双场景 Docker 验收因缺少 `.docker.env` 被环境阻断。
+7. 不能声称全部 Docker 专项集成、全部 Playwright、故障注入或 Locust 已重新执行；2026-09-15 只新增并通过了高德已发布路线 Playwright 1/1、真实 Redis 5 项和四存储 1 项。
 8. 不能声称当前只有 5 个角色。
 9. 不能声称 `/team-tasks` 已交付。
 10. 不能声称所有 Auditor 全局审计视图已暴露。
 11. 不能把历史性能证据冒充 2026-08-31 在线数据。
 12. 不能声称默认 `make test` 或现有 `scripts/test.ps1` 的外层退出码已经可靠证明全量测试通过；本轮可信证据来自带工作区 `--basetemp` 的直接 pytest。
-13. 不能声称使用了高德地图、实时路况、GPS 或真实车辆调度；当前教师反馈场景使用固定离线虚拟沙盘。
+13. 不能声称接入了实时路况、GPS、真实订单/车辆或生产调度；当前业务数据与安全决策仍是固定虚拟沙盘，但员工已发布路线可使用高德 JS API 将持久化节点匹配到真实道路。
 
 ## 28. 最终工程判断
 

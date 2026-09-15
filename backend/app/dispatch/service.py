@@ -395,8 +395,40 @@ class DispatchService:
             ),
             "network_nodes": cls._compact_network_nodes(source.get("road_network_nodes")),
             "network_edges": cls._compact_network_edges(source.get("road_network_edges")),
+            "real_road_route": cls._compact_real_road_route(source.get("real_road_route")),
             "candidate_routes": [cls._compact_route_candidate(route) for route in candidate_routes if isinstance(route, Mapping)],
         }
+
+    @classmethod
+    def _compact_real_road_route(cls, value: object) -> dict[str, object] | None:
+        if not isinstance(value, Mapping):
+            return None
+        return {
+            "provider": cls._text(value, "provider"),
+            "source": cls._text(value, "source"),
+            "status": cls._text(value, "status"),
+            "coordinate_system": cls._text(value, "coordinate_system"),
+            "mapping_version": cls._text(value, "mapping_version"),
+            "distance_meters": cls._integer(value.get("distance_meters")),
+            "duration_seconds": cls._integer(value.get("duration_seconds")),
+            "waypoints": cls._compact_geo_points(value.get("waypoints")),
+            "polyline": cls._compact_geo_points(value.get("polyline")),
+            "fallback_reason": cls._text(value, "fallback_reason"),
+        }
+
+    @classmethod
+    def _compact_geo_points(cls, value: object) -> list[dict[str, str | None]]:
+        if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+            return []
+        return [
+            {
+                "node_id": cls._text(point, "node_id"),
+                "longitude": cls._text(point, "longitude"),
+                "latitude": cls._text(point, "latitude"),
+            }
+            for point in value
+            if isinstance(point, Mapping)
+        ]
 
     @classmethod
     def _compact_path(cls, value: object) -> dict[str, object] | None:

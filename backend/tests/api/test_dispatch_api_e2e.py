@@ -1,10 +1,13 @@
 import asyncio
+from dataclasses import replace
 
 from fakeredis.aioredis import FakeRedis
 from fastapi.testclient import TestClient
-from security_support import authorize_app
+from security_support import authorize_app, principal_for
 from sqlalchemy import func, select
 
+from app.anomaly_reports.service import AnomalyReportService
+from app.anomaly_reports.sqlalchemy_repository import SqlAlchemyAnomalyReportRepository
 from app.audit.service import AuditService
 from app.capacity.models import CapacitySnapshot
 from app.capacity.provider import InMemoryCapacityProvider
@@ -17,7 +20,13 @@ from app.locks.redis_execution_lock import RedisExecutionLock
 from app.main import create_app
 from app.models.audit import AuditRecord
 from app.models.dispatch import Dispatch
+from app.models.task import DispatchTask
 from app.providers.environment import EnvironmentResult, StaticRouteFallbackProvider
+from app.publications.service import DispatchPublicationService
+from app.real_routes.service import RealRoadRouteService
+from app.security.dependencies import get_current_principal
+from app.security.permissions import Role
+from app.seed import seed_demo_employee_accounts
 from app.services.circuit_breaker import CircuitBreaker
 from app.services.dispatch_task_api_service import DispatchTaskApiService
 from app.services.environment import EnvironmentService
@@ -276,6 +285,152 @@ def test_sandtable_breakdown_result_uses_persisted_fleet_and_complete_route_snap
         assert "E04" not in blocked_plan["recommended_path"]["edge_ids"]
         assert len(blocked_plan["network_nodes"]) == len(ROAD_NODES)
         assert len(blocked_plan["network_edges"]) == len(ROAD_EDGES)
+    finally:
+        asyncio.run(redis.aclose())
+        engine.dispose()
+        temp.cleanup()
+
+
+def test_employee_road_block_report_is_rerouted_published_and_acknowledged() -> None:
+    from app.capacity.provider import FleetCapacityProvider
+    from app.fleet.service import DijkstraTravelTimeEstimator, FleetAllocationService
+    from app.fleet.sqlalchemy_repository import SqlAlchemyFleetRepository
+    from app.models.order import Order
+    from app.road_network.dijkstra import DijkstraPathFinder
+    from app.road_network.service import RoadNetworkSnapshotService
+    from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
+    from app.routing.service import RoutingService
+    from app.sandtable.service import SandtableContextService
+    from app.sandtable.sqlalchemy_repository import SqlAlchemySandtableRepository, seed_new_county_sandtable
+
+    temp, engine, factory = _service()
+    redis = FakeRedis(decode_responses=False)
+    stream_name = "countyflow:e2e:road-report:tasks"
+    group_name = "countyflow-e2e-road-report-workers"
+    dlq_name = "countyflow:e2e:road-report:dlq"
+    try:
+        with factory() as session:
+            seed_new_county_sandtable(session)
+            seed_demo_employee_accounts(session)
+            order = session.execute(select(Order).where(Order.order_no == "DEMO-ORDER-005")).scalar_one()
+            source_task = DispatchTask(
+                task_id="TASK-ROAD-REPORT-SOURCE",
+                order_id=order.id,
+                status="IN_PROGRESS",
+                idempotency_key="road-report-source-001",
+                assignee_subject_id="CF-DEMO-001",
+            )
+            session.add(source_task)
+            session.commit()
+
+        api_queue = RedisStreamQueue(
+            redis,
+            stream_name,
+            group_name,
+            "api-road-report-e2e",
+            dlq_stream_name=dlq_name,
+        )
+        dispatch_api = DispatchTaskApiService(factory, api_queue)
+        publication_service = DispatchPublicationService(factory)
+        report_service = AnomalyReportService(
+            SqlAlchemyAnomalyReportRepository(factory),
+            dispatch_api,
+        )
+        employee = replace(
+            principal_for(Role.EMPLOYEE),
+            subject_id="CF-DEMO-001",
+            display_name="张师傅",
+        )
+        app = authorize_app(
+            create_app(
+                anomaly_report_service=report_service,
+                dispatch_publication_service=publication_service,
+            ),
+            Role.EMPLOYEE,
+        )
+        app.dependency_overrides[get_current_principal] = lambda: employee
+        app.state.dispatch_task_api_service = dispatch_api
+        client = TestClient(app)
+
+        reported = client.post(
+            "/api/v1/anomaly-reports",
+            json={
+                "source_task_id": "TASK-ROAD-REPORT-SOURCE",
+                "anomaly_type": "ROAD_BLOCKED",
+                "description": "新平路东河桥段发生塌方，车辆无法通行。",
+                "location_text": "新平路东河桥段",
+                "reported_vehicle_status": "NORMAL",
+                "severity": "HIGH",
+                "incident_node_id": None,
+                "affected_edge_id": "E04",
+                "idempotency_key": "road-report-e2e-001",
+            },
+        )
+        task_id = reported.json()["task_id"]
+
+        road_repository = SqlAlchemyRoadNetworkRepository(factory)
+        fleet_repository = SqlAlchemyFleetRepository(factory)
+        path_finder = DijkstraPathFinder()
+        graph = build_graph(
+            GraphDependencies(
+                capacity_service=CapacityService(
+                    FleetCapacityProvider(fleet_repository),
+                    limited_threshold=0.8,
+                    unavailable_threshold=1.0,
+                ),
+                sandtable_context_service=SandtableContextService(SqlAlchemySandtableRepository(factory)),
+                road_network_snapshot_service=RoadNetworkSnapshotService(road_repository),
+                fleet_allocation_service=FleetAllocationService(
+                    fleet_repository,
+                    DijkstraTravelTimeEstimator(road_repository, path_finder),
+                ),
+                routing_service=RoutingService(
+                    None,
+                    memory_adoption_threshold=0.75,
+                    road_network_provider=road_repository,
+                    path_finder=path_finder,
+                ),
+                real_road_route_service=RealRoadRouteService(None),
+                dispatch_service=DispatchService(factory),
+                audit_service=AuditService(factory),
+            )
+        )
+        worker = DispatchWorker(
+            RedisStreamQueue(
+                redis,
+                stream_name,
+                group_name,
+                "worker-road-report-e2e",
+                dlq_stream_name=dlq_name,
+            ),
+            graph,
+            read_count=1,
+            block_ms=1,
+            consumer_name="worker-road-report-e2e",
+            idempotency_service=IdempotencyService(factory),
+            execution_lock=RedisExecutionLock(redis, ttl_ms=1_000),
+            automatic_publication_service=publication_service,
+        )
+
+        [worker_result] = asyncio.run(worker.run_once())
+        result = client.get(f"/api/v1/dispatch-tasks/{task_id}/result")
+        body = result.json()
+
+        assert reported.status_code == 202
+        assert (worker_result.acknowledged, worker_result.terminal_status) == (True, "APPROVED")
+        assert asyncio.run(redis.xlen(dlq_name)) == 0
+        assert asyncio.run(redis.xpending(stream_name, group_name))["pending"] == 0
+        assert result.status_code == 200
+        assert body["status"] == "COMPLETED"
+        assert body["audit"]["result"] == "APPROVED"
+        assert body["publication"]["status"] == "PUBLISHED"
+        assert body["publication"]["recipient_employee_id"] == "CF-DEMO-001"
+        assert body["route_plan"]["blocked_edge_ids"] == ["E04"]
+        assert body["route_plan"]["recommended_path"]["node_ids"]
+        assert "E04" not in body["route_plan"]["recommended_path"]["edge_ids"]
+        assert body["route_plan"]["real_road_route"]["provider"] == "AMAP"
+        assert body["route_plan"]["real_road_route"]["status"] == "CLIENT_MATCH_REQUIRED"
+        assert len(body["route_plan"]["real_road_route"]["waypoints"]) >= 2
     finally:
         asyncio.run(redis.aclose())
         engine.dispose()

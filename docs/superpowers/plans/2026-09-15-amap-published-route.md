@@ -229,17 +229,17 @@ Expected: PASS. Run `npm run lint`, inspect `git diff`, then commit with `feat: 
 - Consumes: the complete anomaly-report, Redis, Worker, audit, publication, result API, and employee UI contracts from Tasks 1-4.
 - Produces: a regression test for the screenshot failure and an evidence-backed verification record.
 
-- [ ] **Step 1: Write the end-to-end failing regression**
+- [x] **Step 1: Write the end-to-end failing regression**
 
 Submit a `ROAD_BLOCKED` report with `affected_edge_id="E04"` against an employee-owned demo order, run the Worker, and assert: no recommended edge is `E04`, terminal status is `APPROVED`, automatic publication is `PUBLISHED`, result includes a non-empty `recommended_path`, and the message is acknowledged rather than moved to DLQ.
 
-- [ ] **Step 2: Run the targeted end-to-end test**
+- [x] **Step 2: Run the targeted end-to-end test**
 
 Run: `pytest backend/tests/api/test_dispatch_api_e2e.py -q`
 
 Expected: PASS after Tasks 1-4; any failure must be diagnosed before broad verification.
 
-- [ ] **Step 3: Run required verification**
+- [x] **Step 3: Run required verification**
 
 Run:
 
@@ -255,10 +255,10 @@ git -c safe.directory=C:/Users/24090/OneDrive/Desktop/县域物流识别异常 d
 
 Record only actual command output and do not claim a Docker dependency test that was not run.
 
-- [ ] **Step 4: Update final facts and verification record**
+- [x] **Step 4: Update final facts and verification record**
 
 Replace the obsolete statement that routing never uses AMap with the precise hybrid behavior and fallback boundary. Record commands, exit codes, the tested task scenario, and any provider configuration limitation in `docs/verification/amap-published-route-results.md`.
 
-- [ ] **Step 5: Inspect and commit the final slice**
+- [x] **Step 5: Inspect and commit the final slice**
 
 Review `git diff --stat`, `git diff --check`, and `git status --short`; commit with `test: verify published AMap rerouting flow`.
