@@ -59,6 +59,10 @@ class AutomaticPublicationService(Protocol):
     def publish_automatically(self, task_id: str) -> Mapping[str, object]: ...
 
 
+class VehicleBreakdownHandler(Protocol):
+    def handle_approved_breakdown(self, message: DispatchTaskMessage) -> None: ...
+
+
 @dataclass(frozen=True)
 class WorkerProcessResult:
     message_id: str
@@ -113,6 +117,7 @@ class DispatchWorker:
         runtime_thread_repository: RuntimeThreadRepository | None = None,
         runtime_thread_reconciler: RuntimeThreadReconciler | None = None,
         automatic_publication_service: AutomaticPublicationService | None = None,
+        vehicle_breakdown_handler: VehicleBreakdownHandler | None = None,
         logger: logging.Logger | None = None,
         metrics: MetricsRecorder | None = None,
     ) -> None:
@@ -132,6 +137,7 @@ class DispatchWorker:
         self._runtime_thread_repository = runtime_thread_repository
         self._runtime_thread_reconciler = runtime_thread_reconciler
         self._automatic_publication_service = automatic_publication_service
+        self._vehicle_breakdown_handler = vehicle_breakdown_handler
         self._logger = logger or logging.getLogger(__name__)
         self._metrics = metrics or NoOpMetricsRecorder()
         self._stop_event = asyncio.Event()
@@ -249,17 +255,18 @@ class DispatchWorker:
 
     async def process_message(self, message: StreamMessage) -> WorkerProcessResult:
         if self._idempotency_service is None or self._execution_lock is None:
+            requires_post_processing = self._automatic_publication_service is not None or self._vehicle_breakdown_handler is not None
             result = await self._process_graph(
                 message,
-                acknowledge_terminal=self._automatic_publication_service is None,
+                acknowledge_terminal=not requires_post_processing,
             )
-            if (
-                self._automatic_publication_service is not None
-                and result.terminal_status in {"APPROVED", "REVIEW_REQUIRED"}
-            ):
+            if requires_post_processing and result.terminal_status in {"APPROVED", "REVIEW_REQUIRED"}:
                 publication_error = self._auto_publish(message.task.task_id, result.terminal_status)
                 if publication_error is not None:
                     return replace(result, acknowledged=False, error_code=publication_error)
+                vehicle_error = self._handle_vehicle_breakdown(message.task, result.terminal_status)
+                if vehicle_error is not None:
+                    return replace(result, acknowledged=False, error_code=vehicle_error)
                 acknowledged = await self._queue.ack(message.message_id) == 1
                 result = replace(result, acknowledged=acknowledged)
             await self._publish_terminal(message.task.task_id, result)
@@ -340,6 +347,9 @@ class DispatchWorker:
             publication_error = self._auto_publish(message.task.task_id, result.terminal_status)
             if publication_error is not None:
                 return replace(result, acknowledged=False, error_code=publication_error, idempotency_state=decision.state, lock_acquired=True)
+            vehicle_error = self._handle_vehicle_breakdown(message.task, result.terminal_status)
+            if vehicle_error is not None:
+                return replace(result, acknowledged=False, error_code=vehicle_error, idempotency_state=decision.state, lock_acquired=True)
             await self._publish_runtime_terminal(terminal_thread)
             await self._publish_terminal(message.task.task_id, result)
             acknowledged = await self._queue.ack(message.message_id) == 1
@@ -391,6 +401,19 @@ class DispatchWorker:
                 lock_acquired=True,
                 reconciled=reconciled,
             )
+        vehicle_error = self._handle_vehicle_breakdown(message.task, status)
+        if vehicle_error is not None:
+            return WorkerProcessResult(
+                message.message_id,
+                message.task.task_id,
+                False,
+                status,
+                False,
+                vehicle_error,
+                idempotency_state="TERMINAL",
+                lock_acquired=True,
+                reconciled=reconciled,
+            )
         acknowledged = await self._queue.ack(message.message_id) == 1
         return WorkerProcessResult(
             message.message_id,
@@ -416,6 +439,27 @@ class DispatchWorker:
                 task_id,
             )
             return "AUTO_PUBLICATION_ERROR"
+        return None
+
+    def _handle_vehicle_breakdown(
+        self,
+        message: DispatchTaskMessage,
+        terminal_status: str | None,
+    ) -> str | None:
+        if (
+            terminal_status != "APPROVED"
+            or self._vehicle_breakdown_handler is None
+            or str(message.payload.get("anomaly_type", "")).upper() != "VEHICLE_BREAKDOWN"
+        ):
+            return None
+        try:
+            self._vehicle_breakdown_handler.handle_approved_breakdown(message)
+        except Exception:
+            self._logger.exception(
+                "Vehicle rescue orchestration failed. task_id=%s",
+                message.task_id,
+            )
+            return "VEHICLE_RESCUE_ORCHESTRATION_ERROR"
         return None
 
     async def _process_graph(
@@ -547,11 +591,7 @@ class DispatchWorker:
         return terminal_thread
 
     async def _publish_runtime_terminal(self, thread: RuntimeThreadSnapshot | bool) -> None:
-        if (
-            isinstance(thread, RuntimeThreadSnapshot)
-            and self._runtime_runner is not None
-            and hasattr(self._runtime_runner, "publish_terminal")
-        ):
+        if isinstance(thread, RuntimeThreadSnapshot) and self._runtime_runner is not None and hasattr(self._runtime_runner, "publish_terminal"):
             await self._runtime_runner.publish_terminal(thread)
 
     @staticmethod

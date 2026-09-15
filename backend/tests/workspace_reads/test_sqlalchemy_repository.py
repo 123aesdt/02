@@ -508,6 +508,29 @@ def test_list_my_tasks_withholds_the_route_until_it_is_published(sqlite_factory)
     assert (item.origin, item.destination) == ("青云镇", "临港镇")
 
 
+def test_list_my_tasks_only_allows_source_delivery_tasks_to_report_anomalies(sqlite_factory):
+    from app.workspace_reads.sqlalchemy_repository import SqlAlchemyWorkspaceReadRepository
+
+    seed_workspace(sqlite_factory)
+
+    derived = SqlAlchemyWorkspaceReadRepository(sqlite_factory).list_my_tasks(
+        subject_id="dispatcher-1",
+        limit=20,
+        before_id=None,
+        state=None,
+    )
+    source = SqlAlchemyWorkspaceReadRepository(sqlite_factory).list_my_tasks(
+        subject_id="operator-1",
+        limit=20,
+        before_id=None,
+        state=None,
+    )
+
+    assert all(item.can_report_anomaly is False for item in derived.items)
+    assert source.items[0].task_id == "TASK-operator-4"
+    assert source.items[0].can_report_anomaly is True
+
+
 def test_list_my_tasks_exposes_only_the_published_route_and_instruction(sqlite_factory):
     from app.workspace_reads.sqlalchemy_repository import SqlAlchemyWorkspaceReadRepository
 

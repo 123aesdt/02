@@ -11,6 +11,7 @@ from app.anomaly_reports import (
     SourceContextIncomplete,
     SourceTaskEnded,
     SourceTaskNotFound,
+    SourceTaskNotReportable,
 )
 from app.main import create_app
 from app.security.permissions import Role
@@ -115,10 +116,37 @@ def test_report_request_rejects_client_supplied_dispatch_context() -> None:
 
 
 @pytest.mark.parametrize(
+    ("anomaly_type", "vehicle_status"),
+    [
+        ("VEHICLE_BREAKDOWN", "NORMAL"),
+        ("ROAD_BLOCKED", "BROKEN"),
+        ("WEATHER", "MAINTENANCE"),
+    ],
+)
+def test_report_request_rejects_inconsistent_problem_and_vehicle_status(
+    anomaly_type: str,
+    vehicle_status: str,
+) -> None:
+    service = ReportService()
+    app = create_app(anomaly_report_service=service, **auth(Role.EMPLOYEE))
+    invalid = {
+        **payload(),
+        "anomaly_type": anomaly_type,
+        "reported_vehicle_status": vehicle_status,
+    }
+
+    response = TestClient(app).post("/api/v1/anomaly-reports", headers=headers(), json=invalid)
+
+    assert response.status_code == 422
+    assert service.commands == []
+
+
+@pytest.mark.parametrize(
     ("error", "expected_status", "expected_code"),
     [
         (ReportSourceForbidden(), 403, "REPORT_SOURCE_FORBIDDEN"),
         (SourceTaskNotFound(), 404, "SOURCE_TASK_NOT_FOUND"),
+        (SourceTaskNotReportable(), 409, "SOURCE_TASK_NOT_REPORTABLE"),
         (SourceTaskEnded(), 409, "SOURCE_TASK_ENDED"),
         (ReportIdempotencyConflict(), 409, "IDEMPOTENCY_CONFLICT"),
         (SourceContextIncomplete(), 422, "SOURCE_CONTEXT_INCOMPLETE"),

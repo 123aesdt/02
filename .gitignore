@@ -36,4 +36,10 @@ qdrant_storage/
 neo4j-data/
 neo4j_data/
 .worktrees/
+.superpowers/
+.tmp/
+/pytest-*/
+frontend/test-results/
+*.orig
+/design-qa.md
 docs/assets/ui-concepts/*.png

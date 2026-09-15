@@ -79,6 +79,7 @@ class MyTaskListItem:
     publication_status: str = "PENDING"
     published_at: datetime | None = None
     route_instruction: str | None = None
+    can_report_anomaly: bool = False
 
 
 @dataclass(frozen=True)

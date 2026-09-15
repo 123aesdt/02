@@ -34,6 +34,7 @@ const myTaskPage = {
     publication_status: "PUBLISHED",
     published_at: "2026-08-30T08:06:00Z",
     route_instruction: "从青云镇出发，按国道-108行驶，前往临港镇。途中注意现场路况并服从安全调度。",
+    can_report_anomaly: true,
   }, {
     row_id: 13,
     task_id: "DEMO-TASK-ENDED",
@@ -51,6 +52,25 @@ const myTaskPage = {
     publication_status: "PUBLISHED",
     published_at: "2026-08-30T09:00:00Z",
     route_instruction: "任务已完成。",
+    can_report_anomaly: false,
+  }, {
+    row_id: 14,
+    task_id: "TASK-AI-DERIVED",
+    order_no: "DEMO-ORDER-012",
+    risk: "HIGH",
+    description: "AI 调度处理中",
+    vehicle_id: "demo-vehicle-012",
+    original_route_id: "云岭乡道",
+    suggested_route_id: "国道-108",
+    status: "APPROVED",
+    created_at: "2026-08-30T08:10:00Z",
+    updated_at: "2026-08-30T08:15:00Z",
+    origin: "青云镇",
+    destination: "临港镇",
+    publication_status: "PENDING",
+    published_at: null,
+    route_instruction: null,
+    can_report_anomaly: false,
   }],
   summary: { total: 6, ready: 3, waiting: 1, active: 1, ended: 1 },
   total: 2,
@@ -108,6 +128,7 @@ describe("my tasks page", () => {
     expect(container.querySelector<HTMLAnchorElement>('a[href="/report-issue"]')?.textContent).toContain("提出问题");
     expect(container.querySelector<HTMLAnchorElement>('a[href="/report-issue?taskId=DEMO-TASK-012"]')?.textContent).toContain("报告问题");
     expect(container.querySelector<HTMLAnchorElement>('a[href="/report-issue?taskId=DEMO-TASK-ENDED"]')).toBeNull();
+    expect(container.querySelector<HTMLAnchorElement>('a[href="/report-issue?taskId=TASK-AI-DERIVED"]')).toBeNull();
     expect(container.textContent).not.toContain("数据接口尚未开放");
   });
 

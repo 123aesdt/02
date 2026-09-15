@@ -1,9 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import { fleetRouteGeometry } from "../src/features/fleet-sandbox/fleet-map-geometry";
-import { fleetSnapshotByVehicleId } from "../src/features/fleet-sandbox/fleet-simulation";
+import { fleetRouteProgressForPhase, fleetSimulationTick, fleetSnapshotByVehicleId } from "../src/features/fleet-sandbox/fleet-simulation";
 
 describe("fleet simulation vehicle identity", () => {
+  it("keeps fractional simulation time for continuous vehicle motion", () => {
+    expect(fleetSimulationTick(750)).toBe(0.5);
+    expect(fleetSimulationTick(1875)).toBe(1.25);
+  });
+
+  it("turns vehicles around continuously at route endpoints", () => {
+    expect(fleetRouteProgressForPhase(0.99)).toBeCloseTo(0.99);
+    expect(fleetRouteProgressForPhase(1)).toBe(1);
+    expect(fleetRouteProgressForPhase(1.01)).toBeCloseTo(0.99);
+    expect(fleetRouteProgressForPhase(2)).toBe(0);
+  });
+
   it.each([
     ["V-008", "V-008"],
     ["demo-vehicle-008", "V-008"],

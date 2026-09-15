@@ -57,7 +57,9 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
     assert {row.status for row in threads} == {"RUNNING", "STABLE", "OVERRIDING", "TERMINAL"}
     assert len(report_tasks) == 20
     assert {row.status for row in report_tasks} == {"IN_PROGRESS"}
-    assert {row.assignee_subject_id for row in report_tasks} == {"CF-DEMO-001"}
+    assigned_report_tasks = [row for row in report_tasks if row.assignee_subject_id is not None]
+    assert {row.assignee_subject_id for row in assigned_report_tasks} == {"CF-DEMO-001", "CF-DEMO-006"}
+    assert len(assigned_report_tasks) == 2
 
     anomaly_repository = SqlAlchemyAnomalyReportRepository(sqlite_factory)
     vehicle_source = anomaly_repository.get_source_task("DEMO-TASK-REPORT-VEHICLE")
@@ -77,10 +79,19 @@ def test_development_seed_is_idempotent_and_diverse(sqlite_factory):
         "ROUTE-04",
     )
     assert (final_source.driver_id, final_source.vehicle_id, final_source.route_id) == (
-        "D-001",
+        None,
         "V-020",
         "ROUTE-10",
     )
+
+    with sqlite_factory() as session:
+        employee_vehicle_rows = session.execute(
+            select(DispatchTask.assignee_subject_id, Order.vehicle_id)
+            .join(Order, Order.id == DispatchTask.order_id)
+            .where(DispatchTask.idempotency_key.like("demo-report-source-%"))
+            .where(DispatchTask.assignee_subject_id.is_not(None))
+        ).all()
+    assert employee_vehicle_rows == [("CF-DEMO-001", "V-002"), ("CF-DEMO-006", "V-005")]
 
     repository = SqlAlchemyWorkspaceReadRepository(sqlite_factory)
     assert repository.list_reviews(limit=20, before_id=None).provenance == "DEMO"

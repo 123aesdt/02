@@ -27,7 +27,7 @@ docs-check:
 	@test -f docs/superpowers/plans/2026-08-21-countyflow-implementation.md
 
 up:
-	@docker compose --env-file .docker.env up -d --build
+	@docker compose --env-file .env --env-file .docker.env up -d --build
 
 down:
 	@docker compose --env-file .docker.env down

@@ -81,6 +81,7 @@ export interface MyTaskListItem {
   publication_status: string;
   published_at: string | null;
   route_instruction: string | null;
+  can_report_anomaly: boolean;
 }
 
 export interface MyTaskSummary {

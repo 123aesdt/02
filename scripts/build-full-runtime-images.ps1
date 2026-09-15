@@ -164,7 +164,7 @@ try {
             return $false
         }
         return (
-            $normalized -in @('Dockerfile', 'pyproject.toml', 'alembic.ini') -or
+            $normalized -in @('Dockerfile', 'pyproject.toml', 'uv.lock', 'alembic.ini') -or
             $normalized.StartsWith('app/') -or
             $normalized.StartsWith('alembic/')
         )
@@ -219,7 +219,6 @@ try {
         Write-Host '[构建] 后端、迁移与 Worker……' -ForegroundColor Cyan
         Invoke-CheckedDocker -Arguments @(
             'build',
-            '--no-cache',
             '--tag',
             'countyflow-ai-backend:latest',
             $backendStage
@@ -240,7 +239,6 @@ try {
         Write-Host '[构建] 前端……' -ForegroundColor Cyan
         Invoke-CheckedDocker -Arguments @(
             'build',
-            '--no-cache',
             '--build-arg',
             'VITE_DATA_MODE=api',
             '--build-arg',
@@ -249,6 +247,10 @@ try {
             'VITE_AUTHENTICATION_MODE=development_jwt',
             '--build-arg',
             'VITE_RUNTIME_THREAD_STATE_ENABLED=true',
+            '--build-arg',
+            'VITE_AMAP_KEY',
+            '--build-arg',
+            'VITE_AMAP_SECURITY_CODE',
             '--tag',
             'countyflow-ai-frontend:latest',
             $frontendStage
@@ -257,7 +259,6 @@ try {
         Write-Host '[构建] Qdrant……' -ForegroundColor Cyan
         Invoke-CheckedDocker -Arguments @(
             'build',
-            '--no-cache',
             '--file',
             (Join-Path $qdrantStage 'qdrant.Dockerfile'),
             '--tag',

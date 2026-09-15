@@ -9,7 +9,9 @@ class InvalidStateTransition(ValueError):
 
 class VehicleOperationalStatus(StrEnum):
     AVAILABLE = "AVAILABLE"
+    RESERVED = "RESERVED"
     IN_TRANSIT = "IN_TRANSIT"
+    DISPATCHING = "DISPATCHING"
     BROKEN = "BROKEN"
     WAITING_RESCUE = "WAITING_RESCUE"
     IN_RESCUE = "IN_RESCUE"
@@ -40,14 +42,15 @@ class MaintenanceStatus(StrEnum):
 
 
 _VEHICLE_TRANSITIONS = {
+    VehicleOperationalStatus.AVAILABLE: frozenset({VehicleOperationalStatus.RESERVED, VehicleOperationalStatus.DISPATCHING}),
+    VehicleOperationalStatus.RESERVED: frozenset({VehicleOperationalStatus.DISPATCHING}),
+    VehicleOperationalStatus.DISPATCHING: frozenset({VehicleOperationalStatus.IN_TRANSIT}),
     VehicleOperationalStatus.IN_TRANSIT: frozenset({VehicleOperationalStatus.BROKEN}),
     VehicleOperationalStatus.BROKEN: frozenset({VehicleOperationalStatus.WAITING_RESCUE}),
     VehicleOperationalStatus.WAITING_RESCUE: frozenset({VehicleOperationalStatus.IN_RESCUE}),
     VehicleOperationalStatus.IN_RESCUE: frozenset({VehicleOperationalStatus.MAINTENANCE}),
     VehicleOperationalStatus.MAINTENANCE: frozenset({VehicleOperationalStatus.QA_PENDING}),
-    VehicleOperationalStatus.QA_PENDING: frozenset(
-        {VehicleOperationalStatus.AVAILABLE, VehicleOperationalStatus.OUT_OF_SERVICE}
-    ),
+    VehicleOperationalStatus.QA_PENDING: frozenset({VehicleOperationalStatus.AVAILABLE, VehicleOperationalStatus.OUT_OF_SERVICE}),
 }
 
 _RESCUE_TRANSITIONS = {
@@ -124,6 +127,7 @@ class MaintenanceOrderSnapshot:
     next_transition_at: datetime | None
     available_after: datetime | None
     version: int
+    inspection_result: str | None = None
 
     @property
     def progress_percent(self) -> int:
@@ -138,7 +142,49 @@ class MaintenanceOrderSnapshot:
             MaintenanceStatus.CANCELLED: 100,
         }[self.status]
 
-    def seconds_remaining(self, now: datetime) -> int:
+    def seconds_remaining(self, now: datetime) -> int | None:
         if self.available_after is None:
-            return 0
-        return max(0, int((self.available_after - now).total_seconds()))
+            return None
+        deadline = self.available_after
+        if deadline.tzinfo is None and now.tzinfo is not None:
+            deadline = deadline.replace(tzinfo=now.tzinfo)
+        elif deadline.tzinfo is not None and now.tzinfo is None:
+            now = now.replace(tzinfo=deadline.tzinfo)
+        return max(0, int((deadline - now).total_seconds()))
+
+
+@dataclass(frozen=True, slots=True)
+class BreakdownCaseRequest:
+    task_id: str
+    vehicle_id: str
+    replacement_vehicle_id: str | None
+    rescue_unit_id: str
+    incident_node_id: str
+    station_node_id: str
+    outbound_edge_ids: tuple[str, ...]
+    tow_edge_ids: tuple[str, ...]
+    fault_code: str
+    diagnosis: str
+    repair_minutes: int
+    manual_inspection_required: bool
+    occurred_at: datetime
+    replacement_edge_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class OperationCaseSnapshot:
+    task_id: str
+    vehicle_id: str
+    vehicle_status: str
+    replacement_vehicle_id: str | None
+    replacement_vehicle_status: str | None
+    mission: RescueMissionSnapshot
+    maintenance: MaintenanceOrderSnapshot
+    replacement_edge_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class InspectionDecision:
+    order_no: str
+    passed: bool
+    decided_at: datetime

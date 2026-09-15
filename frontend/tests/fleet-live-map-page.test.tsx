@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const workspaceReadApi = vi.hoisted(() => ({ getAnomalies: vi.fn() }));
 const taskApi = vi.hoisted(() => ({ getTaskStatus: vi.fn(), getTaskResult: vi.fn() }));
 const ticketApi = vi.hoisted(() => ({ issueTaskWsTicket: vi.fn() }));
+const operationApi = vi.hoisted(() => ({ getMapSnapshot: vi.fn() }));
 
 vi.mock("../src/config/runtime", () => ({
   runtimeConfig: { dataMode: "api", apiBaseUrl: "http://api.test", authenticationMode: "development_jwt" },
@@ -13,9 +14,11 @@ vi.mock("../src/config/runtime", () => ({
 vi.mock("../src/services/api/workspace-read-client", () => ({ workspaceReadClient: workspaceReadApi }));
 vi.mock("../src/services/dispatch-service", () => taskApi);
 vi.mock("../src/services/api/ws-ticket-client", () => ticketApi);
+vi.mock("../src/services/api/vehicle-operations-client", () => ({ vehicleOperationsClient: operationApi }));
 
 import { setAuthenticatedSession, clearSession } from "../src/auth/session";
 import { FleetLiveMapPage } from "../src/pages/fleet-live-map-page";
+import { demoVehicleOperationSnapshot } from "../src/features/fleet-sandbox/vehicle-operation-demo";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -73,9 +76,25 @@ async function flush() {
   await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   vi.stubGlobal("WebSocket", FakeWebSocket as unknown as typeof WebSocket);
   ticketApi.issueTaskWsTicket.mockResolvedValue("ticket");
+  operationApi.getMapSnapshot.mockResolvedValue({
+    ...demoVehicleOperationSnapshot,
+    task_id: "TASK-FAULT",
+    routes: [
+      { kind: "REPLACEMENT", edge_ids: ["E21", "E03", "E04"], node_ids: ["N15", "N19", "N01", "N03", "N04"], status: "ACTIVE" },
+      { kind: "RESCUE", edge_ids: ["E22", "E04"], node_ids: ["N22", "N03", "N04"], status: "DISPATCHED" },
+      { kind: "TOW", edge_ids: ["E20"], node_ids: ["N04", "N15"], status: "WAITING" },
+      { kind: "INTERRUPTED", edge_ids: ["E04"], node_ids: ["N03", "N04"], status: "INTERRUPTED" },
+    ],
+  });
   workspaceReadApi.getAnomalies.mockResolvedValue({
     items: [
       { row_id: 2, anomaly_no: "ANOM-ROAD", order_no: "ORD-15", driver_id: "D-008", vehicle_id: "V-008", route_id: "R-1", latest_task_id: "TASK-ROAD", anomaly_type: "ROAD_BLOCKED", risk: "HIGH", description: "东河桥段堵塞", status: "COMPLETED", reported_at: "2026-09-09T09:28:45Z" },
@@ -93,12 +112,76 @@ afterEach(() => {
   taskApi.getTaskStatus.mockReset();
   taskApi.getTaskResult.mockReset();
   ticketApi.issueTaskWsTicket.mockReset();
+  operationApi.getMapSnapshot.mockReset();
   clearSession();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
 
 describe("administrator fleet live map page", () => {
+  it("shows a dedicated command-map skeleton without flashing legacy vehicles while task details load", async () => {
+    const pendingStatus = deferred<Awaited<ReturnType<typeof taskApi.getTaskStatus>>>();
+    taskApi.getTaskStatus.mockReturnValue(pendingStatus.promise);
+
+    const view = await renderPage();
+    await flush();
+
+    expect(view.container.querySelector(".fleet-command-loading")).not.toBeNull();
+    expect(view.container.querySelector("[data-fleet-vehicle-id]")).toBeNull();
+    expect(view.container.querySelector(".fleet-sandbox")).toBeNull();
+    expect(view.container.textContent).toContain("车辆与路线数据加载中");
+
+    pendingStatus.resolve({
+      task_id: "TASK-ROAD",
+      order_id: 15,
+      status: "COMPLETED",
+      started_at: null,
+      completed_at: "2026-09-09T09:29:00Z",
+      created_at: "2026-09-09T09:28:45Z",
+      ready: true,
+      requires_manual_review: false,
+    });
+    await flush();
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("prefers the most recent backend anomaly instead of an old demo task", async () => {
+    workspaceReadApi.getAnomalies.mockResolvedValue({
+      items: [
+        { row_id: 40, anomaly_no: "ANOM-NEW", order_no: "ORD-40", driver_id: "D-001", vehicle_id: "V-001", route_id: "ROUTE-01", latest_task_id: "TASK-FAULT", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "最近故障", status: "OPEN", reported_at: "2026-09-11T09:20:00Z" },
+        { row_id: 4, anomaly_no: "DEMO-ANOM-004", order_no: "DEMO-ORDER-004", driver_id: "D-001", vehicle_id: "V-001", route_id: "ROUTE-01", latest_task_id: "DEMO-TASK-REPORT-VEHICLE", anomaly_type: "vehicle_breakdown", risk: "HIGH", description: "完整救援演示", status: "OPEN", reported_at: "2026-09-09T09:20:00Z" },
+      ], total: 2, next_cursor: null, provenance: "DEMO",
+    });
+    taskApi.getTaskStatus.mockImplementation(async (taskId: string) => ({ task_id: taskId, order_id: 16, status: "COMPLETED", started_at: null, completed_at: "2026-09-09T09:29:00Z", created_at: "2026-09-09T09:28:45Z", ready: true, requires_manual_review: false }));
+    taskApi.getTaskResult.mockResolvedValue({ ...resultByTask["TASK-FAULT"], task_id: "DEMO-TASK-REPORT-VEHICLE", anomaly_type: "vehicle_breakdown" });
+
+    const view = await renderPage();
+    await flush();
+
+    expect(view.container.querySelector<HTMLSelectElement>('select[aria-label="选择地图任务"]')?.value).toBe("TASK-FAULT");
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("loads the rescue snapshot for legacy lowercase breakdown types", async () => {
+    workspaceReadApi.getAnomalies.mockResolvedValue({
+      items: [
+        { row_id: 4, anomaly_no: "DEMO-ANOM-004", order_no: "DEMO-ORDER-004", driver_id: "D-001", vehicle_id: "V-001", route_id: "ROUTE-01", latest_task_id: "TASK-FAULT", anomaly_type: "vehicle_breakdown", risk: "HIGH", description: "车辆发动机告警", status: "OPEN", reported_at: "2026-09-09T09:20:00Z" },
+      ], total: 1, next_cursor: null, provenance: "DEMO",
+    });
+    taskApi.getTaskResult.mockResolvedValue({
+      ...resultByTask["TASK-FAULT"],
+      anomaly_type: "vehicle_breakdown",
+    });
+
+    const view = await renderPage();
+    await flush();
+    await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 0)); });
+    await flush();
+
+    expect(operationApi.getMapSnapshot).toHaveBeenCalledWith("TASK-FAULT");
+    await act(async () => { view.root.unmount(); });
+  });
+
   it("renders the twenty-vehicle sandbox, ten named routes, and Chinese task identifiers", async () => {
     const view = await renderPage();
     await flush();
@@ -110,15 +193,67 @@ describe("administrator fleet live map page", () => {
     expect(selector?.selectedOptions[0]?.textContent).not.toContain("ROAD_BLOCKED");
     expect(view.container.textContent).not.toContain("TASK-ROAD");
     expect(view.container.textContent).toContain("20 辆车辆实时态势");
+    expect(view.container.querySelectorAll("[data-fleet-kpi]")).toHaveLength(4);
+    expect(view.container.querySelector('[data-fleet-kpi="online"]')?.textContent).toContain("在线车辆");
+    expect(view.container.querySelector('[data-fleet-kpi="transit"]')?.textContent).toContain("运输中");
+    expect(view.container.querySelector('[data-fleet-kpi="abnormal"]')?.textContent).toContain("异常车辆");
+    expect(view.container.querySelector('[data-fleet-kpi="alerts"]')?.textContent).toContain("今日告警");
+    expect(view.container.querySelector('[data-provenance="LIVE"]')?.textContent).toContain("实时业务数据");
+    expect(view.container.textContent).toContain("后端异常任务与车辆处置快照");
     expect(view.container.textContent).toContain("虚拟沙盘实时模拟，不采集真实 GPS");
     expect(view.container.querySelectorAll("[data-fleet-vehicle-id]")).toHaveLength(20);
     expect(view.container.querySelectorAll('select[aria-label="选择高亮路线"] option[data-route-id]')).toHaveLength(10);
-    expect(view.container.querySelectorAll("[data-fleet-stop-id]")).toHaveLength(18);
+    expect(view.container.querySelectorAll("[data-fleet-stop-id]")).toHaveLength(22);
     expect(view.container.querySelectorAll("[data-fleet-route-label]")).toHaveLength(10);
     expect(view.container.querySelectorAll("[data-road-name]").length).toBeGreaterThanOrEqual(6);
-    expect(view.container.textContent).toContain("路线-01 · 中心仓—城东配送线");
+    expect(view.container.querySelectorAll("[data-road-shield]").length).toBeGreaterThanOrEqual(3);
+    expect(view.container.textContent).toContain("路线-01 · 调度中心—快递集散线");
+    expect(view.container.textContent).toContain("智慧物流调度中心");
+    expect(view.container.textContent).toContain("快递集散站");
     expect(view.container.textContent).toContain("路线-10 · 维修救援接驳线");
     expect(view.container.querySelector(".fleet-sandbox-canvas")).not.toBeNull();
+    expect(view.container.querySelector('button[aria-label="切换卫星地图"]')).not.toBeNull();
+    expect(view.container.querySelector('button[aria-label="切换夜间地图"]')?.classList.contains("is-active")).toBe(true);
+    expect(view.container.querySelector('button[aria-label="放大全景地图"]')).not.toBeNull();
+    expect(view.container.querySelector('button[aria-label="缩小全景地图"]')).not.toBeNull();
+    expect(view.container.querySelector('button[aria-label="复位全景地图"]')).not.toBeNull();
+    const followButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="跟随选中车辆"]');
+    expect(followButton?.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => { followButton?.click(); });
+    expect(view.container.querySelector('button[aria-label="停止跟随车辆"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(view.container.querySelector('button[aria-label="全屏查看地图"]')).not.toBeNull();
+    const fullscreenButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="全屏查看地图"]');
+    await act(async () => { fullscreenButton?.click(); });
+    expect(view.container.querySelector(".fleet-sandbox-map-shell")?.classList.contains("is-fullscreen")).toBe(true);
+    await act(async () => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    expect(view.container.querySelector(".fleet-sandbox-map-shell")?.classList.contains("is-fullscreen")).toBe(false);
+    expect(view.container.querySelector(".fleet-sandbox-canvas")?.getAttribute("data-map-mode")).toBe("STANDARD");
+    expect(view.container.querySelector(".fleet-sandbox-canvas")?.getAttribute("data-interactive")).toBe("true");
+    expect(view.container.querySelector(".fleet-road-casings path")).not.toBeNull();
+    expect(view.container.querySelector(".fleet-road-casings path")?.getAttribute("d")).toContain("Q");
+    expect(view.container.querySelector(".fleet-map-terrain-satellite")).not.toBeNull();
+    expect(view.container.querySelector('image.fleet-map-aerial-image')?.getAttribute("href")).toBe("/assets/maps/xinping-satellite.webp");
+    expect(view.container.querySelector(".fleet-map-attribution")?.textContent).toContain("影像");
+    expect(view.container.querySelector(".fleet-map-headbar")).not.toBeNull();
+    expect(view.container.querySelector('[aria-label="地图图层与车辆状态"]')).not.toBeNull();
+    const mobileLayerToggle = view.container.querySelector<HTMLButtonElement>('button[aria-label="展开地图图层"]');
+    expect(mobileLayerToggle?.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => { mobileLayerToggle?.click(); });
+    expect(view.container.querySelector('button[aria-label="收起地图图层"]')?.getAttribute("aria-expanded")).toBe("true");
+    const historyMode = Array.from(view.container.querySelectorAll<HTMLButtonElement>(".fleet-map-command-tabs button")).find((button) => button.textContent?.includes("历史轨迹"));
+    await act(async () => { historyMode?.click(); });
+    expect(historyMode?.classList.contains("is-active")).toBe(true);
+    const geofenceMode = Array.from(view.container.querySelectorAll<HTMLButtonElement>(".fleet-map-command-tabs button")).find((button) => button.textContent?.includes("电子围栏"));
+    await act(async () => { geofenceMode?.click(); });
+    expect(geofenceMode?.classList.contains("is-active")).toBe(true);
+    const trafficLayer = view.container.querySelector<HTMLButtonElement>('button[aria-label="切换交通路况"]');
+    await act(async () => { trafficLayer?.click(); });
+    expect(trafficLayer?.classList.contains("is-active")).toBe(true);
+    expect(view.container.querySelector(".fleet-map-alert-card")).not.toBeNull();
+    expect(view.container.querySelector(".fleet-stat-donut")).not.toBeNull();
+    expect(view.container.querySelector(".fleet-mileage-ranking")).not.toBeNull();
+    expect(view.container.querySelectorAll("[data-fleet-footer-metric]")).toHaveLength(4);
+    expect(view.container.querySelector('[data-fleet-route-id="ROUTE-01"]')?.getAttribute("role")).toBe("button");
     expect(view.container.querySelector('[data-fleet-edge-id="E04"].is-blocked')).not.toBeNull();
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-02"][data-dispatch-state="REROUTED"]')).not.toBeNull();
 
@@ -128,13 +263,28 @@ describe("administrator fleet live map page", () => {
       selector.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await flush();
+    await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 0)); });
+    await flush();
 
     expect(selector?.selectedOptions[0]?.textContent).toBe("异常-001｜运单-016｜车辆故障-01｜调度完成-03｜调度任务-001");
+    expect(view.container.querySelector("[data-operation-lifecycle]")).not.toBeNull();
+    const dispatcherTimeline = view.container.querySelector('[data-vehicle-operation-timeline][data-context="dispatcher"]');
+    expect(dispatcherTimeline).not.toBeNull();
+    expect(dispatcherTimeline?.querySelectorAll("[data-operation-stage]")).toHaveLength(4);
+    expect(dispatcherTimeline?.textContent).toContain("发现故障");
+    expect(dispatcherTimeline?.textContent).toContain("预计自动复岗");
+    expect(view.container.querySelectorAll("[data-operation-map-route]")).toHaveLength(3);
+    expect(view.container.textContent).toContain("下一站");
+    expect(view.container.textContent).toContain("预计到达");
     expect(view.container.querySelector('[data-fleet-vehicle-id="V-001"][data-fleet-status="BROKEN"]')).not.toBeNull();
-    expect(view.container.querySelector('[data-fleet-vehicle-id="V-005"][data-fleet-status="DISPATCHING"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-fleet-vehicle-id="V-005"][data-fleet-status="IN_TRANSIT"]')).not.toBeNull();
     expect(view.container.textContent).toContain("故障车辆 V-001");
     expect(view.container.textContent).toContain("已派出替代车辆 V-005");
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-dispatch-state="RESCUE"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-map-priority="critical"]')).not.toBeNull();
+    expect(view.container.querySelectorAll('[data-fleet-route-id][data-map-priority="background"].is-visible').length).toBeGreaterThanOrEqual(8);
+    expect(view.container.querySelector('[data-fleet-vehicle-id="V-001"][data-map-priority="critical"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-fleet-vehicle-id="V-005"][data-map-priority="critical"]')).not.toBeNull();
     await act(async () => { view.root.unmount(); });
   });
 
@@ -180,7 +330,7 @@ describe("administrator fleet live map page", () => {
     expect(map?.querySelectorAll("[data-fleet-route-id]")).toHaveLength(1);
     expect(map?.querySelector('[data-fleet-route-id="ROUTE-02"]')).not.toBeNull();
     expect(map?.querySelector('[data-fleet-route-id="ROUTE-01"]')).toBeNull();
-    expect(map?.querySelectorAll("[data-fleet-stop-id]")).toHaveLength(6);
+    expect(map?.querySelectorAll("[data-fleet-stop-id]")).toHaveLength(8);
     expect(map?.querySelector('[data-fleet-stop-id="N08"]')).not.toBeNull();
     expect(map?.querySelector('[data-fleet-stop-id="N11"]')).toBeNull();
     expect(map?.querySelector('[data-fleet-vehicle-id="V-002"]')).toBeNull();
@@ -205,6 +355,29 @@ describe("administrator fleet live map page", () => {
     await act(async () => { vi.advanceTimersByTime(3000); });
     await flush();
     expect(workspaceReadApi.getAnomalies.mock.calls.length).toBeGreaterThan(initialCalls);
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("keeps the rendered map visible while a background poll is pending", async () => {
+    vi.useFakeTimers();
+    const firstPage = await workspaceReadApi.getAnomalies();
+    const backgroundRefresh = deferred<typeof firstPage>();
+    workspaceReadApi.getAnomalies
+      .mockResolvedValueOnce(firstPage)
+      .mockReturnValueOnce(backgroundRefresh.promise);
+    const view = await renderPage();
+    await flush();
+
+    expect(view.container.querySelector(".fleet-sandbox-canvas")).not.toBeNull();
+
+    await act(async () => { vi.advanceTimersByTime(3000); });
+    await flush();
+
+    expect(view.container.querySelector(".fleet-sandbox-canvas")).not.toBeNull();
+    expect(view.container.textContent).not.toContain("正在读取最近异常任务");
+
+    await act(async () => { backgroundRefresh.resolve(firstPage); });
+    await flush();
     await act(async () => { view.root.unmount(); });
   });
 });

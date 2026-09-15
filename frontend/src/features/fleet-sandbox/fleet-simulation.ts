@@ -4,6 +4,7 @@ import {
   fleetVehicles,
   type FleetVehicle,
 } from "./fleet-sandbox-data";
+import { fleetRouteMotionProgress } from "./fleet-motion-geometry";
 
 export interface FleetPositionSnapshot extends FleetVehicle {
   x: number;
@@ -11,6 +12,8 @@ export interface FleetPositionSnapshot extends FleetVehicle {
   nodeId: string;
   locationLabel: string;
   progress: number;
+  routeProgress: number;
+  routePhase: number;
   routeDisplayName: string;
 }
 
@@ -18,7 +21,12 @@ export const fleetNodeById = new Map(fleetNodes.map((node) => [node.id, node]));
 export const fleetRouteById = new Map(fleetRoutes.map((route) => [route.id, route]));
 
 export function fleetSimulationTick(timeMs = Date.now()): number {
-  return Math.floor(timeMs / 1500);
+  return timeMs / 1500;
+}
+
+export function fleetRouteProgressForPhase(phase: number): number {
+  const wrappedPhase = ((phase % 2) + 2) % 2;
+  return wrappedPhase <= 1 ? wrappedPhase : 2 - wrappedPhase;
 }
 
 export function canonicalFleetVehicleId(vehicleId: string | null | undefined): string | null {
@@ -68,7 +76,10 @@ export function fleetPositionForVehicle(vehicle: FleetVehicle, tick: number): Fl
   const pairSlot = safeIndex % 2;
   const routeIndex = Math.floor(safeIndex / 2);
   const startingProgress = ((pairSlot === 0 ? 0.16 : 0.62) + (routeIndex % 3) * 0.035) % 1;
-  const progressValue = isMoving ? (startingProgress + tick * 0.006 * Math.max(vehicle.speedKph, 30) / 40) % 1 : 0;
+  const routePhase = isMoving
+    ? (startingProgress + tick * 0.006 * Math.max(vehicle.speedKph, 30) / 40) % 2
+    : fixedStep / Math.max(1, route.nodeIds.length - 1);
+  const progressValue = fleetRouteMotionProgress(routePhase);
   const routePosition = isMoving ? pointAlongRoute(vehicle.routeId, progressValue) : null;
   const fixedNodeId = route.nodeIds[fixedStep];
   const fixedNode = fleetNodeById.get(fixedNodeId) ?? fleetNodes[0];
@@ -80,10 +91,15 @@ export function fleetPositionForVehicle(vehicle: FleetVehicle, tick: number): Fl
   const locationLabel = routePosition && startNode && endNode
     ? routePosition.segmentProgress < 0.12 ? startNode.name : routePosition.segmentProgress > 0.88 ? endNode.name : `${startNode.name}—${endNode.name}路段`
     : fixedNode.name;
+  const routeProgress = isMoving
+    ? progressValue
+    : fixedStep / Math.max(1, route.nodeIds.length - 1);
   return {
     ...vehicle,
     nodeId: nearestNodeId,
-    progress: isMoving ? Math.round(progressValue * 100) : Math.round((fixedStep / Math.max(1, route.nodeIds.length - 1)) * 100),
+    progress: Math.round(routeProgress * 100),
+    routeProgress,
+    routePhase,
     x: routePosition?.x ?? fixedNode.x,
     y: routePosition?.y ?? fixedNode.y,
     locationLabel,

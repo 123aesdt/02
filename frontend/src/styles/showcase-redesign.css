@@ -1,0 +1,158 @@
+/* CountyFlow showcase theme: compact blue-white government logistics console. */
+:root {
+  --background: #f3f7fc;
+  --surface-primary: #ffffff;
+  --surface-secondary: #f7faff;
+  --surface-subtle: #edf4ff;
+  --surface-hover: #edf5ff;
+  --surface-selected: #e8f2ff;
+  --border: #dce7f5;
+  --border-strong: #c4d6ec;
+  --text-primary: #17233d;
+  --text-secondary: #52627a;
+  --text-tertiary: #7a8aa3;
+  --brand: #1677ff;
+  --brand-hover: #0b5fdb;
+  --brand-subtle: #eaf3ff;
+  --brand-border: #a9ccff;
+  --success: #159d68;
+  --success-subtle: #ecfbf5;
+  --warning: #e8780a;
+  --warning-subtle: #fff7e8;
+  --danger: #df2b36;
+  --danger-subtle: #fff1f2;
+  --info: #1677ff;
+  --info-subtle: #edf5ff;
+  --focus-ring: #1677ff;
+  --shadow-sm: 0 1px 3px rgba(38, 74, 122, .07);
+  --shadow-md: 0 6px 18px rgba(38, 74, 122, .09);
+  --shadow-raised: 0 12px 28px rgba(38, 74, 122, .13);
+}
+
+html, body, #root { min-height: 100%; background: var(--background); }
+body { margin: 0; letter-spacing: 0; }
+button, input, select, textarea { letter-spacing: 0; }
+.app-shell { grid-template-columns: 208px minmax(0, 1fr); background: var(--background); }
+.app-shell.is-collapsed { grid-template-columns: 68px minmax(0, 1fr); }
+.sidebar { z-index: 20; padding: 0 10px 12px; border-right: 1px solid #d7e4f3; background: #fff; box-shadow: 2px 0 12px rgba(35, 76, 128, .04); }
+.brand { height: 64px; padding: 0 8px; gap: 10px; border-bottom: 1px solid var(--border); }
+.brand-mark { width: 34px; height: 34px; flex: 0 0 34px; color: #fff; border-radius: 7px; background: linear-gradient(145deg, #2589ff, #0757c7); box-shadow: 0 5px 13px rgba(22, 119, 255, .24); }
+.brand strong { color: #0b4fc4; font-size: 16px; font-weight: 800; }
+.brand span { margin-top: 1px; color: #71849d; font-size: 9px; font-weight: 600; text-transform: none; }
+.sidebar nav { padding-top: 12px; gap: 10px; overflow-y: auto; }
+.nav-group { display: grid; gap: 3px; }
+.nav-group h2 { margin: 4px 9px 3px; color: #96a4b7; font-size: 9px; font-weight: 700; }
+.nav-item { position: relative; min-height: 38px; gap: 10px; padding: 0 10px; color: #52627a; border: 0; border-radius: 5px; font-size: 12px; }
+.nav-item svg { color: #66809f; }
+.nav-item span { min-width: 0; }
+.nav-item span strong { display: block; font-size: 12px; font-weight: 600; }
+.nav-item span small { display: block; overflow: hidden; color: #94a2b4; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item:hover { color: #0b4fc4; background: #f1f6fc; }
+.nav-item.active { color: #0b5fdb; border: 0; background: #eaf3ff; box-shadow: inset 3px 0 0 #1677ff; }
+.nav-item.active svg { color: #1677ff; }
+.sidebar-footer { padding: 11px 7px 0; border-top: 1px solid var(--border); }
+.system-status strong { color: #30435e; }.system-status small, .release { color: #8a99ac; }
+.collapse-button { right: -12px; bottom: 12px; color: #58708e; border: 1px solid var(--border-strong); background: #fff; box-shadow: var(--shadow-sm); }
+
+.main-area { min-width: 0; background: var(--background); }
+.topbar { z-index: 15; height: 64px; padding: 0 24px; border-bottom: 1px solid #d9e5f2; background: rgba(255, 255, 255, .96); box-shadow: 0 2px 10px rgba(39, 75, 121, .04); }
+.topbar-path { margin: 0 0 2px; color: #8494aa; font-size: 10px; }
+.topbar h1 { color: #17233d; font-size: 18px; font-weight: 700; }
+.topbar-actions { gap: 9px; }
+.online-status, .demo-badge { min-height: 26px; padding: 0 9px; color: #52627a; border: 1px solid var(--border); border-radius: 4px; background: #f8fbff; font-size: 10px; }
+.demo-badge { color: #0b5fdb; background: #edf5ff; }
+.icon-button { width: 32px; height: 32px; border-radius: 5px; }
+.principal-avatar { color: #fff; background: #1677ff; }
+.page-content { width: 100%; max-width: none; min-height: calc(100vh - 64px); padding: 18px 22px 28px; background: var(--background); }
+
+.role-workspace, .workspace-page, .dashboard-page, .dispatch-page { display: grid; gap: 14px; }
+.role-workspace__heading { min-height: 48px; margin: 0; padding: 0 2px; }
+.role-workspace__heading h1 { margin: 0; color: #17233d; font-size: 21px; line-height: 28px; font-weight: 700; }
+.role-workspace__heading p { margin: 4px 0 0; color: #6d7f97; font-size: 11px; line-height: 18px; }
+.workspace-section, .workspace-panel, .situation-panel, .anomaly-table-panel, .system-metrics, .audit-panel, .context-panel, .pipeline-panel, .dispatch-result, .route-decision, .decision-reason, .agent-layout, .admin-capability-card { border: 1px solid var(--border); border-radius: 7px; background: #fff; box-shadow: var(--shadow-sm); }
+.workspace-section { overflow: visible; }
+.workspace-section__header { min-height: 58px; padding: 13px 16px; border-bottom: 1px solid var(--border); background: #fff; }
+.workspace-section__header h2, .panel-heading h2 { color: #17233d; font-size: 14px; font-weight: 700; }
+.workspace-section__header p { margin-top: 4px; color: #7a8aa3; font-size: 10px; }
+.workspace-section__body { padding: 14px 16px 16px; }
+.metrics-grid, .workspace-metrics { gap: 10px; }
+.metric { min-height: 98px; padding: 14px 15px; border: 1px solid var(--border); border-radius: 7px; background: #fff; box-shadow: none; }
+.metric::before { background: #1677ff; }
+.metric p { color: #71839a; font-size: 10px; }.metric strong { color: #17233d; font-size: 25px; }.metric span { color: #8392a7; font-size: 9px; }
+.admin-capability-grid { gap: 10px; }.admin-capability-card { min-height: 88px; padding: 14px; }.admin-capability-card a { color: #0b5fdb; font-weight: 700; }
+
+.filters, .fleet-map-toolbar, .task-event-query, .graph-task-query, .memory-control-toolbar { padding: 11px; border: 1px solid var(--border); border-radius: 6px; background: #f7faff; }
+input, select, textarea { color: #263853; border-color: var(--border-strong); background: #fff; }
+.button-primary, .primary-action { color: #fff; border-color: #1677ff; border-radius: 5px; background: #1677ff; box-shadow: 0 2px 5px rgba(22, 119, 255, .16); }
+.button-primary:hover:not(:disabled), .primary-action:hover:not(:disabled) { background: #0b5fdb; }
+.button-secondary, .secondary-action, .row-action { border-radius: 5px; }
+.table-wrap, .ui-data-table { overflow: auto; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+table { width: 100%; border-collapse: collapse; }
+th { height: 40px; padding: 9px 12px; color: #52627a; border-bottom: 1px solid var(--border); background: #f2f7fd; font-size: 10px; }
+td { height: 44px; padding: 10px 12px; color: #30435e; border-bottom: 1px solid #e8eef6; background: #fff; font-size: 11px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: #f5f9ff; }
+.table-link, .inline-link, .text-action { color: #0b65df; }
+.table-status, .status-badge, .source-label { border-radius: 4px; }
+.detail-tabs { border-color: var(--border); background: #fff; }.detail-tabs button.selected { color: #0b5fdb; border-color: #1677ff; background: #edf5ff; }
+.drawer { border-left-color: var(--border); background: #fff; box-shadow: -12px 0 30px rgba(36, 67, 110, .12); }
+
+/* Full-fleet map: Amap-like controls and legible county road network. */
+.fleet-sandbox { padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 7px; background: #fff; box-shadow: var(--shadow-sm); }
+.fleet-sandbox-heading { margin: 0; padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+.fleet-sandbox-heading h2 { color: #17233d; font-size: 17px; }.fleet-sandbox-heading p:last-child { color: #75869c; font-size: 10px; }
+.fleet-sandbox-live-badges { align-items: center; }
+.simulation-badge, .connection-badge { border-radius: 4px; }
+.fleet-incident-banner { margin: 10px 12px; border-color: #b8d5ff; border-radius: 5px; background: #edf5ff; }
+.fleet-status-strip { margin: 0 12px 10px; gap: 7px; }
+.fleet-status-strip button { min-height: 44px; border-radius: 5px; background: #f8faff; }
+.fleet-status-strip button.is-active { box-shadow: inset 0 -2px 0 var(--fleet-status-color); }
+.fleet-total-count { border-radius: 5px; }
+.fleet-sandbox-controls { margin: 0 12px 10px; padding: 9px; border-radius: 5px; background: #f6f9fd; }
+.fleet-sandbox-layout { grid-template-columns: minmax(0, 1fr) 294px; gap: 0; border-top: 1px solid var(--border); }
+.fleet-sandbox-map-shell { position: relative; min-width: 0; overflow: hidden; border: 0; border-radius: 0; background: #eaf1f3; }
+.fleet-sandbox-canvas { width: 100%; height: clamp(600px, 69vh, 760px); color: rgba(107, 137, 151, .16); background: #e9f0e9; }
+.fleet-sandbox-map-shell.is-standard .fleet-sandbox-canvas { color: rgba(123, 148, 175, .15); background: #eef3f7; }
+.fleet-sandbox-map-shell.is-satellite .fleet-sandbox-canvas { color: rgba(221, 234, 216, .08); background: #55675a; }
+.fleet-map-mode-control { position: absolute; z-index: 5; top: 14px; right: 14px; display: flex; overflow: hidden; border: 1px solid rgba(35, 66, 92, .18); border-radius: 5px; background: rgba(255, 255, 255, .96); box-shadow: 0 3px 12px rgba(23, 46, 70, .16); }
+.fleet-map-mode-control button { min-width: 65px; height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: #52627a; border: 0; border-right: 1px solid var(--border); background: transparent; font-size: 10px; }
+.fleet-map-mode-control button:last-child { border-right: 0; }.fleet-map-mode-control button.is-active { color: #fff; background: #1677ff; }
+.fleet-map-floating-tools { position: absolute; z-index: 5; top: 58px; right: 14px; display: grid; overflow: hidden; border: 1px solid rgba(35, 66, 92, .18); border-radius: 5px; background: rgba(255, 255, 255, .97); box-shadow: 0 3px 12px rgba(23, 46, 70, .16); }
+.fleet-map-floating-tools button { width: 34px; height: 34px; display: grid; place-items: center; color: #425975; border: 0; border-bottom: 1px solid var(--border); background: transparent; }
+.fleet-map-floating-tools button:last-child { border-bottom: 0; }.fleet-map-floating-tools button:hover, .fleet-map-floating-tools button.is-active { color: #1677ff; background: #edf5ff; }.fleet-map-floating-tools button:disabled { color: #b6c1ce; background: #f5f7fa; cursor: default; }
+.fleet-map-coordinate { position: absolute; z-index: 4; right: 14px; bottom: 55px; padding: 5px 8px; color: #506278; border: 1px solid rgba(35, 66, 92, .15); border-radius: 4px; background: rgba(255, 255, 255, .88); font-size: 9px; box-shadow: var(--shadow-sm); }
+.fleet-sandbox-map-shell.is-standard .terrain-zone { fill: #e1ecdf; stroke: #cadcc7; }.fleet-sandbox-map-shell.is-standard .terrain-east { fill: #e5edde; }
+.fleet-sandbox-map-shell.is-satellite .terrain-zone { fill: #697b69; stroke: #82917f; opacity: .88; }.fleet-sandbox-map-shell.is-satellite .terrain-east { fill: #637267; }
+.fleet-sandbox-map-shell.is-satellite .fleet-river { stroke: #7da5b1; opacity: .78; }
+.fleet-sandbox-map-shell.is-satellite .fleet-map-terrain text { fill: #dfe8df; opacity: .74; }
+.fleet-base-roads path { stroke: #fff; stroke-width: 8; opacity: .92; filter: drop-shadow(0 1px 1px rgba(54, 67, 60, .3)); }
+.fleet-sandbox-map-shell.is-standard .fleet-base-roads path { stroke: #d3dce5; opacity: 1; filter: none; }
+.fleet-route-lines path { stroke-width: 4; opacity: .9; }
+.fleet-road-names text { fill: #4f6474; stroke: rgba(255, 255, 255, .92); stroke-width: 4px; font-size: 10px; letter-spacing: 0; }
+.fleet-sandbox-map-shell.is-satellite .fleet-road-names text { fill: #f4f8f3; stroke: rgba(49, 61, 52, .85); }
+.fleet-route-labels rect { fill: rgba(255, 255, 255, .94); stroke: rgba(61, 85, 111, .22); filter: drop-shadow(0 2px 3px rgba(20, 42, 62, .18)); }
+.fleet-route-labels text { fill: #243852; font-size: 9px; letter-spacing: 0; }
+.fleet-sandbox-canvas.labels-hidden .fleet-road-names, .fleet-sandbox-canvas.labels-hidden .fleet-route-labels, .fleet-sandbox-canvas.labels-hidden .node-code, .fleet-sandbox-canvas.labels-hidden .node-name { display: none; }
+.fleet-map-nodes text, .fleet-vehicle-marker text { stroke: rgba(255, 255, 255, .94); stroke-width: 4px; letter-spacing: 0; }
+.fleet-sandbox-map-shell.is-satellite .fleet-map-nodes text, .fleet-sandbox-map-shell.is-satellite .fleet-vehicle-marker text { fill: #fff; stroke: rgba(35, 48, 40, .88); }
+.fleet-vehicle-marker .vehicle-dot { stroke: #fff; stroke-width: 3; }.fleet-vehicle-marker.is-selected .vehicle-dot { stroke: #17233d; }
+.fleet-map-legend { min-height: 44px; position: relative; z-index: 3; color: #5d6e84; border-top: 1px solid var(--border); background: #fff; }
+.fleet-vehicle-panel { height: calc(clamp(600px, 69vh, 760px) + 45px); border: 0; border-left: 1px solid var(--border); border-radius: 0; background: #fff; }
+.fleet-selected-vehicle { padding: 14px; background: linear-gradient(145deg, #edf5ff, #fff 72%); }
+.fleet-roster button { background: #f7faff; }.fleet-roster button.is-selected { border-color: #9bc5ff; background: #eaf3ff; box-shadow: inset 3px 0 0 #1677ff; }
+
+@media (max-width: 1180px) {
+  .app-shell { grid-template-columns: 188px minmax(0, 1fr); }
+  .fleet-sandbox-layout { grid-template-columns: 1fr; }
+  .fleet-vehicle-panel { height: auto; max-height: 480px; border-top: 1px solid var(--border); border-left: 0; }
+}
+@media (max-width: 760px) {
+  .app-shell, .app-shell.is-collapsed { grid-template-columns: 1fr; }
+  .sidebar { position: relative; height: auto; }.sidebar nav, .sidebar-footer { display: none; }.brand { height: 54px; }
+  .topbar { position: relative; height: auto; min-height: 58px; padding: 9px 14px; }.topbar-actions { flex-wrap: wrap; justify-content: flex-end; }.topbar-path { display: none; }
+  .page-content { padding: 13px 10px 22px; }
+  .role-workspace__heading { align-items: flex-start; flex-direction: column; }
+  .workspace-section__body { padding: 11px; }
+  .fleet-sandbox-heading { display: grid; }.fleet-status-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fleet-sandbox-controls { grid-template-columns: 1fr; }.fleet-sandbox-canvas { height: 500px; }.fleet-map-coordinate { bottom: 58px; }
+}

@@ -1,0 +1,5 @@
+from app.vehicle_operations.models import VehicleOperationalStatus, require_vehicle_transition
+
+
+def test_reserved_replacement_can_enter_dispatching_before_transit():
+    require_vehicle_transition(VehicleOperationalStatus.RESERVED, VehicleOperationalStatus.DISPATCHING)

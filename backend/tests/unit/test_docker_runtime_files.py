@@ -241,6 +241,29 @@ def test_docker_runtime_exposes_read_only_runtime_thread_panel() -> None:
     assert "ARG VITE_RUNTIME_THREAD_STATE_ENABLED=false" in frontend_dockerfile
 
 
+def test_frontend_build_receives_complete_amap_web_configuration() -> None:
+    compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    frontend_dockerfile = (PROJECT_ROOT / "frontend" / "Dockerfile").read_text(encoding="utf-8")
+    frontend_example = (PROJECT_ROOT / "frontend" / ".env.example").read_text(encoding="utf-8")
+
+    for variable in ("VITE_AMAP_KEY", "VITE_AMAP_SECURITY_CODE"):
+        assert f"{variable}:" in compose
+        assert f"{variable}:-" in compose
+        assert f"ARG {variable}=" in frontend_dockerfile
+        assert f"ENV {variable}=" in frontend_dockerfile
+        assert f"{variable}=" in frontend_example
+
+def test_verified_runtime_builder_forwards_root_amap_environment_without_values() -> None:
+    launcher = (PROJECT_ROOT / "scripts" / "start-full.ps1").read_text(encoding="utf-8")
+    builder = (PROJECT_ROOT / "scripts" / "build-full-runtime-images.ps1").read_text(encoding="utf-8")
+
+    assert "Import-FrontendMapEnvironment" in launcher
+    assert "Join-Path $projectRoot '.env'" in launcher
+    for variable in ("VITE_AMAP_KEY", "VITE_AMAP_SECURITY_CODE"):
+        assert f"'--build-arg',\n            '{variable}'" in builder
+        assert f"{variable}=$" not in builder
+
+
 def test_v2_d2_browser_harness_is_api_mode_and_restores_runtime_safely() -> None:
     compose = (PROJECT_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
     package = (PROJECT_ROOT / "frontend" / "package.json").read_text(encoding="utf-8")

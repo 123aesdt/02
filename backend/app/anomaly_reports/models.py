@@ -23,6 +23,7 @@ class SourceTaskContext:
     driver_id: str | None
     vehicle_id: str | None
     route_id: str | None
+    can_report_anomaly: bool
 
 
 @dataclass(frozen=True)

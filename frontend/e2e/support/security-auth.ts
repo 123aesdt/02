@@ -45,6 +45,7 @@ export async function authenticatePage(page: Page, role: SecurityRole, path = "/
     && response.request().method() === "POST"
   ));
   await page.getByRole("combobox", { name: "切换演示员工" }).selectOption(employee.employeeId);
+  await page.getByRole("button", { name: "登录", exact: true }).click();
   const response = await sessionResponse;
   if (!response.ok()) throw new Error(`Demo employee session failed with ${response.status()}`);
   const payload = await response.json() as { access_token: string };

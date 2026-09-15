@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const workspaceReadApi = vi.hoisted(() => ({
@@ -88,6 +88,12 @@ function authorizedFor(permission: string): AuthContextValue {
   return auth({ permissions: [permission], principal: { ...principal, permissions: [permission] } });
 }
 
+function RedirectDestination() {
+  const location = useLocation();
+  const notice = (location.state as { navigationNotice?: { title?: string; detail?: string } } | null)?.navigationNotice;
+  return <><h1>我的任务</h1><p role="status">{notice?.title}</p><small>{notice?.detail}</small></>;
+}
+
 afterEach(() => {
   workspaceReadApi.getReviews.mockReset();
   workspaceReadApi.getAnomalies.mockReset();
@@ -127,9 +133,23 @@ describe("role routes", () => {
     workspaceReadApi.getAnomalies.mockResolvedValue({ items: [], total: 0, next_cursor: null, provenance: "LIVE" });
     const allowed = await render(<AuthContext.Provider value={authorizedFor("dispatch:review")}><MemoryRouter>{routeElement("fleet-live-map")}</MemoryRouter></AuthContext.Provider>);
     expect(allowed.container.textContent).toContain("车辆态势地图");
+    expect(allowed.container.textContent).toContain("暂无可显示的异常任务");
+    expect(allowed.container.textContent).not.toContain("车辆故障 · 自动处置中");
 
-    const denied = await render(<AuthContext.Provider value={authorizedFor("dispatch:read")}><MemoryRouter>{routeElement("fleet-live-map")}</MemoryRouter></AuthContext.Provider>);
-    expect(denied.container.querySelector("h2")?.textContent).toBe("无权访问");
+    const denied = await render(
+      <AuthContext.Provider value={authorizedFor("dispatch:read")}>
+        <MemoryRouter initialEntries={["/fleet-live-map"]}>
+          <Routes>
+            <Route path="fleet-live-map" element={routeElement("fleet-live-map")}/>
+            <Route path="my-tasks" element={<RedirectDestination />}/>
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    );
+    expect(denied.container.querySelector("h1")?.textContent).toBe("我的任务");
+    expect(denied.container.textContent).toContain("已返回我的任务");
+    expect(denied.container.textContent).toContain("车辆态势地图仅向调度主管开放");
+    expect(denied.container.textContent).not.toContain("无权访问");
   });
 
   it("replaces the reviews placeholder while preserving its role guard", async () => {

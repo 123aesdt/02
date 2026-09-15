@@ -37,7 +37,7 @@ const columns: DataTableColumn<MyTaskTableRow>[] = [
   { key: "updated_at", label: "最近更新" },
   { key: "details", label: "操作", render: (item) => <div className="task-row-actions">
     <Link className="inline-link" to={`/dispatch/${item.task_id}`}>查看详情</Link>
-    {isTaskReportable(item.status) ? <Link className="inline-link" to={`/report-issue?taskId=${encodeURIComponent(item.task_id)}`}>报告问题</Link> : null}
+    {item.can_report_anomaly && isTaskReportable(item.status) ? <Link className="inline-link" to={`/report-issue?taskId=${encodeURIComponent(item.task_id)}`}>报告问题</Link> : null}
   </div> },
 ];
 

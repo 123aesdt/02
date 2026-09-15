@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { runtimeConfig } from "../config/runtime";
 import { ApiError } from "../services/api/client";
@@ -42,16 +42,24 @@ function useWorkspaceRead<T>(
 ): WorkspaceReadHookState<T> {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [result, setResult] = useState<ReadState<T>>({ state: "LOADING", data: null });
-  const refresh = useCallback(() => { setRefreshVersion((current) => current + 1); }, []);
+  const backgroundRefreshRef = useRef(false);
+  const refresh = useCallback(() => {
+    backgroundRefreshRef.current = true;
+    setRefreshVersion((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     if (runtimeConfig.dataMode !== "api") {
       return undefined;
     }
     const controller = new AbortController();
-    void Promise.resolve().then(() => {
-      if (!controller.signal.aborted) setResult({ state: "LOADING", data: null });
-    });
+    const isBackgroundRefresh = backgroundRefreshRef.current;
+    backgroundRefreshRef.current = false;
+    if (!isBackgroundRefresh) {
+      void Promise.resolve().then(() => {
+        if (!controller.signal.aborted) setResult({ state: "LOADING", data: null });
+      });
+    }
     void request(controller.signal).then((data) => {
       if (controller.signal.aborted) return;
       setResult(isEmpty(data) ? { state: "EMPTY", data: null } : { state: "READY", data });

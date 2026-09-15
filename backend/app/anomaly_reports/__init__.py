@@ -7,6 +7,7 @@ from app.anomaly_reports.service import (
     SourceContextIncomplete,
     SourceTaskEnded,
     SourceTaskNotFound,
+    SourceTaskNotReportable,
 )
 
 __all__ = [
@@ -19,4 +20,5 @@ __all__ = [
     "SourceContextIncomplete",
     "SourceTaskEnded",
     "SourceTaskNotFound",
+    "SourceTaskNotReportable",
 ]

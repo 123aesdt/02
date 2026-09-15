@@ -76,7 +76,27 @@ function Wait-Http([string]$Url, [int]$Attempts = 60) {
     return $false
 }
 
+function Import-FrontendMapEnvironment([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return
+    }
+
+    foreach ($name in @('VITE_AMAP_KEY', 'VITE_AMAP_SECURITY_CODE')) {
+        if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name, 'Process'))) {
+            continue
+        }
+        $line = Get-Content -LiteralPath $Path | Where-Object { $_ -match "^$name=" } | Select-Object -Last 1
+        if (-not $line) {
+            continue
+        }
+        $value = ($line -split '=', 2)[1].Trim().Trim('"').Trim("'")
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+        }
+    }
+}
 $projectRoot = Split-Path -Parent $PSScriptRoot
+Import-FrontendMapEnvironment -Path (Join-Path $projectRoot '.env')
 $envFile = Join-Path $projectRoot '.docker.env'
 try {
     $dockerCommand = Resolve-DockerCommand

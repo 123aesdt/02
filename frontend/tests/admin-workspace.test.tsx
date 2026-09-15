@@ -43,6 +43,10 @@ describe("Admin workspace", () => {
     const view = await renderAdmin();
     await flush();
     expect(view.container.querySelector("h1")?.textContent).toBe("系统总览");
+    expect(view.container.querySelector("[data-admin-overview-dashboard]")).not.toBeNull();
+    expect(view.container.querySelectorAll("[data-overview-kpi]")).toHaveLength(4);
+    expect(view.container.querySelectorAll("[data-overview-capability]")).toHaveLength(6);
+    expect(view.container.querySelector("[data-overview-footer]")).not.toBeNull();
     expect(Array.from(view.container.querySelectorAll("a")).map((link) => link.textContent)).toEqual([
       "业务健康", "智能体", "记忆", "运行", "可观测性", "治理与安全",
     ]);
@@ -60,6 +64,10 @@ describe("Admin workspace", () => {
     expect(view.container.textContent).toContain("异常3");
     expect(view.container.textContent).toContain("待复核2");
     expect(view.container.textContent).toContain("运行线程4");
+    expect(view.container.querySelector('[data-overview-kpi="orders"]')?.textContent).toContain("12");
+    expect(view.container.querySelector('[data-overview-kpi="anomalies"]')?.textContent).toContain("3");
+    expect(view.container.querySelector('[data-overview-kpi="reviews"]')?.textContent).toContain("2");
+    expect(view.container.querySelector('[data-overview-kpi="runtime"]')?.textContent).toContain("4");
     expect(view.container.textContent).toContain("实时数据");
     expect(view.container.textContent).toContain("实时计数与演示摘要");
     expect(view.container.textContent).toContain("8 个智能体已准备");

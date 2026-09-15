@@ -46,6 +46,46 @@ STATIONS = (
     MappingProxyType(
         {"station_id": "ST-008", "name": "城东电商服务点", "station_type": "TOWN", "road_node_id": "N17", "handling_capacity_kg": "2800.00", "status": "ACTIVE"}
     ),
+    MappingProxyType(
+        {
+            "station_id": "ST-009",
+            "name": "智慧物流调度中心",
+            "station_type": "HUB",
+            "road_node_id": "N19",
+            "handling_capacity_kg": "18000.00",
+            "status": "ACTIVE",
+        }
+    ),
+    MappingProxyType(
+        {
+            "station_id": "ST-010",
+            "name": "快递集散站",
+            "station_type": "TOWN",
+            "road_node_id": "N20",
+            "handling_capacity_kg": "9000.00",
+            "status": "ACTIVE",
+        }
+    ),
+    MappingProxyType(
+        {
+            "station_id": "ST-011",
+            "name": "新能源车辆充电站",
+            "station_type": "CHARGING",
+            "road_node_id": "N21",
+            "handling_capacity_kg": "1500.00",
+            "status": "ACTIVE",
+        }
+    ),
+    MappingProxyType(
+        {
+            "station_id": "ST-012",
+            "name": "应急救援站",
+            "station_type": "RESCUE",
+            "road_node_id": "N22",
+            "handling_capacity_kg": "2000.00",
+            "status": "ACTIVE",
+        }
+    ),
 )
 
 ROAD_NODES = (
@@ -67,6 +107,10 @@ ROAD_NODES = (
     MappingProxyType({"node_id": "N16", "name": "河西农资路口", "x_km": "-1.00", "y_km": "4.00", "node_type": "JUNCTION"}),
     MappingProxyType({"node_id": "N17", "name": "城东电商服务点", "x_km": "11.00", "y_km": "4.00", "node_type": "STATION"}),
     MappingProxyType({"node_id": "N18", "name": "双河村路口", "x_km": "12.00", "y_km": "0.00", "node_type": "JUNCTION"}),
+    MappingProxyType({"node_id": "N19", "name": "智慧物流调度中心", "x_km": "0.50", "y_km": "0.50", "node_type": "STATION"}),
+    MappingProxyType({"node_id": "N20", "name": "快递集散站", "x_km": "6.00", "y_km": "1.50", "node_type": "STATION"}),
+    MappingProxyType({"node_id": "N21", "name": "新能源车辆充电站", "x_km": "9.00", "y_km": "0.00", "node_type": "STATION"}),
+    MappingProxyType({"node_id": "N22", "name": "应急救援站", "x_km": "3.00", "y_km": "2.00", "node_type": "STATION"}),
 )
 
 ROAD_EDGES = (
@@ -400,6 +444,136 @@ ROAD_EDGES = (
             "edge_id": "E26",
             "name": "国道双河线",
             "from_node_id": "N09",
+            "to_node_id": "N18",
+            "distance_km": "3.30",
+            "base_minutes": 6,
+            "road_level": "COUNTY",
+            "risk_level": "LOW",
+            "weight_limit_tons": "8.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E27",
+            "name": "调度中心集散线",
+            "from_node_id": "N19",
+            "to_node_id": "N20",
+            "distance_km": "5.60",
+            "base_minutes": 15,
+            "road_level": "COUNTY",
+            "risk_level": "LOW",
+            "weight_limit_tons": "12.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E28",
+            "name": "集散站充电线",
+            "from_node_id": "N20",
+            "to_node_id": "N21",
+            "distance_km": "3.30",
+            "base_minutes": 6,
+            "road_level": "TOWN",
+            "risk_level": "LOW",
+            "weight_limit_tons": "8.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E29",
+            "name": "充电站维修接驳线",
+            "from_node_id": "N21",
+            "to_node_id": "N15",
+            "distance_km": "5.20",
+            "base_minutes": 9,
+            "road_level": "TOWN",
+            "risk_level": "LOW",
+            "weight_limit_tons": "6.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E30",
+            "name": "调度中心回仓线",
+            "from_node_id": "N19",
+            "to_node_id": "N01",
+            "distance_km": "0.70",
+            "base_minutes": 2,
+            "road_level": "TOWN",
+            "risk_level": "LOW",
+            "weight_limit_tons": "12.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E31",
+            "name": "维修站调度线",
+            "from_node_id": "N15",
+            "to_node_id": "N19",
+            "distance_km": "3.60",
+            "base_minutes": 6,
+            "road_level": "TOWN",
+            "risk_level": "LOW",
+            "weight_limit_tons": "6.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E32",
+            "name": "园区救援接驳线",
+            "from_node_id": "N03",
+            "to_node_id": "N22",
+            "distance_km": "1.10",
+            "base_minutes": 7,
+            "road_level": "TOWN",
+            "risk_level": "LOW",
+            "weight_limit_tons": "6.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E33",
+            "name": "救援站集散线",
+            "from_node_id": "N22",
+            "to_node_id": "N20",
+            "distance_km": "3.10",
+            "base_minutes": 9,
+            "road_level": "TOWN",
+            "risk_level": "LOW",
+            "weight_limit_tons": "6.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E34",
+            "name": "集散站东环线",
+            "from_node_id": "N20",
+            "to_node_id": "N05",
+            "distance_km": "2.20",
+            "base_minutes": 7,
+            "road_level": "COUNTY",
+            "risk_level": "LOW",
+            "weight_limit_tons": "8.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E35",
+            "name": "南环充电接驳线",
+            "from_node_id": "N09",
+            "to_node_id": "N21",
+            "distance_km": "1.20",
+            "base_minutes": 3,
+            "road_level": "COUNTY",
+            "risk_level": "LOW",
+            "weight_limit_tons": "10.00",
+        }
+    ),
+    MappingProxyType(
+        {
+            "edge_id": "E36",
+            "name": "充电站双河线",
+            "from_node_id": "N21",
             "to_node_id": "N18",
             "distance_km": "3.30",
             "base_minutes": 6,

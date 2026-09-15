@@ -216,6 +216,80 @@ body { min-width:0; color:var(--text-primary); background:var(--background); }
   .operational-summary__items { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .workspace-section__header { flex-direction:column; }
 }
+
+.application-error-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: var(--color-bg, #f4f7fb);
+}
+
+.application-error-card {
+  width: min(560px, 100%);
+  padding: 34px;
+  border: 1px solid #dbe5f0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 22px 70px rgba(15, 34, 58, .12);
+}
+
+.application-error-card h1 { margin: 8px 0 10px; color: #14243b; }
+.application-error-card > p:last-of-type { color: #5e6f85; line-height: 1.7; }
+.application-error-icon { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; color: #d97706; background: #fff4db; }
+.application-error-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.application-error-actions > * { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; text-decoration: none; }
+
+.fleet-map-recovery {
+  position: absolute;
+  z-index: 8;
+  top: 58px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 36px);
+  padding: 10px 12px;
+  border: 1px solid rgba(217, 119, 6, .28);
+  border-radius: 10px;
+  color: #7c4a03;
+  background: rgba(255, 250, 235, .96);
+  box-shadow: 0 10px 28px rgba(36, 54, 75, .15);
+  transform: translateX(-50%);
+}
+
+.fleet-map-recovery span { display: grid; gap: 2px; }
+.fleet-map-recovery small { color: #7b6b55; white-space: nowrap; }
+.fleet-map-recovery button { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-left: 4px; white-space: nowrap; }
+
+.workspace-action-cluster { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; }
+.data-source-badge { min-height:38px; display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--border); border-radius:10px; color:var(--text-secondary); background:var(--surface-primary); }
+.data-source-badge > span { display:grid; gap:1px; text-align:left; }
+.data-source-badge strong { color:var(--text-primary); font-size:12px; line-height:16px; }
+.data-source-badge small { max-width:230px; overflow:hidden; color:var(--text-tertiary); font-size:10px; line-height:14px; text-overflow:ellipsis; white-space:nowrap; }
+.data-source-badge[data-provenance="LIVE"] { color:var(--success); border-color:color-mix(in srgb,var(--success) 28%,var(--border)); background:color-mix(in srgb,var(--success) 7%,var(--surface-primary)); }
+.data-source-badge[data-provenance="DEMO"] { color:var(--warning); border-color:color-mix(in srgb,var(--warning) 28%,var(--border)); background:color-mix(in srgb,var(--warning) 7%,var(--surface-primary)); }
+.data-source-badge[data-provenance="MIXED"],.data-source-badge[data-provenance="FALLBACK"] { color:var(--brand); }
+
+.navigation-notice { min-height:48px; display:flex; align-items:center; gap:10px; padding:8px 18px; color:#205b8f; border-bottom:1px solid #cfe2f5; background:#eef7ff; }
+.navigation-notice > span { min-width:0; display:grid; gap:1px; }
+.navigation-notice strong { color:#173f65; font-size:13px; }
+.navigation-notice small { overflow:hidden; color:#426987; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.navigation-notice button { width:32px; height:32px; display:grid; flex:0 0 auto; place-items:center; margin-left:auto; border:0; border-radius:8px; color:#426987; background:transparent; }
+.navigation-notice button:hover { background:rgba(32,91,143,.09); }
+.navigation-notice button:focus-visible { outline:2px solid var(--focus-ring); outline-offset:1px; }
+
+@media (max-width: 720px) {
+  .application-error-page { padding: 18px; }
+  .application-error-card { padding: 24px; }
+  .application-error-actions { flex-direction: column; }
+  .fleet-map-recovery { top: 104px; align-items: flex-start; }
+  .fleet-map-recovery small { white-space: normal; }
+  .workspace-action-cluster { justify-content:flex-start; }
+  .data-source-badge small { max-width:190px; }
+  .navigation-notice { align-items:flex-start; padding:10px 14px; }
+  .navigation-notice small { white-space:normal; }
+}
 .button-danger { min-height:36px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 12px; color:#ffffff; border:1px solid var(--danger); border-radius:var(--radius-md); background:var(--danger); font-size:13px; font-weight:600; line-height:18px; }
 .button-danger:hover:not(:disabled) { background:#912018; }.button-danger:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }.button-danger:disabled { cursor:not-allowed; opacity:.55; }
 .runtime-dialog-backdrop { background:var(--overlay); }
@@ -315,10 +389,10 @@ body { min-width:0; color:var(--text-primary); background:var(--background); }
 .fleet-sandbox-canvas { width:100%; height:clamp(620px,70vh,780px); display:block; color:color-mix(in srgb,var(--border-strong) 70%,transparent); background:linear-gradient(145deg,var(--surface-primary),var(--surface-secondary)); }
 .fleet-map-grid { color:color-mix(in srgb,var(--border-strong) 55%,transparent); }
 .fleet-map-terrain { pointer-events:none; }.terrain-zone { fill:color-mix(in srgb,var(--brand-subtle) 46%,transparent); stroke:color-mix(in srgb,var(--brand-border) 45%,transparent); stroke-width:1.2; stroke-dasharray:8 7; }.terrain-east { fill:color-mix(in srgb,#eaf2df 45%,transparent); }.fleet-river { fill:none; stroke:#a9d4e4; stroke-width:12; opacity:.42; }.fleet-map-terrain text { fill:#76a7b8; font-size:12px; font-weight:700; letter-spacing:4px; }.fleet-map-terrain .area-name { fill:var(--text-tertiary); font-size:24px; font-weight:800; letter-spacing:8px; opacity:.14; }
-.fleet-base-roads line { stroke:var(--border-strong); stroke-width:5; stroke-linecap:round; opacity:.55; vector-effect:non-scaling-stroke; }
-.fleet-base-roads line.is-blocked { stroke:var(--danger); stroke-width:8; stroke-dasharray:8 5; opacity:1; }
-.fleet-route-lines polyline { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; opacity:.7; transition:opacity .2s,stroke-width .2s; vector-effect:non-scaling-stroke; }.fleet-route-lines polyline.is-visible:hover { stroke-width:6; opacity:1; }.fleet-route-lines polyline.is-muted { opacity:.08; }
-.fleet-route-lines polyline.is-rerouted { stroke:var(--success)!important; stroke-width:7; opacity:1; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--success) 35%,transparent)); }.fleet-route-lines polyline.is-calculating { stroke:var(--warning)!important; stroke-width:6; stroke-dasharray:8 7; opacity:1; animation:fleet-route-calculating 1.2s linear infinite; }.fleet-route-lines polyline.is-rescue { stroke:var(--warning)!important; stroke-width:7; opacity:1; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--warning) 35%,transparent)); }
+.fleet-base-roads path { stroke:var(--border-strong); stroke-width:5; stroke-linecap:round; opacity:.55; vector-effect:non-scaling-stroke; }
+.fleet-base-roads path.is-blocked { stroke:var(--danger); stroke-width:8; stroke-dasharray:8 5; opacity:1; }
+.fleet-route-lines path { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; opacity:.7; transition:opacity .2s,stroke-width .2s; vector-effect:non-scaling-stroke; }.fleet-route-lines path.is-visible:hover { stroke-width:6; opacity:1; }.fleet-route-lines path.is-muted { opacity:.08; }
+.fleet-route-lines path.is-rerouted { stroke:var(--success)!important; stroke-width:7; opacity:1; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--success) 35%,transparent)); }.fleet-route-lines path.is-calculating { stroke:var(--warning)!important; stroke-width:6; stroke-dasharray:8 7; opacity:1; animation:fleet-route-calculating 1.2s linear infinite; }.fleet-route-lines path.is-rescue { stroke:var(--warning)!important; stroke-width:7; opacity:1; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--warning) 35%,transparent)); }
 @keyframes fleet-route-calculating { to { stroke-dashoffset:-30; } }
 .fleet-road-names { pointer-events:none; }.fleet-road-names text { fill:var(--text-tertiary); font-size:11px; font-weight:750; letter-spacing:2px; paint-order:stroke; stroke:var(--surface-primary); stroke-width:5px; stroke-linejoin:round; }
 .fleet-route-labels { pointer-events:none; }.fleet-route-labels g { opacity:.94; transition:opacity .2s; }.fleet-route-labels g.is-muted { opacity:.16; }.fleet-route-labels rect { fill:color-mix(in srgb,var(--surface-primary) 92%,transparent); stroke:var(--border-strong); stroke-width:1; filter:drop-shadow(0 2px 4px rgba(24,39,55,.12)); }.fleet-route-labels text { fill:var(--text-primary); font-size:10px; font-weight:800; }

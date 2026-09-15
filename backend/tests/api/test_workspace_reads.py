@@ -303,6 +303,7 @@ def test_my_tasks_uses_authenticated_subject_and_returns_summary() -> None:
                     "publication_status": "PENDING",
                     "published_at": None,
                     "route_instruction": None,
+                    "can_report_anomaly": False,
                 }
         ],
         "summary": {"total": 1, "ready": 1, "waiting": 0, "active": 0, "ended": 0},

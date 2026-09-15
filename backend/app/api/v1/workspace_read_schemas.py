@@ -80,6 +80,7 @@ class MyTaskListItemResponse(WorkspaceResponse):
     publication_status: str
     published_at: datetime | None
     route_instruction: str | None
+    can_report_anomaly: bool
 
 
 class MyTaskSummaryResponse(WorkspaceResponse):

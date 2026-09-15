@@ -25,6 +25,18 @@ describe("runtime configuration", () => {
       apiBaseUrl: "https://countyflow.example",
       authenticationMode: "oidc_jwt",
       runtimeThreadStateEnabled: true,
+      amap: { enabled: false, key: "", securityCode: "" },
     });
+  });
+
+  it("enables AMap only when both browser credentials are configured", () => {
+    expect(resolveRuntimeConfig({
+      MODE: "production",
+      VITE_AMAP_KEY: "web-key",
+      VITE_AMAP_SECURITY_CODE: "security-code",
+    }).amap).toEqual({ enabled: true, key: "web-key", securityCode: "security-code" });
+
+    expect(resolveRuntimeConfig({ MODE: "production", VITE_AMAP_KEY: "web-key" }).amap.enabled).toBe(false);
+    expect(resolveRuntimeConfig({ MODE: "production", VITE_AMAP_SECURITY_CODE: "security-code" }).amap.enabled).toBe(false);
   });
 });

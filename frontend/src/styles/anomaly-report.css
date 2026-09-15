@@ -53,6 +53,7 @@
 .anomaly-report-form textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
 .anomaly-report-form input[readonly] { color: var(--brand); border-color: var(--brand-border); background: var(--brand-subtle); cursor: default; }
 .report-vehicle-location-note { display: block; color: var(--brand); font-size: 11px; font-weight: 500; line-height: 17px; }
+.report-fixed-vehicle-note { display: block; color: var(--text-tertiary); font-size: 11px; line-height: 17px; }
 .report-task-context select:focus-visible,
 .anomaly-report-form select:focus-visible,
 .anomaly-report-form input:focus-visible,
@@ -91,8 +92,24 @@
 .driver-route-card > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: linear-gradient(120deg, var(--brand-subtle), var(--surface-primary)); }
 .driver-route-card > header h3 { margin: 3px 0 0; font-size: 17px; }
 .driver-route-card > header > strong { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; color: #fff; border-radius: 999px; background: var(--brand); font-size: 13px; }
-.driver-route-map-shell { overflow: hidden; background: linear-gradient(145deg, var(--surface-primary), var(--surface-secondary)); }
+.driver-route-map-shell { position: relative; overflow: hidden; min-height: clamp(390px, 52vh, 540px); background: linear-gradient(145deg, var(--surface-primary), var(--surface-secondary)); }
 .driver-route-map-shell svg { display: block; width: 100%; height: clamp(390px, 52vh, 540px); color: color-mix(in srgb, var(--border-strong) 72%, transparent); }
+.driver-route-map-shell > .fleet-amap-stage { position: absolute; z-index: 2; inset: 0; opacity: 0; pointer-events: none; transition: opacity .28s ease; }
+.driver-route-map-shell > .fleet-amap-stage.is-ready { opacity: 1; pointer-events: auto; }
+.driver-route-map-shell > .fleet-amap-stage.is-fallback { display: none; }
+.driver-route-map-shell .fleet-amap-canvas { min-height: clamp(390px, 52vh, 540px); }
+.driver-route-map-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.driver-route-map-actions button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface-primary); }
+.driver-route-map-actions button:hover { color: var(--brand); border-color: var(--brand); }
+.driver-route-map-actions > strong { display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; color: #fff; border-radius: 5px; background: var(--brand); font-size: 13px; }
+.driver-map-source { padding: 5px 8px; color: var(--text-tertiary); border: 1px solid var(--border); border-radius: 4px; background: var(--surface-secondary); font-size: 11px; font-weight: 700; }
+.driver-map-source.is-ready { color: #087f78; border-color: #99d8d2; background: #edf9f7; }
+.driver-route-map-legend { position: absolute; z-index: 5; left: 12px; bottom: 12px; display: flex; gap: 13px; padding: 7px 10px; color: #eff7f6; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; background: rgba(8,31,35,.82); font-size: 10px; pointer-events: none; }
+.driver-route-map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.driver-route-map-legend i { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.driver-route-map-legend i.is-route { width: 13px; height: 3px; border-radius: 2px; background: #ff9f1c; }
+.driver-route-map-legend i.is-vehicle { background: #2f8a5b; }
+.driver-route-map-legend i.is-station { background: #2563eb; }
 .driver-route-grid { color: color-mix(in srgb, var(--border-strong) 52%, transparent); }
 .driver-route-roads line { stroke: color-mix(in srgb, var(--text-tertiary) 34%, transparent); stroke-width: 10; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 [data-driver-route-line] { fill: none; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 2px 3px rgba(30, 68, 72, .22)); vector-effect: non-scaling-stroke; }
@@ -106,6 +123,32 @@
 .driver-route-live-facts > div:last-child { border-right: 0; }
 .driver-route-live-facts dt { display: flex; align-items: center; gap: 5px; color: var(--text-tertiary); font-size: 11px; font-weight: 700; }
 .driver-route-live-facts dd { margin: 6px 0 0; overflow-wrap: anywhere; color: var(--text-primary); font-size: 13px; font-weight: 700; }
+
+.driver-operation-loading { padding: 20px; color: var(--text-secondary); border: 1px dashed var(--border-strong); background: var(--surface-secondary); text-align: center; }
+.driver-operation-status { overflow: hidden; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-primary); box-shadow: var(--shadow-sm); }
+.driver-operation-status > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--border); background: linear-gradient(110deg, #eef8f4, var(--surface-primary)); }
+.driver-operation-status > header span { display: flex; align-items: center; gap: 6px; color: var(--brand); font-size: 12px; font-weight: 800; }
+.driver-operation-status > header h3 { margin: 4px 0 0; color: var(--text-primary); font-size: 18px; }
+.driver-operation-status > header button { width: 36px; height: 36px; display: grid; place-items: center; flex: none; padding: 0; color: var(--text-secondary); border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface-primary); }
+.driver-operation-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 170px; }
+.driver-operation-summary > section { min-width: 0; display: grid; gap: 7px; padding: 18px; border-right: 1px solid var(--border); }
+.driver-operation-summary > section:last-child { border-right: 0; }
+.driver-operation-summary span { display: flex; align-items: center; gap: 7px; color: var(--text-tertiary); font-size: 11px; font-weight: 800; }
+.driver-operation-summary strong { overflow-wrap: anywhere; color: var(--text-primary); font-size: 14px; }
+.driver-operation-summary small { color: var(--text-secondary); font-size: 11px; }
+.driver-operation-progress { height: 7px; overflow: hidden; border-radius: 3px; background: #e4edf0; }
+.driver-operation-progress i { display: block; height: 100%; border-radius: inherit; background: #1689ca; transition: width .35s ease; }
+.driver-operation-progress.is-repair i { background: #e3a31b; }
+.driver-operation-eta strong { color: #167553; font-size: 24px; font-variant-numeric: tabular-nums; }
+.driver-operation-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 0 18px 18px; list-style: none; }
+.driver-operation-stages li { min-width: 0; display: flex; gap: 9px; padding: 13px 9px; border-top: 1px solid var(--border); }
+.driver-operation-stages li > i { width: 18px; height: 18px; display: grid; place-items: center; flex: none; color: #fff; border: 2px solid #b6c5c8; border-radius: 50%; background: var(--surface-primary); }
+.driver-operation-stages li.is-completed > i { border-color: #23815e; background: #23815e; }
+.driver-operation-stages li.is-active > i { border-color: #2585c4; box-shadow: 0 0 0 4px rgba(37,133,196,.1); }
+.driver-operation-stages li > span { min-width: 0; display: grid; gap: 3px; }
+.driver-operation-stages strong { color: var(--text-primary); font-size: 12px; }
+.driver-operation-stages small { overflow-wrap: anywhere; color: var(--text-tertiary); font-size: 10px; }
+.driver-operation-status > footer { display: flex; align-items: center; gap: 8px; padding: 12px 18px; color: #25634f; border-top: 1px solid #cde3da; background: #eff8f4; font-size: 11px; }
 @keyframes driver-vehicle-pulse { 0% { opacity: .8; transform: scale(.72); } 75%, 100% { opacity: 0; transform: scale(1.5); } }
 
 @media (max-width: 800px) {
@@ -115,10 +158,18 @@
   .report-scenario-field,
   .report-description-field { grid-column: auto; }
   .report-submit-row { align-items: stretch; flex-direction: column; }
-  .driver-route-map-shell svg { height: 360px; }
+  .driver-route-card > header { align-items: flex-start; flex-direction: column; }
+  .driver-route-map-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .driver-route-map-shell { min-height: 360px; }
+  .driver-route-map-shell svg,
+  .driver-route-map-shell .fleet-amap-canvas { height: 360px; min-height: 360px; }
+  .driver-route-map-legend { right: 10px; flex-wrap: wrap; }
   .driver-route-live-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .driver-route-live-facts > div:nth-child(2) { border-right: 0; }
   .driver-route-live-facts > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+  .driver-operation-summary { grid-template-columns: 1fr; }
+  .driver-operation-summary > section { border-right: 0; border-bottom: 1px solid var(--border); }
+  .driver-operation-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 480px) {

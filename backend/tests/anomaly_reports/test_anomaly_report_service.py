@@ -8,6 +8,7 @@ from app.anomaly_reports import (
     ReportQueueUnavailable,
     ReportSourceForbidden,
     SourceTaskEnded,
+    SourceTaskNotReportable,
 )
 from app.anomaly_reports.models import PersistedAnomalyReport, SourceTaskContext
 from app.anomaly_reports.sqlalchemy_repository import SqlAlchemyAnomalyReportRepository
@@ -189,6 +190,34 @@ async def test_submit_rejects_foreign_and_ended_source_tasks(sqlite_factory) -> 
 
 
 @pytest.mark.asyncio
+async def test_submit_rejects_an_ai_dispatch_as_a_new_report_source(sqlite_factory) -> None:
+    seed_source_tasks(sqlite_factory)
+    with sqlite_factory() as session:
+        order = session.scalar(select(Order).where(Order.order_no == "ORD-OWNED"))
+        assert order is not None
+        anomaly = Anomaly(
+            anomaly_no="ANOM-DERIVED-SOURCE",
+            order_id=order.id,
+            anomaly_type="ROAD_HAZARD",
+            severity="HIGH",
+            description="原始异常",
+            status="OPEN",
+        )
+        session.add(anomaly)
+        session.flush()
+        task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == "TASK-OWNED"))
+        assert task is not None
+        task.anomaly_id = anomaly.id
+        session.commit()
+
+    with pytest.raises(SourceTaskNotReportable):
+        await build_service(sqlite_factory, CapturingQueue()).submit(
+            command(),
+            principal_subject_id="CF-DEMO-001",
+        )
+
+
+@pytest.mark.asyncio
 async def test_submit_replays_one_report_and_rejects_changed_content(sqlite_factory) -> None:
     seed_source_tasks(sqlite_factory)
     queue = CapturingQueue()
@@ -218,6 +247,7 @@ async def test_submit_rechecks_concurrent_idempotency_winner() -> None:
         driver_id="driver-zhang",
         vehicle_id="vehicle-001",
         route_id="route-xinping",
+        can_report_anomaly=True,
     )
     winner = PersistedAnomalyReport(
         anomaly_id=1,

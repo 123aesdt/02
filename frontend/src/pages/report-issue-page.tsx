@@ -2,8 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { DriverRouteMap } from "../components/driver-route-map";
+import { DriverOperationStatus } from "../components/driver-operation-status";
 import { EmptyState } from "../components/ui/empty-state";
 import { Skeleton } from "../components/ui/skeleton";
+import { DataSourceBadge } from "../components/ui/data-source-badge";
 import { StatusBadge } from "../components/ui/status-badge";
 import { RoleWorkspaceFrame } from "../components/workspace/role-workspace-frame";
 import { WorkspaceSection } from "../components/workspace/workspace-section";
@@ -12,7 +14,6 @@ import {
   anomalyReferenceLabel,
   dispatchTaskReferenceLabel,
   fleetStatusMeta,
-  fleetVehicles,
   reportSourceDisplayLabel,
   vehicleDisplayLabel,
 } from "../features/fleet-sandbox/fleet-sandbox-data";
@@ -59,7 +60,6 @@ type DemoScenarioId = "VEHICLE_BREAKDOWN_N04" | "ROAD_BLOCKED_E04";
 interface DemoScenario {
   id: DemoScenarioId;
   label: string;
-  sourceTaskId: string;
   anomalyType: AnomalyReportType;
   description: string;
   locationText: string;
@@ -72,10 +72,9 @@ interface DemoScenario {
 const demoScenarios: readonly DemoScenario[] = [
   {
     id: "VEHICLE_BREAKDOWN_N04",
-    label: "车辆故障：新物冷链-01 · 新平路 K3.2",
-    sourceTaskId: "DEMO-TASK-REPORT-VEHICLE",
+    label: "车辆故障：当前车辆 · 新平路 K3.2",
     anomalyType: "VEHICLE_BREAKDOWN",
-    description: "新物冷链-01 在新平路 K3.2 发动机故障，无法继续配送。",
+    description: "当前车辆在新平路 K3.2 发动机故障，无法继续配送。",
     locationText: "新平路 K3.2",
     vehicleStatus: "BROKEN",
     severity: "HIGH",
@@ -85,7 +84,6 @@ const demoScenarios: readonly DemoScenario[] = [
   {
     id: "ROAD_BLOCKED_E04",
     label: "道路堵塞：新平路东河桥段 · E04",
-    sourceTaskId: "DEMO-TASK-REPORT-ROAD",
     anomalyType: "ROAD_BLOCKED",
     description: "新平路东河桥段发生塌方，车辆无法通行。",
     locationText: "新平路东河桥段",
@@ -120,22 +118,9 @@ function isDedicatedVehicleSource(task: MyTaskListItem): boolean {
     || task.task_id.startsWith("DEMO-TASK-REPORT-");
 }
 
-function vehicleSourceAssignments(tasks: MyTaskListItem[]): Map<string, MyTaskListItem> {
-  const assignments = new Map<string, MyTaskListItem>();
-  for (const task of tasks) {
-    const vehicleId = canonicalFleetVehicleId(task.vehicle_id);
-    if (!vehicleId) continue;
-    const current = assignments.get(vehicleId);
-    if (!current || (!isDedicatedVehicleSource(current) && isDedicatedVehicleSource(task))) {
-      assignments.set(vehicleId, task);
-    }
-  }
-  return assignments;
-}
-
 export function ReportIssuePage() {
   const [searchParams] = useSearchParams();
-  const [selectedTaskId, setSelectedTaskId] = useState(() => searchParams.get("taskId") ?? "");
+  const requestedTaskId = searchParams.get("taskId") ?? "";
   const [demoScenarioId, setDemoScenarioId] = useState<DemoScenarioId | "">("");
   const [anomalyType, setAnomalyType] = useState<AnomalyReportType>("ROAD_HAZARD");
   const [description, setDescription] = useState("");
@@ -150,53 +135,44 @@ export function ReportIssuePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submission] = useState(() => createAnomalyReportSubmission(anomalyReportClient));
   const read = useMyTasksRead({ limit: 100 });
-  const reportableTasks = read.data?.items.filter((item) => isTaskReportable(item.status)) ?? [];
-  const selectedTask = read.data?.items.find((item) => item.task_id === selectedTaskId) ?? null;
-  const assignmentsByVehicle = vehicleSourceAssignments(reportableTasks);
-  const vehicleAssignments = fleetVehicles.map((vehicle) => ({
-    vehicle,
-    task: assignmentsByVehicle.get(vehicle.id) ?? null,
-  }));
-  const selectedVehicleId = canonicalFleetVehicleId(selectedTask?.vehicle_id);
+  const reportableTasks = read.data?.items.filter((item) => item.can_report_anomaly && isTaskReportable(item.status)) ?? [];
+  const vehicleTasks = reportableTasks.filter((task) => canonicalFleetVehicleId(task.vehicle_id));
+  const fixedVehicleTask = vehicleTasks.find(isDedicatedVehicleSource) ?? null;
+  const selectedVehicleId = canonicalFleetVehicleId(fixedVehicleTask?.vehicle_id);
+  const selectedTask = vehicleTasks.find((task) => (
+    task.task_id === requestedTaskId
+    && canonicalFleetVehicleId(task.vehicle_id) === selectedVehicleId
+  )) ?? fixedVehicleTask;
   const activeDemoScenario = demoScenarios.find((scenario) => scenario.id === demoScenarioId) ?? null;
   const selectedVehicleSnapshot = fleetSnapshotByVehicleId(selectedVehicleId, simulationTick);
   const effectiveLocationText = activeDemoScenario?.locationText ?? selectedVehicleSnapshot?.locationLabel ?? locationText;
   const selectedTaskDisplay = selectedVehicleId
     ? reportSourceDisplayLabel(selectedVehicleId, selectedTask?.order_no)
     : "请先选择车辆";
+  const operationTaskId = result?.task_id ?? "";
 
   useEffect(() => {
     const timer = window.setInterval(() => setSimulationTick(fleetSimulationTick()), 1500);
     return () => window.clearInterval(timer);
   }, []);
 
-  const selectSourceTask = (taskId: string) => {
-    setSelectedTaskId(taskId);
-    setDemoScenarioId("");
-    setLocationText("");
-    setErrorMessage(null);
-  };
-
-  const selectVehicle = (vehicleId: string) => {
-    const assignment = vehicleAssignments.find((item) => item.vehicle.id === vehicleId);
-    if (assignment?.task) {
-      selectSourceTask(assignment.task.task_id);
-      return;
-    }
-    setErrorMessage(`${vehicleDisplayLabel(vehicleId)} 暂无可上报配送任务。`);
-  };
-
   const selectDemoScenario = (nextId: DemoScenarioId | "") => {
     setDemoScenarioId(nextId);
     const scenario = demoScenarios.find((item) => item.id === nextId);
     if (!scenario) return;
-    setSelectedTaskId(scenario.sourceTaskId);
     setAnomalyType(scenario.anomalyType);
-    setDescription(scenario.description);
+    setDescription(scenario.id === "VEHICLE_BREAKDOWN_N04" && selectedVehicleId
+      ? `${vehicleDisplayLabel(selectedVehicleId)} 在新平路 K3.2 发动机故障，无法继续配送。`
+      : scenario.description);
     setLocationText(scenario.locationText);
     setVehicleStatus(scenario.vehicleStatus);
     setSeverity(scenario.severity);
     setErrorMessage(null);
+  };
+
+  const changeAnomalyType = (nextType: AnomalyReportType) => {
+    setAnomalyType(nextType);
+    setVehicleStatus(nextType === "VEHICLE_BREAKDOWN" ? "BROKEN" : "NORMAL");
   };
 
   const submitInput = async (input: AnomalyReportFormInput) => {
@@ -224,12 +200,12 @@ export function ReportIssuePage() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedTaskId) {
-      setErrorMessage("请选择一项进行中的配送任务。");
+    if (!selectedTask) {
+      setErrorMessage("当前固定车辆没有可上报的进行中配送任务。");
       return;
     }
     void submitInput({
-      source_task_id: selectedTaskId,
+      source_task_id: selectedTask.task_id,
       anomaly_type: anomalyType,
       description,
       location_text: effectiveLocationText,
@@ -243,24 +219,17 @@ export function ReportIssuePage() {
   return <RoleWorkspaceFrame
     title="提出配送问题"
     description="从本人进行中的配送任务上报真实问题，提交后会立即启动 AI 异常识别与调度。"
-    actions={<Link className="secondary-action" to="/my-tasks">返回我的任务</Link>}
+    actions={<div className="workspace-action-cluster">{read.data ? <DataSourceBadge provenance={read.data.provenance} detail="本人任务与车辆绑定来自后端 API"/> : null}<Link className="secondary-action" to="/my-tasks">返回我的任务</Link></div>}
   >
-    <WorkspaceSection id="report-task-context" title="当前配送任务" description="从本人进行中的任务选择上报车辆，系统会同步关联运单和虚拟位置。">
+    <WorkspaceSection id="report-task-context" title="当前配送任务" description="系统按当前员工账号锁定固定车辆，并同步关联进行中的运单、路线和位置。">
       {read.state === "LOADING" ? <Skeleton label="正在读取本人任务" lines={3} /> : null}
       {read.state === "READY" && read.data ? <div className="report-task-context">
         <label htmlFor="report-source-task">当前任务
           <input id="report-source-task" value={selectedTaskDisplay} readOnly aria-readonly="true" />
         </label>
-        <label htmlFor="report-vehicle">选择上报车辆
-          <select id="report-vehicle" value={selectedVehicleId ?? ""} onChange={(event) => selectVehicle(event.target.value)} required disabled={submitting || Boolean(savedFailure) || Boolean(activeDemoScenario)}>
-            <option value="">请选择车辆编号</option>
-            {vehicleAssignments.map(({ vehicle, task }) => <option
-              key={vehicle.id}
-              value={vehicle.id}
-              data-vehicle-id={vehicle.id}
-              disabled={!task}
-            >{vehicleDisplayLabel(vehicle.id)}</option>)}
-          </select>
+        <label htmlFor="report-vehicle">固定车辆
+          <input id="report-vehicle" value={selectedVehicleId ? vehicleDisplayLabel(selectedVehicleId) : "暂无固定车辆"} readOnly aria-readonly="true" />
+          <small className="report-fixed-vehicle-note">车辆由调度中心与当前员工账号绑定，员工端不可切换。</small>
         </label>
         <label htmlFor="report-route">配送路线
           <input id="report-route" value={selectedVehicleSnapshot?.routeDisplayName ?? "请先选择车辆"} readOnly aria-readonly="true" />
@@ -283,8 +252,12 @@ export function ReportIssuePage() {
     <WorkspaceSection id="report-route-position" title="车辆与路线位置" description="地图只展示当前车辆所在路线及沿线站点，位置与管理员沙盘同步。">
       {selectedVehicleSnapshot
         ? <DriverRouteMap vehicle={selectedVehicleSnapshot}/>
-        : <EmptyState kind="empty" title="请选择车辆编号" description="选择车辆-001 至车辆-020 后，将显示车辆当前位置、完整路线和下一站。" />}
+        : <EmptyState kind="empty" title="暂无固定车辆" description="请联系调度中心为当前员工绑定车辆和进行中的配送任务。" />}
     </WorkspaceSection>
+
+    {operationTaskId ? <WorkspaceSection id="driver-operation-progress" title="救援与维修进度" description="只读展示当前任务处置状态；救援调度、维修和质检由调度中心与系统自动执行。">
+      <DriverOperationStatus taskId={operationTaskId}/>
+    </WorkspaceSection> : null}
 
     <WorkspaceSection id="driver-anomaly-report" title="问题信息" description="请填写现场真实情况。首版不采集照片和 GPS。">
       <form className="anomaly-report-form" onSubmit={onSubmit}>
@@ -297,7 +270,7 @@ export function ReportIssuePage() {
               </select>
             </label>
             <label htmlFor="report-anomaly-type">问题类型
-              <select id="report-anomaly-type" value={anomalyType} disabled={Boolean(activeDemoScenario)} onChange={(event) => setAnomalyType(event.target.value as AnomalyReportType)}>
+              <select id="report-anomaly-type" value={anomalyType} disabled={Boolean(activeDemoScenario)} onChange={(event) => changeAnomalyType(event.target.value as AnomalyReportType)}>
                 {anomalyTypeOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select>
             </label>
@@ -325,7 +298,7 @@ export function ReportIssuePage() {
           </div>
           <div className="report-submit-row">
             <p>提交后系统会保存异常，并通过现有 8-Agent 流程异步生成调度建议。</p>
-            <button className="primary-action" type="submit" disabled={!selectedTaskId || submitting}>{submitting ? "正在提交…" : "提交问题并启动 AI 调度"}</button>
+            <button className="primary-action" type="submit" disabled={!selectedTask || submitting}>{submitting ? "正在提交…" : "提交问题并启动 AI 调度"}</button>
           </div>
         </fieldset>
       </form>

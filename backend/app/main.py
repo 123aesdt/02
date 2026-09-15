@@ -1,8 +1,11 @@
+import asyncio
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from qdrant_client import QdrantClient
 from redis.asyncio import Redis
+from sqlalchemy import inspect
 
 from app.anomaly_reports.service import AnomalyReportService
 from app.anomaly_reports.sqlalchemy_repository import SqlAlchemyAnomalyReportRepository
@@ -16,6 +19,7 @@ from app.api.v1.runtime_overrides import router as runtime_overrides_router
 from app.api.v1.runtime_threads import router as runtime_threads_router
 from app.api.v1.security_audit import router as security_audit_router
 from app.api.v1.task_events import router as task_events_router
+from app.api.v1.vehicle_operations import router as vehicle_operations_router
 from app.api.v1.workspace_reads import router as workspace_reads_router
 from app.api.v1.ws_tickets import router as ws_tickets_router
 from app.core.config import get_settings
@@ -67,6 +71,9 @@ from app.security.sqlalchemy_audit_repository import SqlAlchemySecurityAuditRepo
 from app.security.ws_ticket import RedisWsTicketService
 from app.services.dispatch_task_api_service import DispatchTaskApiService
 from app.streams.redis_queue import RedisStreamQueue
+from app.vehicle_operations.progressor import VehicleOperationsProgressor
+from app.vehicle_operations.query_service import SystemClock, VehicleOperationsQueryService
+from app.vehicle_operations.sqlalchemy_repository import SqlAlchemyVehicleOperationsRepository
 from app.workspace_reads.qdrant_repository import QdrantVectorMemoryReadRepository
 from app.workspace_reads.service import WorkspaceReadService
 from app.workspace_reads.sqlalchemy_repository import SqlAlchemyWorkspaceReadRepository
@@ -89,6 +96,7 @@ def create_app(
     demo_employee_service: DemoEmployeeSessionService | None = None,
     review_decision_service: ReviewDecisionService | None = None,
     dispatch_publication_service: DispatchPublicationService | None = None,
+    vehicle_operations_api_service: object | None = None,
 ) -> FastAPI:
     settings = get_settings()
     production = settings.runtime_profile == "production"
@@ -222,9 +230,41 @@ def create_app(
         )
     app.state.workspace_read_service = workspace_read_service
     app.include_router(workspace_reads_router)
-    app.state.review_decision_service = review_decision_service or ReviewDecisionService(
-        build_session_factory(settings.database_url)
-    )
+
+    vehicle_operations_progressor = None
+    if vehicle_operations_api_service is None:
+        vehicle_operations_session_factory = build_session_factory(settings.database_url)
+        vehicle_operations_repository = SqlAlchemyVehicleOperationsRepository(vehicle_operations_session_factory)
+        vehicle_operations_api_service = VehicleOperationsQueryService(
+            vehicle_operations_session_factory,
+            vehicle_operations_repository,
+        )
+        if settings.runtime_profile in {"local", "docker-dev"}:
+            vehicle_operations_progressor = VehicleOperationsProgressor(
+                vehicle_operations_repository,
+                SystemClock(),
+            )
+    app.state.vehicle_operations_api_service = vehicle_operations_api_service
+    app.include_router(vehicle_operations_router)
+    if vehicle_operations_progressor is not None:
+        app.state.vehicle_operations_progressor_task = None
+
+        @app.on_event("startup")
+        async def start_vehicle_operations_progressor() -> None:
+            bind = vehicle_operations_session_factory.kw.get("bind")
+            inspector = inspect(bind)
+            if not inspector.has_table("rescue_missions") or not inspector.has_table("maintenance_orders"):
+                return
+            app.state.vehicle_operations_progressor_task = asyncio.create_task(vehicle_operations_progressor.run_forever())
+
+        @app.on_event("shutdown")
+        async def stop_vehicle_operations_progressor() -> None:
+            if app.state.vehicle_operations_progressor_task is None:
+                return
+            await vehicle_operations_progressor.shutdown()
+            await app.state.vehicle_operations_progressor_task
+
+    app.state.review_decision_service = review_decision_service or ReviewDecisionService(build_session_factory(settings.database_url))
     app.include_router(review_decisions_router)
 
     if workspace_qdrant_client is not None:
@@ -233,9 +273,7 @@ def create_app(
         async def close_workspace_qdrant_client() -> None:
             workspace_qdrant_client.close()
 
-    app.state.security_audit_repository = security_audit_repository or SqlAlchemySecurityAuditRepository(
-        build_session_factory(settings.database_url)
-    )
+    app.state.security_audit_repository = security_audit_repository or SqlAlchemySecurityAuditRepository(build_session_factory(settings.database_url))
     app.state.security_audit_recorder = SecurityAuditRecorder(app.state.security_audit_repository)
     app.include_router(security_audit_router)
     queue = RedisStreamQueue(
@@ -253,9 +291,7 @@ def create_app(
         SqlAlchemyAnomalyReportRepository(dispatch_session_factory),
         app.state.dispatch_task_api_service,
     )
-    app.state.dispatch_publication_service = dispatch_publication_service or DispatchPublicationService(
-        build_session_factory(settings.database_url)
-    )
+    app.state.dispatch_publication_service = dispatch_publication_service or DispatchPublicationService(build_session_factory(settings.database_url))
     app.include_router(dispatch_tasks_router)
     app.include_router(anomaly_reports_router)
     app.include_router(task_events_router)
@@ -341,6 +377,7 @@ def create_app(
         app.include_router(runtime_overrides_router)
 
         if override_resources:
+
             @app.on_event("startup")
             async def setup_runtime_override_store() -> None:
                 await override_resources[0].setup()

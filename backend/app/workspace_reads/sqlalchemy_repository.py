@@ -255,6 +255,7 @@ class SqlAlchemyWorkspaceReadRepository:
                 case((DispatchPublication.id.is_not(None), "PUBLISHED"), else_="PENDING"),
                 DispatchPublication.published_at,
                 DispatchPublication.route_instruction,
+                case((DispatchTask.anomaly_id.is_(None), True), else_=False),
             )
             .select_from(DispatchTask)
             .outerjoin(Order, Order.id == DispatchTask.order_id)

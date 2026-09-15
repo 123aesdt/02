@@ -51,9 +51,64 @@ def test_seed_is_idempotent_preserves_user_rows_and_loads_demo_context(sqlite_fa
         context = repository.load(order_id)
         assert (context.order_no, context.cargo_weight_kg, context.cargo_type) == ("DEMO-ORDER-001", Decimal("700.00"), "COLD_CHAIN")
         assert (context.origin_node_id, context.destination_node_id, context.current_vehicle_id, context.current_driver_id) == ("N01", "N06", "V-001", "D-001")
-        assert session.scalar(select(func.count()).select_from(RoadEdge)) == 26
+        assert session.scalar(select(func.count()).select_from(RoadEdge)) == 36
         assert session.scalar(select(func.count()).select_from(FleetVehicle)) == 21
         assert session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "USER-V-001")) is not None
+
+
+def test_seed_contains_every_operational_node_used_by_the_live_map(sqlite_factory) -> None:
+    expected_node_ids = {"N19", "N20", "N21", "N22"}
+    expected_station_names = {
+        "智慧物流调度中心",
+        "快递集散站",
+        "新能源车辆充电站",
+        "应急救援站",
+    }
+
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        session.commit()
+
+        node_ids = set(
+            session.scalars(select(RoadNode.node_id).where(RoadNode.node_id.in_(expected_node_ids))).all()
+        )
+        station_names = set(
+            session.scalars(select(LogisticsStation.name).where(LogisticsStation.name.in_(expected_station_names))).all()
+        )
+        connected_node_ids = {
+            node_id
+            for edge in session.scalars(select(RoadEdge)).all()
+            for node_id in (edge.from_node_id, edge.to_node_id)
+            if node_id in expected_node_ids
+        }
+
+    assert node_ids == expected_node_ids
+    assert station_names == expected_station_names
+    assert connected_node_ids == expected_node_ids
+
+
+def test_seed_upgrades_initial_live_map_link_travel_times_without_resetting_data(sqlite_factory) -> None:
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        session.commit()
+        session.scalar(select(RoadEdge).where(RoadEdge.edge_id == "E27")).base_minutes = 9
+        session.scalar(select(RoadEdge).where(RoadEdge.edge_id == "E32")).base_minutes = 3
+        session.scalar(select(RoadEdge).where(RoadEdge.edge_id == "E33")).base_minutes = 5
+        session.scalar(select(RoadEdge).where(RoadEdge.edge_id == "E34")).base_minutes = 4
+        session.commit()
+
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        session.commit()
+        upgraded = dict(
+            session.execute(
+                select(RoadEdge.edge_id, RoadEdge.base_minutes).where(
+                    RoadEdge.edge_id.in_({"E27", "E32", "E33", "E34"})
+                )
+            ).all()
+        )
+
+    assert upgraded == {"E27": 15, "E32": 7, "E33": 9, "E34": 7}
 
 
 def test_edge_status_only_increments_version_when_value_changes(sqlite_factory) -> None:

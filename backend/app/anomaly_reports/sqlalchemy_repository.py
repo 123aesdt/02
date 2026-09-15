@@ -47,6 +47,7 @@ class SqlAlchemyAnomalyReportRepository:
                 driver_id=driver_id,
                 vehicle_id=order.vehicle_id,
                 route_id=route_id,
+                can_report_anomaly=task.anomaly_id is None,
             )
 
     def get_report_by_key(self, idempotency_key: str) -> PersistedAnomalyReport | None:

@@ -14,8 +14,11 @@ def test_repository_recognizes_persisted_dispatch_uniqueness_revision() -> None:
     )
     migrations = ScriptDirectory.from_config(config)
 
-    revision = migrations.get_revision("20260907_14")
+    dispatch_revision = migrations.get_revision("20260907_14")
+    vehicle_operations_revision = migrations.get_revision("20260910_15")
 
-    assert revision is not None
-    assert revision.down_revision == "20260902_13"
-    assert migrations.get_current_head() == "20260907_14"
+    assert dispatch_revision is not None
+    assert dispatch_revision.down_revision == "20260902_13"
+    assert vehicle_operations_revision is not None
+    assert vehicle_operations_revision.down_revision == "20260907_14"
+    assert migrations.get_current_head() == "20260910_15"

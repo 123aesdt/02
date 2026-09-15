@@ -1,0 +1,257 @@
+/* Second-pass map polish: denser first viewport and Amap-like road hierarchy. */
+.role-workspace:has(#workspace-section-fleet-live-sandbox) {
+  gap: 8px;
+}
+
+.role-workspace:has(#workspace-section-fleet-live-sandbox) > .role-workspace__heading {
+  min-height: 36px;
+}
+
+.role-workspace:has(#workspace-section-fleet-live-sandbox) > .role-workspace__heading p,
+.fleet-sandbox-heading .eyebrow,
+.fleet-sandbox-heading p:last-child {
+  display: none;
+}
+
+.role-workspace:has(#workspace-section-fleet-live-sandbox) > .role-workspace__heading h1 {
+  font-size: 19px;
+}
+
+.workspace-section:has(#workspace-section-fleet-live-sandbox) > .workspace-section__header {
+  min-height: 45px;
+  padding: 9px 13px;
+}
+
+.workspace-section:has(#workspace-section-fleet-live-sandbox) > .workspace-section__header p {
+  display: none;
+}
+
+.workspace-section:has(#workspace-section-fleet-live-sandbox) > .workspace-section__body {
+  padding: 9px 11px 11px;
+}
+
+.fleet-map-toolbar {
+  min-height: 47px;
+  margin-bottom: 7px;
+  padding: 7px 9px;
+}
+
+.fleet-map-toolbar label {
+  gap: 4px;
+}
+
+.fleet-map-toolbar select,
+.fleet-map-toolbar .secondary-action {
+  min-height: 33px;
+}
+
+.fleet-map-task-summary {
+  gap: 5px;
+  margin-bottom: 7px;
+}
+
+.fleet-map-task-summary > span {
+  padding: 6px 9px;
+}
+
+.fleet-sandbox-heading {
+  min-height: 48px;
+  align-items: center;
+  padding: 9px 12px;
+}
+
+.fleet-sandbox-heading h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.fleet-incident-banner {
+  min-height: 34px;
+  margin: 7px 9px;
+  padding: 5px 9px;
+}
+
+.fleet-status-strip {
+  margin: 0 9px 7px;
+}
+
+.fleet-status-strip button {
+  min-height: 38px;
+  padding: 5px 8px;
+}
+
+.fleet-status-strip button strong {
+  font-size: 14px;
+}
+
+.fleet-sandbox-controls {
+  margin: 0 9px 7px;
+  padding: 6px 8px;
+}
+
+.fleet-sandbox-controls select,
+.fleet-play-control {
+  min-height: 33px;
+}
+
+.fleet-sandbox-canvas {
+  height: clamp(620px, 72vh, 780px);
+  background: #edf2f5;
+}
+
+.fleet-road-casings path {
+  stroke: #ffffff;
+  stroke-width: 11;
+  stroke-linecap: round;
+  opacity: .98;
+  vector-effect: non-scaling-stroke;
+}
+
+.fleet-sandbox-map-shell.is-standard .fleet-base-roads path {
+  stroke: #b8c5d1;
+  stroke-width: 3;
+  opacity: .9;
+}
+
+.fleet-sandbox-map-shell.is-satellite .fleet-road-casings path {
+  stroke: #e5e1d5;
+  opacity: .92;
+}
+
+.fleet-sandbox-map-shell.is-satellite .fleet-base-roads path {
+  stroke: #717b71;
+  stroke-width: 3;
+  opacity: .92;
+}
+
+.fleet-base-roads path.is-blocked {
+  stroke: var(--danger);
+  stroke-width: 6;
+}
+
+.fleet-map-nodes .node-code,
+.fleet-vehicle-marker text {
+  display: none;
+}
+
+.fleet-vehicle-marker:is(:hover, :focus, .is-selected) text {
+  display: block;
+}
+
+.fleet-vehicle-marker:is(:hover, :focus, .is-selected) {
+  isolation: isolate;
+}
+
+.fleet-map-nodes .node-name {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.fleet-route-labels rect {
+  fill: rgba(255, 255, 255, .9);
+}
+
+.fleet-vehicle-panel {
+  height: calc(clamp(620px, 72vh, 780px) + 45px);
+}
+
+@media (max-width: 760px) {
+  .workspace-section:has(#workspace-section-fleet-live-sandbox) > .workspace-section__header {
+    display: none;
+  }
+
+  .workspace-section:has(#workspace-section-fleet-live-sandbox) > .workspace-section__body {
+    padding: 8px;
+  }
+
+  .fleet-map-task-summary,
+  .fleet-status-strip {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .fleet-map-task-summary > span {
+    flex: 0 0 142px;
+  }
+
+  .fleet-map-task-summary > a {
+    flex: 0 0 150px;
+    min-height: 38px;
+  }
+
+  .fleet-status-strip button {
+    flex: 0 0 108px;
+  }
+
+  .fleet-total-count {
+    flex: 0 0 92px;
+    min-height: 38px;
+  }
+
+  .fleet-sandbox-canvas {
+    height: 280px;
+  }
+
+  .fleet-vehicle-panel {
+    height: auto;
+    max-height: 470px;
+  }
+
+  .fleet-route-labels,
+  .fleet-road-names {
+    display: none;
+  }
+
+  .fleet-map-coordinate {
+    bottom: 50px;
+  }
+}
+
+/* The sticky topbar already owns the page title; retain only live status here. */
+.role-workspace:has(#workspace-section-fleet-live-sandbox) > .role-workspace__heading {
+  min-height: 24px;
+  justify-content: flex-end;
+}
+
+.role-workspace:has(#workspace-section-fleet-live-sandbox) > .role-workspace__heading > div:first-child {
+  display: none;
+}
+
+.role-workspace:has(#workspace-section-fleet-live-sandbox) > .role-workspace__heading .role-workspace__actions {
+  margin-left: auto;
+}
+
+/* Direct map manipulation and application-level fullscreen. */
+.fleet-sandbox-canvas[data-interactive="true"] {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.fleet-sandbox-canvas.is-panning {
+  cursor: grabbing;
+}
+
+.fleet-route-lines path[role="button"] {
+  cursor: pointer;
+  pointer-events: stroke;
+  outline: none;
+}
+
+.fleet-route-lines path[role="button"]:focus {
+  opacity: 1;
+  stroke-width: 7;
+  filter: drop-shadow(0 0 4px rgba(22, 119, 255, .45));
+}
+
+.fleet-sandbox-map-shell.is-fullscreen {
+  position: fixed;
+  z-index: 1000;
+  inset: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(23, 35, 61, .28);
+}

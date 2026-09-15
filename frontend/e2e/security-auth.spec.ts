@@ -27,26 +27,28 @@ test.beforeEach(() => {
   test.skip(!process.env.DEVELOPMENT_JWT_SECRET, "Docker development JWT secret is required");
 });
 
-test("Docker development offers six passwordless demo employee accounts", async ({ page }) => {
+test("Docker development offers preconfigured demo employee accounts", async ({ page }) => {
   await page.goto("/");
   const employeeSwitcher = page.getByRole("combobox", { name: "切换演示员工" });
   await expect(employeeSwitcher).toBeVisible();
-  await expect(employeeSwitcher.locator("option")).toHaveCount(6);
-  await expect(page.getByText("请选择演示员工，无需密码", { exact: false })).toBeVisible();
-  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+  await expect(employeeSwitcher.locator("option")).toHaveCount(7);
+  await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible();
+  await expect(page.getByLabel("登录密码")).toHaveValue("CountyFlow@2026");
+  await expect(page.getByLabel("登录密码")).toHaveAttribute("readonly", "");
   await expect(page.getByRole("button", { name: "验证令牌" })).toHaveCount(0);
 });
 
 test("Demo employee can logout and choose another identity", async ({ page }) => {
   await authenticatePage(page, "DISPATCHER");
   await page.getByRole("button", { name: "退出" }).click();
-  await expect(page.getByText("请选择演示员工，无需密码", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible();
 
   const adminSession = page.waitForResponse((response) => (
     response.url().endsWith("/api/v1/auth/demo-session")
     && response.request().method() === "POST"
   ));
   await page.getByRole("combobox", { name: "切换演示员工" }).selectOption("CF-DEMO-005");
+  await page.getByRole("button", { name: "登录", exact: true }).click();
   expect((await adminSession).ok()).toBe(true);
   await expect(page.locator(".auth-session-banner")).toContainText("系统管理员");
   await expect(page.getByRole("link", { name: "系统总览", exact: true })).toBeVisible();

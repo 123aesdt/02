@@ -20,6 +20,10 @@ class SourceTaskEnded(Exception):
     pass
 
 
+class SourceTaskNotReportable(Exception):
+    pass
+
+
 class SourceContextIncomplete(Exception):
     pass
 
@@ -57,6 +61,8 @@ class AnomalyReportService:
             raise SourceTaskNotFound
         if source.assignee_subject_id != principal_subject_id:
             raise ReportSourceForbidden
+        if not source.can_report_anomaly:
+            raise SourceTaskNotReportable
         if source.task_group not in REPORTABLE_GROUPS:
             raise SourceTaskEnded
         if not source.driver_id or not source.vehicle_id or not source.route_id:

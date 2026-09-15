@@ -12,6 +12,7 @@ from app.anomaly_reports import (
     SourceContextIncomplete,
     SourceTaskEnded,
     SourceTaskNotFound,
+    SourceTaskNotReportable,
 )
 from app.api.v1.anomaly_report_schemas import AnomalyReportRequest, AnomalyReportResponse
 from app.security.audit import SecurityAuditEventType, SecurityAuditStatus
@@ -66,6 +67,9 @@ async def report_anomaly(
     except SourceTaskNotFound:
         _audit(request, principal, SecurityAuditStatus.DENIED, "SOURCE_TASK_NOT_FOUND")
         return _error(404, "SOURCE_TASK_NOT_FOUND", "没有找到原配送任务。")
+    except SourceTaskNotReportable:
+        _audit(request, principal, SecurityAuditStatus.DENIED, "SOURCE_TASK_NOT_REPORTABLE")
+        return _error(409, "SOURCE_TASK_NOT_REPORTABLE", "AI 调度任务不能再次作为配送问题来源。")
     except SourceTaskEnded:
         _audit(request, principal, SecurityAuditStatus.DENIED, "SOURCE_TASK_ENDED")
         return _error(409, "SOURCE_TASK_ENDED", "该配送任务已经结束，不能继续上报问题。")

@@ -34,6 +34,43 @@ export function fleetRouteGeometry(routeId: string, padding = 70) {
 export function fleetRoutePoints(routeId: string): string {
   return fleetRouteGeometry(routeId, 0).nodes.map((node) => `${node.x},${node.y}`).join(" ");
 }
+function curvedEdge(edge: (typeof fleetEdges)[number]) {
+  const from = fleetNodeById.get(edge.from);
+  const to = fleetNodeById.get(edge.to);
+  if (!from || !to) return null;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.max(Math.hypot(dx, dy), 1);
+  const sequence = Number(edge.id.replace(/\D/g, "")) || 1;
+  const bend = Math.min(34, length * .14) * (sequence % 2 === 0 ? 1 : -1);
+  return {
+    from,
+    to,
+    controlX: (from.x + to.x) / 2 - dy / length * bend,
+    controlY: (from.y + to.y) / 2 + dx / length * bend,
+  };
+}
+
+export function fleetEdgePath(edge: (typeof fleetEdges)[number]): string {
+  const curve = curvedEdge(edge);
+  return curve ? `M ${curve.from.x} ${curve.from.y} Q ${curve.controlX.toFixed(1)} ${curve.controlY.toFixed(1)} ${curve.to.x} ${curve.to.y}` : "";
+}
+
+export function fleetRoutePath(routeId: string): string {
+  const route = fleetRouteById.get(routeId) ?? fleetRoutes[0];
+  const first = fleetNodeById.get(route.nodeIds[0]);
+  if (!first) return "";
+  return route.nodeIds.slice(1).reduce((path, nodeId, index) => {
+    const previousId = route.nodeIds[index];
+    const next = fleetNodeById.get(nodeId);
+    if (!next) return path;
+    const edge = fleetEdges.find((candidate) => edgeKey(candidate.from, candidate.to) === edgeKey(previousId, nodeId));
+    const curve = edge ? curvedEdge(edge) : null;
+    return curve
+      ? `${path} Q ${curve.controlX.toFixed(1)} ${curve.controlY.toFixed(1)} ${next.x} ${next.y}`
+      : `${path} L ${next.x} ${next.y}`;
+  }, `M ${first.x} ${first.y}`);
+}
 
 export const fullFleetMapViewBox = "0 0 1200 680";
 

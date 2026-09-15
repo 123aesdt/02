@@ -227,7 +227,7 @@ describe("Task event lifecycle", () => {
       },
     });
 
-    const { root, container } = await render(<ApiDispatchDetailPage taskId="TASK-1" />);
+    const { root, container } = await render(<ApiDispatchDetailPage taskId="DEMO-TASK-REPORT-VEHICLE" />);
     await flush();
 
     expect(container.getElementsByClassName("dispatch-evidence-overview")).toHaveLength(1);
@@ -243,11 +243,12 @@ describe("Task event lifecycle", () => {
     expect(container.querySelector('.dispatch-evidence-overview a[href="#route-plan-result-title"]')).toBeNull();
     expect(container.textContent).toContain("替代车辆调度计算");
     expect(container.textContent).toContain("接驳 2.80 公里 · 6 分钟");
-    expect(container.querySelector(".live-vehicle-map")).not.toBeNull();
-    expect(container.textContent).toContain("车辆实时调度地图");
-    expect(container.textContent).toContain("虚拟沙盘实时模拟");
-    expect(container.textContent).toContain("V-001 · 故障车辆");
-    expect(container.textContent).toContain("V-005 · 已派出");
+    expect(container.querySelector("[data-vehicle-operation-dispatch]")).not.toBeNull();
+    expect(container.textContent).toContain("故障救援与维修执行态势");
+    expect(container.querySelectorAll("[data-operation-stage]")).toHaveLength(4);
+    expect(container.querySelectorAll("[data-operation-route]")).toHaveLength(4);
+    expect(container.querySelector(".live-vehicle-map")).toBeNull();
+    expect(container.textContent).not.toContain("车辆实时调度地图");
     expect(container.textContent).not.toContain("新路线规划计算");
     expect(container.querySelector(".route-plan-result-panel")).toBeNull();
     expect(container.querySelectorAll(".pipeline-item")).toHaveLength(8);

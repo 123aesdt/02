@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from types import MappingProxyType
 
 from qdrant_client import QdrantClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -19,16 +19,35 @@ from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.demo_employee_account import DemoEmployeeAccount
 from app.models.dispatch import Dispatch
+from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.runtime_thread import RuntimeThread
 from app.models.task import DispatchTask
+from app.models.vehicle_operation import (
+    DomainOutbox,
+    MaintenanceBay,
+    MaintenanceOrder,
+    RescueMission,
+    RescueUnit,
+    VehicleStatusHistory,
+)
 from app.providers.embedding.fake import FakeEmbeddingProvider
+from app.road_network.dijkstra import DijkstraPathFinder
+from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
 from app.sandtable.seed_data import ORDERS, STATIONS, VEHICLES
 from app.sandtable.sqlalchemy_repository import seed_new_county_sandtable
+from app.vehicle_operations.query_service import SystemClock
+from app.vehicle_operations.seed import seed_vehicle_operation_resources
+from app.vehicle_operations.service import BreakdownOrchestrationInput, RescueOrchestrationService
+from app.vehicle_operations.sqlalchemy_repository import SqlAlchemyVehicleOperationsRepository
 
 DEVELOPMENT_RUNTIME_PROFILES = frozenset({"local", "test", "docker-dev"})
 DEMO_RUNTIME_STATUSES = ("RUNNING", "STABLE", "OVERRIDING", "TERMINAL")
 DEMO_DELIVERY_EMPLOYEE_SUBJECT_IDS = ("CF-DEMO-001", "CF-DEMO-006")
+DEMO_EMPLOYEE_SUBJECT_BY_DRIVER_ID = {
+    "D-002": "CF-DEMO-001",
+    "D-003": "CF-DEMO-006",
+}
 
 DEMO_REPORT_ROUTES = (
     ("ROUTE-01", "新平县中心仓", "城东配送站"),
@@ -47,20 +66,8 @@ DEMO_REPORT_ROUTES = (
 def _demo_report_source_spec(position: int) -> MappingProxyType:
     suffix = f"{position:03d}"
     route_id, origin, destination = DEMO_REPORT_ROUTES[(position - 1) // 2]
-    task_id = (
-        "DEMO-TASK-REPORT-VEHICLE"
-        if position == 1
-        else "DEMO-TASK-REPORT-ROAD"
-        if position == 8
-        else f"DEMO-TASK-REPORT-{suffix}"
-    )
-    idempotency_key = (
-        "demo-report-source-vehicle"
-        if position == 1
-        else "demo-report-source-road"
-        if position == 8
-        else f"demo-report-source-{suffix}"
-    )
+    task_id = "DEMO-TASK-REPORT-VEHICLE" if position == 1 else "DEMO-TASK-REPORT-ROAD" if position == 8 else f"DEMO-TASK-REPORT-{suffix}"
+    idempotency_key = "demo-report-source-vehicle" if position == 1 else "demo-report-source-road" if position == 8 else f"demo-report-source-{suffix}"
     return MappingProxyType(
         {
             "task_id": task_id,
@@ -491,7 +498,8 @@ def seed_demo_report_source_tasks(session: Session) -> None:
     for spec in DEMO_REPORT_SOURCE_TASKS:
         order = session.scalar(select(Order).where(Order.order_no == spec["order_no"]))
         vehicle = next((row for row in VEHICLES if row["vehicle_id"] == spec["vehicle_id"]), None)
-        driver_id = vehicle["assigned_driver_id"] if vehicle and vehicle["assigned_driver_id"] else "D-001"
+        driver_id = vehicle["assigned_driver_id"] if vehicle else None
+        assignee_subject_id = DEMO_EMPLOYEE_SUBJECT_BY_DRIVER_ID.get(driver_id)
         if order is None:
             order = Order(
                 order_no=spec["order_no"],
@@ -511,23 +519,70 @@ def seed_demo_report_source_tasks(session: Session) -> None:
             order.route_id = spec["route_id"]
             order.origin = spec["origin"]
             order.destination = spec["destination"]
-        task = session.scalar(
-            select(DispatchTask).where(DispatchTask.idempotency_key == spec["idempotency_key"])
-        )
+        anomaly_id = None
+        if spec["task_id"] == "DEMO-TASK-REPORT-VEHICLE":
+            demo_breakdown = session.scalar(select(Anomaly).where(Anomaly.anomaly_no == "DEMO-ANOM-004"))
+            anomaly_id = demo_breakdown.id if demo_breakdown is not None else None
+        task = session.scalar(select(DispatchTask).where(DispatchTask.idempotency_key == spec["idempotency_key"]))
         if task is None:
             task = DispatchTask(
                 task_id=spec["task_id"],
                 order_id=order.id,
-                anomaly_id=None,
+                anomaly_id=anomaly_id,
                 status="IN_PROGRESS",
                 idempotency_key=spec["idempotency_key"],
-                assignee_subject_id="CF-DEMO-001",
+                assignee_subject_id=assignee_subject_id,
             )
             session.add(task)
         else:
             task.order_id = order.id
+            if anomaly_id is not None:
+                task.anomaly_id = anomaly_id
             task.status = "IN_PROGRESS"
-            task.assignee_subject_id = "CF-DEMO-001"
+            task.assignee_subject_id = assignee_subject_id
+
+
+def migrate_legacy_employee_operation_case(session: Session) -> bool:
+    legacy_task_id = "DEMO-TASK-REPORT-002"
+    task = session.scalar(select(DispatchTask).where(DispatchTask.task_id == legacy_task_id))
+    if task is None or task.anomaly_id is not None:
+        return False
+    mission = session.scalar(select(RescueMission).where(RescueMission.task_id == legacy_task_id))
+    order = session.scalar(select(MaintenanceOrder).where(MaintenanceOrder.task_id == legacy_task_id))
+    if mission is None and order is None:
+        return False
+
+    if mission is not None:
+        unit = session.scalar(select(RescueUnit).where(RescueUnit.unit_id == mission.rescue_unit_id))
+        other_mission = session.scalar(
+            select(RescueMission.id).where(
+                RescueMission.rescue_unit_id == mission.rescue_unit_id,
+                RescueMission.task_id != legacy_task_id,
+                RescueMission.status.in_(("CREATED", "DISPATCHED", "ARRIVED", "LOADED")),
+            )
+        )
+        if unit is not None and other_mission is None:
+            unit.status = "AVAILABLE"
+            unit.current_node_id = mission.station_node_id
+
+    if order is not None:
+        bay = session.scalar(select(MaintenanceBay).where(MaintenanceBay.bay_code == order.bay_code))
+        if bay is not None and bay.current_order_no == order.order_no:
+            bay.status = "AVAILABLE"
+            bay.current_order_no = None
+        vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == order.vehicle_id))
+        if vehicle is not None and vehicle.maintenance_order_no == order.order_no:
+            vehicle.status = "IN_TRANSIT"
+            vehicle.status_reason = "已恢复当前配送任务"
+            vehicle.fault_code = None
+            vehicle.available_after = None
+            vehicle.maintenance_order_no = None
+
+    session.execute(delete(DomainOutbox).where(DomainOutbox.task_id == legacy_task_id))
+    session.execute(delete(VehicleStatusHistory).where(VehicleStatusHistory.task_id == legacy_task_id))
+    session.execute(delete(MaintenanceOrder).where(MaintenanceOrder.task_id == legacy_task_id))
+    session.execute(delete(RescueMission).where(RescueMission.task_id == legacy_task_id))
+    return True
 
 
 def seed_database(session_factory=None, runtime_profile: str | None = None) -> None:
@@ -539,10 +594,30 @@ def seed_database(session_factory=None, runtime_profile: str | None = None) -> N
         seed_demo_employee_accounts(session)
         migrate_legacy_demo_business_case_orders(session)
         seed_new_county_sandtable(session)
-        seed_demo_report_source_tasks(session)
-        seed_docker_e2e_case(session)
+        seed_vehicle_operation_resources(session)
         seed_demo_business_cases(session)
+        seed_demo_report_source_tasks(session)
+        migrate_legacy_employee_operation_case(session)
+        seed_docker_e2e_case(session)
         session.commit()
+    vehicle_repository = SqlAlchemyVehicleOperationsRepository(factory)
+    operation_case = BreakdownOrchestrationInput(
+        task_id="DEMO-TASK-REPORT-VEHICLE",
+        vehicle_id="V-001",
+        replacement_vehicle_id="V-005",
+        incident_node_id="N04",
+        cargo_type="COLD_CHAIN",
+        severity="HIGH",
+        fault_code="ENGINE_COOLING",
+    )
+    RescueOrchestrationService(
+        vehicle_repository,
+        SqlAlchemyRoadNetworkRepository(factory),
+        DijkstraPathFinder(),
+        SystemClock(),
+    ).orchestrate(
+        operation_case
+    )
 
 
 async def seed_memory() -> None:

@@ -47,6 +47,10 @@ from app.shared_memory.redis_lock import MemoryMutationLock
 from app.shared_memory.service import SharedMemoryMutationService
 from app.shared_memory.sqlalchemy_repository import SqlAlchemyMemoryControlRepository
 from app.streams.redis_queue import RedisStreamQueue
+from app.vehicle_operations.dispatch_bridge import SqlAlchemyVehicleBreakdownHandler
+from app.vehicle_operations.query_service import SystemClock
+from app.vehicle_operations.service import RescueOrchestrationService
+from app.vehicle_operations.sqlalchemy_repository import SqlAlchemyVehicleOperationsRepository
 from app.workers.dispatch_worker import DispatchWorker
 
 
@@ -225,6 +229,16 @@ def build_runtime_worker(settings: Settings, redis_client: object, qdrant_client
         settings.worker_consumer_name,
         dlq_stream_name=settings.redis_dlq_stream_name,
     )
+    vehicle_repository = SqlAlchemyVehicleOperationsRepository(session_factory)
+    vehicle_breakdown_handler = SqlAlchemyVehicleBreakdownHandler(
+        session_factory,
+        RescueOrchestrationService(
+            vehicle_repository,
+            SqlAlchemyRoadNetworkRepository(session_factory),
+            DijkstraPathFinder(),
+            SystemClock(),
+        ),
+    )
     return DispatchWorker(
         queue,
         graph,
@@ -240,5 +254,6 @@ def build_runtime_worker(settings: Settings, redis_client: object, qdrant_client
         runtime_thread_repository=runtime_thread_repository,
         runtime_thread_reconciler=runtime_reconciler,
         automatic_publication_service=DispatchPublicationService(session_factory),
+        vehicle_breakdown_handler=vehicle_breakdown_handler,
         metrics=metrics,
     )

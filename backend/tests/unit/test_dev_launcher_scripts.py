@@ -256,9 +256,9 @@ def test_full_launcher_uses_verified_images_and_disables_compose_build() -> None
     assert "up -d --build" not in source
 
 
-def test_verified_full_runtime_builder_forces_clean_build_layers() -> None:
+def test_verified_full_runtime_builder_reuses_verified_build_layers() -> None:
     source = FULL_RUNTIME_BUILDER.read_text(encoding="utf-8")
-    assert source.count("'--no-cache'") == 3
+    assert "'--no-cache'" not in source
 
 
 def test_verified_full_runtime_builder_materializes_onedrive_file_bytes() -> None:
@@ -348,6 +348,16 @@ def test_real_graph_verification_never_falls_back_to_mysql_password() -> None:
 def test_backend_runtime_image_does_not_retain_build_only_pyproject() -> None:
     source = (PROJECT_ROOT / "backend" / "Dockerfile").read_text(encoding="utf-8")
     assert "rm -f pyproject.toml" in source
+
+
+def test_backend_runtime_image_uses_the_committed_dependency_lock() -> None:
+    dockerfile = (PROJECT_ROOT / "backend" / "Dockerfile").read_text(encoding="utf-8")
+    builder = (PROJECT_ROOT / "scripts" / "build-full-runtime-images.ps1").read_text(encoding="utf-8")
+
+    assert "COPY pyproject.toml uv.lock ./" in dockerfile
+    assert "uv sync --locked --no-dev" in dockerfile
+    assert "pip install --no-cache-dir ." not in dockerfile
+    assert "'uv.lock'" in builder
 
 
 def test_neo4j_password_recovery_is_offline_secret_safe_and_non_destructive() -> None:

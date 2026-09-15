@@ -12,6 +12,13 @@ from app.models.station import LogisticsStation
 from app.sandtable.models import SandtableTaskContext
 from app.sandtable.seed_data import DRIVERS, ORDERS, ROAD_EDGES, ROAD_NODES, STATIONS, VEHICLES
 
+_LIVE_MAP_EDGE_MINUTE_UPGRADES = {
+    "E27": (9, 15),
+    "E32": (3, 7),
+    "E33": (5, 9),
+    "E34": (4, 7),
+}
+
 
 def _row_with_decimals(row: dict[str, Any], *fields: str) -> dict[str, Any]:
     converted = dict(row)
@@ -97,7 +104,18 @@ def seed_new_county_sandtable(session: Session) -> None:
             edge["status"] = "OPEN"
             edge["congestion_factor"] = Decimal("1.00")
             edge["bidirectional"] = True
-            _add_if_missing(session, RoadEdge, "edge_id", edge)
+            existing_edge = session.scalar(select(RoadEdge).where(RoadEdge.edge_id == edge["edge_id"]))
+            if existing_edge is None:
+                session.add(RoadEdge(**edge))
+                continue
+            upgrade = _LIVE_MAP_EDGE_MINUTE_UPGRADES.get(existing_edge.edge_id)
+            if (
+                upgrade is not None
+                and existing_edge.from_node_id == edge["from_node_id"]
+                and existing_edge.to_node_id == edge["to_node_id"]
+                and existing_edge.base_minutes == upgrade[0]
+            ):
+                existing_edge.base_minutes = upgrade[1]
 
 
 class SqlAlchemySandtableRepository:

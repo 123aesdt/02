@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AnomalyReportType(StrEnum):
@@ -38,6 +38,14 @@ class AnomalyReportRequest(BaseModel):
     incident_node_id: str | None = Field(default=None, min_length=1, max_length=64)
     affected_edge_id: str | None = Field(default=None, min_length=1, max_length=64)
     idempotency_key: str = Field(min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_vehicle_breakdown_consistency(self):
+        is_breakdown = self.anomaly_type is AnomalyReportType.VEHICLE_BREAKDOWN
+        vehicle_is_abnormal = self.reported_vehicle_status is not ReportedVehicleStatus.NORMAL
+        if is_breakdown != vehicle_is_abnormal:
+            raise ValueError("车辆故障类型与车辆状态不一致")
+        return self
 
 
 class AnomalyReportResponse(BaseModel):

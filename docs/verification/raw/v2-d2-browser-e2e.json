@@ -2,12 +2,12 @@
   "config": {
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
-      "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\node_modules\\@playwright\\test\\cli.js",
       "test",
-      "e2e/offline-fleet-rerouting.spec.ts"
+      "e2e/fleet-map-loading.spec.ts"
     ],
-    "configFile": "C:\\Users\\24090\\.codex\\visualizations\\2026\\09\\02\\01a061ca-28ec-77c1-a77a-a5c47b83a319\\县域物流异常调度-工作区\\frontend\\playwright.config.ts",
-    "rootDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
+    "configFile": "C:\\Users\\24090\\OneDrive\\Desktop\\县域物流识别异常\\frontend\\playwright.config.ts",
+    "rootDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -23,7 +23,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/test-results",
+        "outputDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -31,7 +31,7 @@
         },
         "id": "",
         "name": "",
-        "testDir": "C:/Users/24090/.codex/visualizations/2026/09/02/01a061ca-28ec-77c1-a77a-a5c47b83a319/县域物流异常调度-工作区/frontend/e2e",
+        "testDir": "C:/Users/24090/OneDrive/Desktop/县域物流识别异常/frontend/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -66,13 +66,13 @@
   },
   "suites": [
     {
-      "title": "offline-fleet-rerouting.spec.ts",
-      "file": "offline-fleet-rerouting.spec.ts",
+      "title": "fleet-map-loading.spec.ts",
+      "file": "fleet-map-loading.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [
         {
-          "title": "网络拦截 UI 回归：车辆故障证据仅在主管发布后供员工查看，刷新重登仍一致",
+          "title": "fleet navigation never mounts the legacy map while AMap and vehicles load",
           "ok": true,
           "tags": [],
           "tests": [
@@ -87,12 +87,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1849,
+                  "duration": 4868,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-09-09T09:17:53.701Z",
+                  "startTime": "2026-09-14T04:11:49.827Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -100,43 +100,9 @@
               "status": "expected"
             }
           ],
-          "id": "b8ee7217811f6a4a9e53-7c6c6fff63a1da22256f",
-          "file": "offline-fleet-rerouting.spec.ts",
-          "line": 547,
-          "column": 1
-        },
-        {
-          "title": "网络拦截 UI 回归：道路堵塞证据仅在主管发布后供员工查看，刷新重登仍一致",
-          "ok": true,
-          "tags": [],
-          "tests": [
-            {
-              "timeout": 60000,
-              "annotations": [],
-              "expectedStatus": "passed",
-              "projectId": "",
-              "projectName": "",
-              "results": [
-                {
-                  "workerIndex": 0,
-                  "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 1395,
-                  "errors": [],
-                  "stdout": [],
-                  "stderr": [],
-                  "retry": 0,
-                  "startTime": "2026-09-09T09:17:55.808Z",
-                  "annotations": [],
-                  "attachments": []
-                }
-              ],
-              "status": "expected"
-            }
-          ],
-          "id": "b8ee7217811f6a4a9e53-2372058003f364e92875",
-          "file": "offline-fleet-rerouting.spec.ts",
-          "line": 572,
+          "id": "3d9272631d45f1fe9010-c6264ea124aa5ab00efb",
+          "file": "fleet-map-loading.spec.ts",
+          "line": 5,
           "column": 1
         }
       ]
@@ -144,9 +110,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-09-09T09:17:53.302Z",
-    "duration": 4198.881,
-    "expected": 2,
+    "startTime": "2026-09-14T04:11:49.506Z",
+    "duration": 5568.394,
+    "expected": 1,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0
