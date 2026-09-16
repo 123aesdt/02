@@ -13,6 +13,8 @@ from app.capacity.models import CapacitySnapshot
 from app.capacity.provider import InMemoryCapacityProvider
 from app.capacity.service import CapacityService
 from app.dispatch.service import DispatchService
+from app.events.broker import InMemoryTaskEventBroker
+from app.events.models import TaskEventType
 from app.graph.builder import build_graph
 from app.graph.dependencies import GraphDependencies
 from app.idempotency.service import IdempotencyService
@@ -475,6 +477,44 @@ async def test_worker_terminal_replay_is_acked(redis_client: FakeRedis):
         result = await _worker(queue, _ApprovedGraph(), factory, redis_client).process_message(_message())
 
         assert (result.acknowledged, queue.acked) == (True, ["1-0"])
+    finally:
+        engine.dispose()
+        temp.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_worker_terminal_replay_publishes_success_after_post_processing(redis_client: FakeRedis):
+    temp, engine, factory = _database()
+    try:
+        ledger = IdempotencyService(factory)
+        ledger.begin("task-001", 1, "idem-task-001")
+        ledger.mark_terminal("task-001", "APPROVED")
+        broker = InMemoryTaskEventBroker()
+        handled: list[str] = []
+
+        class BreakdownHandler:
+            def handle_approved_breakdown(self, message: DispatchTaskMessage) -> None:
+                handled.append(message.task_id)
+
+        task = _task()
+        task.payload["anomaly_type"] = "VEHICLE_BREAKDOWN"
+        worker = DispatchWorker(
+            _Queue(),
+            _ApprovedGraph(),
+            read_count=1,
+            block_ms=1,
+            idempotency_service=ledger,
+            execution_lock=RedisExecutionLock(redis_client, ttl_ms=1000),
+            event_broker=broker,
+            vehicle_breakdown_handler=BreakdownHandler(),
+        )
+
+        result = await worker.process_message(_message(task=task))
+        events = await broker.history("task-001")
+
+        assert result.acknowledged is True
+        assert handled == ["task-001"]
+        assert events[-1].event_type is TaskEventType.TASK_COMPLETED
     finally:
         engine.dispose()
         temp.cleanup()

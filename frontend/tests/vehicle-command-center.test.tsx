@@ -55,4 +55,32 @@ describe("V8 vehicle command center", () => {
     await act(async () => root.unmount());
     container.remove();
   });
+
+  it("presents a recovered historical incident as completed instead of still broken", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const recovered = {
+      ...demoVehicleOperationSnapshot,
+      incident: { ...demoVehicleOperationSnapshot.incident, status: "RECOVERED" },
+      rescue: { ...demoVehicleOperationSnapshot.rescue, status: "DELIVERED", progress_percent: 100 },
+      maintenance: {
+        ...demoVehicleOperationSnapshot.maintenance,
+        status: "COMPLETED",
+        progress_percent: 100,
+        countdown_seconds: 0,
+      },
+    };
+
+    await act(async () => root.render(<VehicleCommandCenter snapshot={recovered} connection="CONNECTED" />));
+
+    expect(container.textContent).toContain("车辆故障 · 处置已完成");
+    expect(container.textContent).toContain("已恢复运营");
+    expect(container.textContent).toContain("已复岗");
+    expect(container.textContent).toContain("已送达");
+    expect(container.textContent).not.toContain("发动机异常 · 新平路 K3.2");
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
 });

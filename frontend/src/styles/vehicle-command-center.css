@@ -81,10 +81,12 @@
 .operation-vehicle-marker > circle { fill: #fff; stroke-width: 5; filter: drop-shadow(0 2px 3px rgba(20, 53, 44, .18)); }
 .operation-vehicle-marker.is-incident > circle { stroke: var(--command-red); }
 .operation-vehicle-marker.is-replacement > circle { stroke: #3975d0; }
+.operation-vehicle-marker.is-recovered > circle { stroke: #25a77b; }
 .operation-vehicle-marker > rect { fill: none; stroke: currentColor; stroke-width: 2; }
 .operation-vehicle-marker > circle:nth-of-type(n+2) { fill: currentColor; stroke: none; }
 .operation-vehicle-marker.is-incident { color: var(--command-red); }
 .operation-vehicle-marker.is-replacement { color: #3975d0; }
+.operation-vehicle-marker.is-recovered { color: #168464; }
 .operation-marker-label rect { fill: rgba(255,255,255,.97); stroke: #d9e2de; filter: drop-shadow(0 3px 5px rgba(27, 57, 49, .14)); }
 .operation-marker-label text { fill: #263631; font-size: 10px; font-weight: 700; }
 .operation-marker-label text:last-child { fill: #75827e; font-size: 8.5px; font-weight: 500; }
@@ -118,11 +120,13 @@
 .operation-status-panel > header h2 { margin: 0; color: #172520; font-size: 18px; line-height: 1.25; letter-spacing: -.3px; }
 .operation-status-panel > header span { display: block; margin-top: 5px; color: #899590; font-size: 10px; }
 .operation-status-panel > header b { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; padding: 6px 8px; color: #bb423a; border-radius: 6px; background: #fff0ee; font-size: 10px; }
+.operation-status-panel > header b.is-recovered { color: #14795c; background: #e9f8f2; }
 .operation-incident-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 12px; margin: 14px 0; padding: 13px; border-left: 3px solid var(--command-red); border-radius: 7px; background: #fffafa; box-shadow: inset 0 0 0 1px #f0dddd; }
 .operation-incident-facts div { display: grid; gap: 3px; }
 .operation-incident-facts dt { color: #87928e; font-size: 9px; }
 .operation-incident-facts dd { margin: 0; color: #22312c; font-size: 11px; font-weight: 700; }
 .operation-incident-facts dd.is-danger { color: #c6423a; }
+.operation-incident-facts dd.is-recovered { color: #14795c; }
 .operation-stage-heading { display: flex; align-items: center; justify-content: space-between; margin: 15px 0 8px; }
 .operation-stage-heading strong { font-size: 12px; }
 .operation-stage-heading span { color: #87938f; font-size: 9px; }

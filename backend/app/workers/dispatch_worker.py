@@ -420,11 +420,10 @@ class DispatchWorker:
                 lock_acquired=True,
                 reconciled=reconciled,
             )
-        acknowledged = await self._queue.ack(message.message_id) == 1
-        return WorkerProcessResult(
+        replay_result = WorkerProcessResult(
             message.message_id,
             message.task.task_id,
-            acknowledged,
+            False,
             status,
             status == "REVIEW_REQUIRED",
             None,
@@ -433,6 +432,9 @@ class DispatchWorker:
             lock_acquired=True,
             reconciled=reconciled,
         )
+        await self._publish_terminal(message.task.task_id, replay_result)
+        acknowledged = await self._queue.ack(message.message_id) == 1
+        return replace(replay_result, acknowledged=acknowledged)
 
     def _auto_publish(self, task_id: str, terminal_status: str | None) -> str | None:
         if terminal_status != "APPROVED" or self._automatic_publication_service is None:

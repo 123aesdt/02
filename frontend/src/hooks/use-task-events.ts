@@ -38,6 +38,7 @@ export function useTaskEvents(taskId: string, onTerminal: () => void) {
   const startedAt = new Map<string, string>();
   const agents = taskEvents.reduce<AgentRun[]>((current, event) => {
     if (!nodes.includes(event.node)) return current;
+    if (event.event_type === "TASK_COMPLETED") return current;
     if (event.event_type.endsWith("_STARTED")) startedAt.set(event.node, event.timestamp);
     const work = buildAgentWork(event.node, event);
     const elapsed = event.event_type.endsWith("_STARTED")

@@ -67,6 +67,12 @@ function EventsProbe({ taskId, onUpdate }: { taskId: string; onUpdate: (events: 
   return null;
 }
 
+function AgentsProbe({ taskId }: { taskId: string }) {
+  const onTerminal = useCallback(() => undefined, []);
+  const { agents } = useTaskEvents(taskId, onTerminal);
+  return <div>{agents.map((agent) => <span key={agent.id} data-agent-id={agent.id}>{agent.detail} · {agent.output}</span>)}</div>;
+}
+
 async function render(element: React.ReactNode): Promise<{ root: Root; container: HTMLDivElement }> {
   const container = document.createElement("div");
   document.body.append(container);
@@ -291,6 +297,42 @@ describe("Task event lifecycle", () => {
     expect(container.textContent).toContain("接收员工");
     expect(container.textContent).toContain("张调度");
     expect(container.textContent).toContain("从青云镇出发");
+    await act(async () => { root.unmount(); });
+  });
+
+  it("keeps audit evidence when the task completion event follows the audit node", async () => {
+    testRuntime.dataMode = "api";
+    vi.stubGlobal("WebSocket", FakeWebSocket as unknown as typeof WebSocket);
+    const { root, container } = await render(<AgentsProbe taskId="TASK-1" />);
+    const socket = FakeWebSocket.instances[0];
+    const auditCompleted: TaskEvent = {
+      ...event("TASK-1", "audit-completed", 1),
+      event_type: "AUDIT_COMPLETED",
+      node: "audit",
+      data: {
+        audit_result: {
+          audit_status: "APPROVED",
+          passed: true,
+          checks: { route_consistency: true },
+        },
+      },
+    };
+    const taskCompleted: TaskEvent = {
+      ...event("TASK-1", "task-completed", 2),
+      event_type: "TASK_COMPLETED",
+      node: "audit",
+      status: "COMPLETED",
+    };
+
+    await act(async () => {
+      socket.emitMessage(auditCompleted);
+      socket.emitMessage(taskCompleted);
+    });
+
+    const audit = container.querySelector('[data-agent-id="audit"]');
+    expect(audit?.textContent).toContain("AUDIT_COMPLETED");
+    expect(audit?.textContent).toContain("1 项校验通过，允许自动发布");
+    expect(audit?.textContent).not.toContain("审核未通过");
     await act(async () => { root.unmount(); });
   });
 

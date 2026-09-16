@@ -4,9 +4,10 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
+from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.task import DispatchTask
-from app.models.vehicle_operation import MaintenanceBay, RescueUnit
+from app.models.vehicle_operation import MaintenanceBay, MaintenanceOrder, RescueUnit
 from app.sandtable.sqlalchemy_repository import seed_new_county_sandtable
 from app.vehicle_operations.models import (
     BreakdownCaseRequest,
@@ -93,6 +94,47 @@ def test_stage_projection_does_not_present_failed_or_cancelled_work_as_completed
         "CANCELLED",
     ]
     assert stages[1]["detail"] == "当前任务未启用替代车辆"
+
+
+def test_completed_maintenance_keeps_historical_incident_recovered_after_vehicle_is_reused(sqlite_factory):
+    with sqlite_factory() as session:
+        seed_new_county_sandtable(session)
+        order = session.scalar(select(Order).where(Order.order_no == "DEMO-ORDER-001"))
+        assert order is not None
+        session.add(DispatchTask(task_id="TASK-MAP-RECOVERED", order_id=order.id, status="APPROVED", idempotency_key="map-recovered"))
+        session.add(
+            RescueUnit(
+                unit_id="RU-001",
+                name="县域道路救援-02",
+                plate_no="新救援-02",
+                unit_type="TOW_TRUCK",
+                status="AVAILABLE",
+                current_node_id="N15",
+                capacity_tons="5.00",
+            )
+        )
+        session.add(MaintenanceBay(bay_code="A-02", station_id="ST-007", status="AVAILABLE"))
+        session.commit()
+    repository = SqlAlchemyVehicleOperationsRepository(sqlite_factory)
+    repository.create_breakdown_case(
+        BreakdownCaseRequest(
+            "TASK-MAP-RECOVERED", "V-001", None, "RU-001", "N04", "N15", ("E20",), ("E20",), "ENGINE_COOLING", "发动机冷却系统故障", 120, False, NOW,
+        )
+    )
+    with sqlite_factory() as session:
+        maintenance = session.scalar(select(MaintenanceOrder).where(MaintenanceOrder.task_id == "TASK-MAP-RECOVERED"))
+        vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-001"))
+        assert maintenance is not None
+        assert vehicle is not None
+        maintenance.status = "COMPLETED"
+        maintenance.inspection_result = "PASSED"
+        vehicle.status = "IN_TRANSIT"
+        vehicle.status_reason = "已投入新的配送任务"
+        session.commit()
+
+    snapshot = VehicleOperationsQueryService(sqlite_factory, repository, clock=lambda: NOW).map_snapshot("TASK-MAP-RECOVERED")
+
+    assert snapshot["incident"]["status"] == "RECOVERED"
 
 
 def test_maintenance_events_are_localized_for_the_employee_timeline():

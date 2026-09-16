@@ -43,7 +43,7 @@ class VehicleOperationsQueryService:
             "task_id": task_id,
             "generated_at": now.isoformat(),
             "incident": {
-                "status": "AUTO_PROCESSING" if case.vehicle_status != "AVAILABLE" else "RECOVERED",
+                "status": "RECOVERED" if case.maintenance.status is MaintenanceStatus.COMPLETED else "AUTO_PROCESSING",
                 "risk": "HIGH",
                 "vehicle_id": case.vehicle_id,
                 "replacement_vehicle_id": case.replacement_vehicle_id,

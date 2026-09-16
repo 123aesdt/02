@@ -66,6 +66,7 @@ export function VehicleCommandCenter({ snapshot, connection }: {
   const [zoom, setZoom] = useState(1);
   const [hiddenRoutes, setHiddenRoutes] = useState<Set<OperationRoute["kind"]>>(new Set());
   const [seconds, setSeconds] = useState(snapshot.maintenance.countdown_seconds);
+  const recovered = snapshot.incident.status === "RECOVERED";
   const countdownActive = snapshot.maintenance.status !== "COMPLETED" && seconds !== null;
 
   useEffect(() => {
@@ -141,11 +142,11 @@ export function VehicleCommandCenter({ snapshot, connection }: {
               <g className="operation-node-labels">
                 {snapshot.nodes.filter((node) => majorNodes.has(node.node_id)).map((node) => { const point = geometry.get(node.node_id); return point ? <g key={node.node_id} transform={`translate(${point.x} ${point.y})`}><circle r="3"/><text x="8" y="-7">{node.name}</text></g> : null; })}
               </g>
-              {snapshot.vehicles.filter((vehicle) => vehicle.is_incident || vehicle.is_replacement).map((vehicle) => { const point = geometry.get(vehicle.current_node_id); if (!point) return null; return <g key={vehicle.vehicle_id} className={`operation-vehicle-marker ${vehicle.is_incident ? "is-incident" : "is-replacement"}`} transform={`translate(${point.x} ${point.y})`}>
+              {snapshot.vehicles.filter((vehicle) => vehicle.is_incident || vehicle.is_replacement).map((vehicle) => { const point = geometry.get(vehicle.current_node_id); if (!point) return null; const incidentRecovered = vehicle.is_incident && recovered; return <g key={vehicle.vehicle_id} className={`operation-vehicle-marker ${incidentRecovered ? "is-recovered" : vehicle.is_incident ? "is-incident" : "is-replacement"}`} transform={`translate(${point.x} ${point.y})`}>
                 <circle r="18"/><rect x="-9" y="-5" width="18" height="10" rx="2"/><circle cx="-5" cy="7" r="2.5"/><circle cx="6" cy="7" r="2.5"/>
-                <g className="operation-marker-label" transform="translate(-42 -54)"><rect width="150" height="38" rx="7"/><text x="10" y="16">{vehicle.plate_no} · {vehicle.is_incident ? "故障" : "接管"}</text><text x="10" y="30">{vehicle.is_incident ? "发动机异常 · 新平路 K3.2" : "陈师傅 · 冷链状态正常"}</text></g>
+                <g className="operation-marker-label" transform="translate(-42 -54)"><rect width="150" height="38" rx="7"/><text x="10" y="16">{vehicle.plate_no} · {incidentRecovered ? "已复岗" : vehicle.is_incident ? "故障" : "接管"}</text><text x="10" y="30">{incidentRecovered ? "维修质检完成 · 已恢复运营" : vehicle.is_incident ? "发动机异常 · 新平路 K3.2" : "陈师傅 · 冷链状态正常"}</text></g>
               </g>; })}
-              {(() => { const point = geometry.get(snapshot.rescue.incident_node_id); return point ? <g className="operation-rescue-marker" transform={`translate(${point.x + 65} ${point.y + 34})`}><circle r="17"/><path d="M-9 2h18M-5-5h10l4 7h-18z"/><text x="23" y="5">{snapshot.rescue.rescue_unit_id} · {snapshot.rescue.status === "ARRIVED" ? "已抵达" : "行进中"}</text></g> : null; })()}
+              {(() => { const point = geometry.get(snapshot.rescue.incident_node_id); const rescueStatus = snapshot.rescue.status === "DELIVERED" ? "已送达" : snapshot.rescue.status === "ARRIVED" ? "已抵达" : "行进中"; return point ? <g className="operation-rescue-marker" transform={`translate(${point.x + 65} ${point.y + 34})`}><circle r="17"/><path d="M-9 2h18M-5-5h10l4 7h-18z"/><text x="23" y="5">{snapshot.rescue.rescue_unit_id} · {rescueStatus}</text></g> : null; })()}
             </g>
             <text className="operation-water-label" x="68" y="283">青 水 河</text>
             <g className="operation-road-badge" transform="translate(644 218)"><rect width="46" height="22" rx="5"/><text x="23" y="15" textAnchor="middle">G102</text></g>
@@ -164,7 +165,7 @@ export function VehicleCommandCenter({ snapshot, connection }: {
         </div>
       </article>
 
-      <VehicleOperationPanel snapshot={snapshot} countdown={clockLabel(seconds)}/>
+      <VehicleOperationPanel snapshot={snapshot} countdown={clockLabel(seconds)} recovered={recovered}/>
 
       <footer className="operation-event-rail" aria-label="事件推进时间轴">
         {snapshot.timeline.slice(0, 4).map((event, index) => <div key={event.event_id} className="operation-event-item">
@@ -176,15 +177,16 @@ export function VehicleCommandCenter({ snapshot, connection }: {
   </section>;
 }
 
-function VehicleOperationPanel({ snapshot, countdown }: { snapshot: VehicleOperationSnapshot; countdown: string }) {
+function VehicleOperationPanel({ snapshot, countdown, recovered }: { snapshot: VehicleOperationSnapshot; countdown: string; recovered: boolean }) {
+  const incidentVehicle = snapshot.vehicles.find((vehicle) => vehicle.is_incident);
   return <aside className="operation-status-panel" aria-labelledby="operation-panel-title">
     <header>
-      <div><p>事件处置</p><h2 id="operation-panel-title">车辆故障 · 自动处置中</h2><span>事件 CF-20260910-042 · 员工李师傅上报</span></div>
-      <b><AlertTriangle size={13}/>高风险</b>
+      <div><p>事件处置</p><h2 id="operation-panel-title">{recovered ? "车辆故障 · 处置已完成" : "车辆故障 · 自动处置中"}</h2><span>任务 {snapshot.task_id} · 员工现场上报</span></div>
+      <b className={recovered ? "is-recovered" : ""}>{recovered ? <ShieldCheck size={13}/> : <AlertTriangle size={13}/>} {recovered ? "已恢复" : "高风险"}</b>
     </header>
     <dl className="operation-incident-facts">
-      <div><dt>故障车辆</dt><dd>新物冷链-01</dd></div><div><dt>发生位置</dt><dd>新平路 K3.2</dd></div>
-      <div><dt>货物</dt><dd>{snapshot.incident.cargo}</dd></div><div><dt>安全状态</dt><dd className="is-danger">禁止继续行驶</dd></div>
+      <div><dt>故障车辆</dt><dd>{incidentVehicle?.plate_no ?? snapshot.incident.vehicle_id}</dd></div><div><dt>发生位置</dt><dd>{snapshot.incident.location_node_id}</dd></div>
+      <div><dt>货物</dt><dd>{snapshot.incident.cargo}</dd></div><div><dt>安全状态</dt><dd className={recovered ? "is-recovered" : "is-danger"}>{recovered ? "已恢复运营" : "禁止继续行驶"}</dd></div>
     </dl>
     <div className="operation-stage-heading"><strong>自主处置编排</strong><span>4 个阶段 · 自动推进</span></div>
     <ol className="operation-stage-list">
@@ -201,6 +203,6 @@ function VehicleOperationPanel({ snapshot, countdown }: { snapshot: VehicleOpera
       <div className="operation-progress"><i style={{ width: `${snapshot.maintenance.progress_percent}%` }}/></div>
       <small>当前维修进度 {snapshot.maintenance.progress_percent}%</small>
     </section>
-    <div className="operation-auto-recovery"><ShieldCheck size={17}/><span><strong>自动恢复条件</strong><small>工单完成 + 安全检查通过后，车辆自动恢复为可调度</small></span></div>
+    <div className="operation-auto-recovery"><ShieldCheck size={17}/><span><strong>{recovered ? "车辆已自动复岗" : "自动恢复条件"}</strong><small>{recovered ? "维修工单与安全检查均已完成，车辆可继续参与调度" : "工单完成 + 安全检查通过后，车辆自动恢复为可调度"}</small></span></div>
   </aside>;
 }
