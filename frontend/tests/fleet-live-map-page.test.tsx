@@ -449,6 +449,7 @@ describe("administrator fleet live map page", () => {
     const marker = view.container.querySelector<SVGGElement>('[data-fleet-vehicle-id="V-002"]');
     expect(marker).not.toBeNull();
     expect(marker?.getAttribute("data-route-offset")).toBe("0");
+    expect(marker?.hasAttribute("data-overlap-offset")).toBe(false);
     const before = marker?.getAttribute("transform") ?? "";
 
     await act(async () => { vi.advanceTimersByTime(1500); });

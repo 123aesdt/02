@@ -203,10 +203,6 @@
   pointer-events: none;
 }
 
-.app-shell[data-current-page="/fleet-live-map"] .fleet-vehicle-marker {
-  pointer-events: bounding-box;
-}
-
 .app-shell[data-current-page="/fleet-live-map"] .fleet-amap-canvas,
 .app-shell[data-current-page="/fleet-live-map"] .fleet-sandbox-canvas {
   min-height: 590px;

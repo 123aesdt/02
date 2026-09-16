@@ -11,19 +11,6 @@ export interface FleetVehicleScreenOffset {
   y: number;
 }
 
-interface FleetMapPointCandidate {
-  id: string;
-  x: number;
-  y: number;
-}
-
-interface FleetMapPointBounds {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
-
 export function fleetRouteMotionProgress(phase: number): number {
   const wrapped = ((phase % 2) + 2) % 2;
   const linearProgress = wrapped <= 1 ? wrapped : 2 - wrapped;
@@ -95,53 +82,6 @@ export function fleetVehicleOverlapOffsets(
         x: Math.round(Math.cos(angle) * radius),
         y: Math.round(Math.sin(angle) * radius),
       });
-    });
-  }
-  return offsets;
-}
-
-export function fleetVehicleMapPointOffsets(
-  vehicles: ReadonlyArray<FleetMapPointCandidate>,
-  collisionDistance = 72,
-  bounds?: FleetMapPointBounds,
-): Map<string, FleetVehicleScreenOffset> {
-  const offsets = new Map<string, FleetVehicleScreenOffset>();
-  const placed: FleetMapPointCandidate[] = [];
-  const isClear = (x: number, y: number) => placed.every(
-    (point) => Math.hypot(x - point.x, y - point.y) >= collisionDistance,
-  );
-  const clampToBounds = (vehicle: FleetMapPointCandidate) => ({
-    x: bounds ? Math.min(bounds.maxX, Math.max(bounds.minX, vehicle.x)) : vehicle.x,
-    y: bounds ? Math.min(bounds.maxY, Math.max(bounds.minY, vehicle.y)) : vehicle.y,
-  });
-
-  for (const vehicle of [...vehicles].sort((left, right) => left.id.localeCompare(right.id))) {
-    const origin = clampToBounds(vehicle);
-    let targetX = origin.x;
-    let targetY = origin.y;
-    if (!isClear(targetX, targetY)) {
-      let found = false;
-      for (let ring = 1; ring <= 12 && !found; ring += 1) {
-        const radius = collisionDistance * ring;
-        const slots = ring * 12;
-        for (let slot = 0; slot < slots; slot += 1) {
-          const angle = (slot / slots) * Math.PI * 2;
-          const rawX = origin.x + Math.cos(angle) * radius;
-          const rawY = origin.y + Math.sin(angle) * radius;
-          const candidateX = bounds ? Math.min(bounds.maxX, Math.max(bounds.minX, rawX)) : rawX;
-          const candidateY = bounds ? Math.min(bounds.maxY, Math.max(bounds.minY, rawY)) : rawY;
-          if (!isClear(candidateX, candidateY)) continue;
-          targetX = candidateX;
-          targetY = candidateY;
-          found = true;
-          break;
-        }
-      }
-    }
-    placed.push({ id: vehicle.id, x: targetX, y: targetY });
-    offsets.set(vehicle.id, {
-      x: Math.round(targetX - vehicle.x),
-      y: Math.round(targetY - vehicle.y),
     });
   }
   return offsets;

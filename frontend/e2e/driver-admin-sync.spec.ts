@@ -228,14 +228,24 @@ test("司机上报后管理端在一秒轮询内提醒并自动定位故障车�
 
   await supervisorPage.getByRole("button", { name: "关闭车辆运行详情" }).click();
   await supervisorPage.getByRole("button", { name: "历史轨迹" }).click();
-  const vehicleMarkerSelector = ".amap-fleet-vehicle[data-vehicle-id], [data-fleet-vehicle-id]";
-  const vehicleIds = await supervisorPage.locator(vehicleMarkerSelector).evaluateAll((nodes) => (
+  const amapVehicleMarkers = supervisorPage.locator(".amap-fleet-vehicle[data-vehicle-id]");
+  const usingAmap = await amapVehicleMarkers.count() > 0;
+  const vehicleMarkers = usingAmap ? amapVehicleMarkers : supervisorPage.locator("[data-fleet-vehicle-id]");
+  const vehicleIds = await vehicleMarkers.evaluateAll((nodes) => (
     nodes.map((node) => node.getAttribute("data-vehicle-id") ?? node.getAttribute("data-fleet-vehicle-id"))
       .filter((value): value is string => Boolean(value))
   ));
   expect(vehicleIds).toHaveLength(20);
   for (const vehicleId of vehicleIds) {
-    await supervisorPage.locator(`.amap-fleet-vehicle[data-vehicle-id="${vehicleId}"], [data-fleet-vehicle-id="${vehicleId}"]`).click();
+    const marker = supervisorPage.locator(usingAmap
+      ? `.amap-fleet-vehicle[data-vehicle-id="${vehicleId}"]`
+      : `[data-fleet-vehicle-id="${vehicleId}"]`);
+    if (usingAmap) {
+      await marker.click();
+    } else {
+      await marker.focus();
+      await marker.press("Enter");
+    }
     await expect(supervisorPage.locator(`[data-fleet-vehicle-detail="${vehicleId}"]`)).toBeVisible();
     await supervisorPage.getByRole("button", { name: "关闭车辆运行详情" }).click();
   }
