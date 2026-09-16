@@ -287,6 +287,9 @@ describe("administrator fleet live map page", () => {
     expect(view.container.querySelector('[data-fleet-vehicle-id="V-005"][data-fleet-status="IN_TRANSIT"]')).not.toBeNull();
     expect(view.container.textContent).toContain("故障车辆 V-001");
     expect(view.container.textContent).toContain("已派出替代车辆 V-005");
+    expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).toBeNull();
+    const incidentVehicle = view.container.querySelector<SVGGElement>('[data-fleet-vehicle-id="V-001"]');
+    await act(async () => { incidentVehicle?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
     const dispatchImpact = view.container.querySelector('[data-dispatch-impact="CALCULATED"]');
     expect(dispatchImpact).not.toBeNull();
     expect(dispatchImpact?.querySelector('[data-impact-role="incident"]')?.textContent).toContain("V-001");
@@ -297,6 +300,15 @@ describe("administrator fleet live map page", () => {
     expect(dispatchImpact?.querySelector('[data-impact-metric="route"]')?.textContent).toContain("+4 分钟");
     expect(dispatchImpact?.querySelector('[data-impact-metric="total"]')?.textContent).toContain("+6.00 km");
     expect(dispatchImpact?.querySelector('[data-impact-metric="total"]')?.textContent).toContain("预计晚到 10 分钟");
+    const routineVehicle = view.container.querySelector<SVGGElement>('[data-fleet-vehicle-id="V-002"]');
+    await act(async () => { routineVehicle?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).toBeNull();
+    const replacementVehicle = view.container.querySelector<SVGGElement>('[data-fleet-vehicle-id="V-005"]');
+    await act(async () => { replacementVehicle?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).not.toBeNull();
+    const closeImpact = view.container.querySelector<HTMLButtonElement>('button[aria-label="关闭调度影响分析"]');
+    await act(async () => { closeImpact?.click(); });
+    expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).toBeNull();
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-dispatch-state="RESCUE"]')).not.toBeNull();
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-map-priority="critical"]')).not.toBeNull();
     expect(view.container.querySelectorAll('[data-fleet-route-id][data-map-priority="background"].is-visible').length).toBeGreaterThanOrEqual(8);

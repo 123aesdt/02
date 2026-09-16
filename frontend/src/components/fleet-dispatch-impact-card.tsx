@@ -1,9 +1,10 @@
-import { AlertTriangle, ArrowRight, Route, Timer, Truck } from "lucide-react";
+import { AlertTriangle, ArrowRight, Route, Timer, Truck, X } from "lucide-react";
 
 import type { DispatchImpactResponse } from "../services/api/dispatch-adapter";
 
 interface FleetDispatchImpactCardProps {
   impact: DispatchImpactResponse;
+  onClose: () => void;
 }
 
 function signedDistance(value: string | null): string {
@@ -25,7 +26,7 @@ function arrivalImpact(minutes: number | null): string {
   return "预计到达时间不变";
 }
 
-export function FleetDispatchImpactCard({ impact }: FleetDispatchImpactCardProps) {
+export function FleetDispatchImpactCard({ impact, onClose }: FleetDispatchImpactCardProps) {
   return <aside
     className={`fleet-dispatch-impact is-${impact.calculation_status.toLowerCase()}`}
     data-dispatch-impact={impact.calculation_status}
@@ -33,7 +34,10 @@ export function FleetDispatchImpactCard({ impact }: FleetDispatchImpactCardProps
   >
     <header>
       <span><Route size={15}/>调度影响分析</span>
-      <b>{impact.calculation_status === "CALCULATED" ? "后端已计算" : "部分数据"}</b>
+      <div className="fleet-dispatch-impact__header-actions">
+        <b>{impact.calculation_status === "CALCULATED" ? "后端已计算" : "部分数据"}</b>
+        <button type="button" aria-label="关闭调度影响分析" title="关闭" onClick={onClose}><X size={14}/></button>
+      </div>
     </header>
     <div className="fleet-dispatch-impact__relation">
       <article className="is-incident" data-impact-role="incident">

@@ -363,6 +363,7 @@
   height: 50px;
   display: grid;
   place-items: center;
+  pointer-events: none;
   transform: rotate(var(--vehicle-heading, 0deg));
   transition: transform .12s linear;
 }
@@ -557,13 +558,39 @@
   letter-spacing: .06em;
 }
 
-.fleet-dispatch-impact > header > b {
+.fleet-dispatch-impact__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fleet-dispatch-impact__header-actions > b {
   padding: 2px 6px;
   border: 1px solid rgba(52, 211, 153, .35);
   border-radius: 999px;
   color: #6ee7b7;
   background: rgba(16, 185, 129, .1);
   font-size: 9px;
+}
+
+.fleet-dispatch-impact__header-actions > button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(125, 211, 252, .22);
+  border-radius: 6px;
+  color: #8fb3c7;
+  background: rgba(15, 35, 54, .72);
+  cursor: pointer;
+}
+
+.fleet-dispatch-impact__header-actions > button:hover,
+.fleet-dispatch-impact__header-actions > button:focus-visible {
+  border-color: rgba(103, 232, 249, .62);
+  color: #e0faff;
+  background: rgba(8, 47, 65, .9);
 }
 
 .fleet-dispatch-impact__relation {

@@ -62,6 +62,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   const [statusFilter, setStatusFilter] = useState<"ALL" | FleetVehicleStatus>("ALL");
   const [selectedRouteId, setSelectedRouteId] = useState("ALL");
   const [selectedVehicleId, setSelectedVehicleId] = useState(() => originalVehicleId ?? "V-001");
+  const [impactVehicleId, setImpactVehicleId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<"STANDARD" | "SATELLITE">("STANDARD");
   const [zoom, setZoom] = useState(1);
   const [showLabels, setShowLabels] = useState(true);
@@ -172,9 +173,25 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
     normalizedAnomaly === "VEHICLE_BREAKDOWN" && targetVehicleId ? "ROUTE-10" : null,
   ].filter((routeId): routeId is string => Boolean(routeId))));
   const shouldRenderLegacyMap = !runtimeConfig.amap?.enabled || amapState === "FALLBACK";
+  const impactIncidentVehicleId = taskVehicleId(dispatchImpact?.incident_vehicle_id);
+  const impactReplacementVehicleId = taskVehicleId(dispatchImpact?.replacement_vehicle_id);
+  const visibleDispatchImpact = dispatchImpact && (
+    impactVehicleId === impactIncidentVehicleId
+    || impactVehicleId === impactReplacementVehicleId
+  ) ? dispatchImpact : null;
+
+  const selectVehicle = (vehicleId: string) => {
+    setSelectedVehicleId(vehicleId);
+    setImpactVehicleId(
+      vehicleId === impactIncidentVehicleId || vehicleId === impactReplacementVehicleId
+        ? vehicleId
+        : null,
+    );
+  };
 
   const resetMapView = () => {
     setFollowVehicle(false);
+    setImpactVehicleId(null);
     setSelectedRouteId("ALL");
     setZoom(1);
     setViewportOffset({ x: 0, y: 0 });
@@ -182,6 +199,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   };
 
   const selectRoute = (routeId: string) => {
+    setImpactVehicleId(null);
     setSelectedRouteId(routeId);
     setZoom(1);
     if (routeId === "ALL") return;
@@ -316,7 +334,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
         <span className="fleet-map-coordinate">嵩明县杨林物流走廊 · {Math.round(zoom * 100)}%</span>
         <span className={`fleet-map-provider is-${amapState.toLowerCase()}`}><i/>{amapState === "READY" ? "高德实时路网" : amapState === "LOADING" ? "正在连接高德地图" : "本地地图保障模式"}</span>
         <span className="fleet-map-attribution">{amapState === "READY" ? "地图服务 © 高德地图 · CountyFlow 调度覆盖物" : "遥感影像 © Esri · 业务路网为演示叠加"}</span>
-        {dispatchImpact ? <FleetDispatchImpactCard impact={dispatchImpact}/> : null}
+        {visibleDispatchImpact ? <FleetDispatchImpactCard impact={visibleDispatchImpact} onClose={() => setImpactVehicleId(null)}/> : null}
         {runtimeConfig.amap?.enabled ? <MapErrorBoundary onFallback={() => setAmapState("FALLBACK")}><AmapFleetMap
           apiKey={runtimeConfig.amap.key}
           securityCode={runtimeConfig.amap.securityCode}
@@ -340,7 +358,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
           geofenceMode={businessMode === "GEOFENCE"}
           onFollowChange={setFollowVehicle}
           operationSnapshot={operationSnapshot}
-          onVehicleSelect={setSelectedVehicleId}
+          onVehicleSelect={selectVehicle}
           onRouteSelect={selectRoute}
           onStateChange={setAmapState}
         /></MapErrorBoundary> : null}
@@ -471,8 +489,8 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
               data-map-priority={isPriorityVehicle ? "critical" : "background"}
               className={`fleet-vehicle-marker ${selectedVehicle.id === vehicle.id ? "is-selected" : ""}`}
               transform={`translate(${vehicle.x.toFixed(2)} ${vehicle.y.toFixed(2)})`}
-              onClick={() => setSelectedVehicleId(vehicle.id)}
-              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setSelectedVehicleId(vehicle.id); }}
+              onClick={() => selectVehicle(vehicle.id)}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") selectVehicle(vehicle.id); }}
             >
               <g className="fleet-vehicle-symbol">
                 <circle className="vehicle-halo" r="20" fill={color}/>
@@ -493,7 +511,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
         <section className="fleet-map-alert-card">
           <header><strong><AlertTriangle size={16}/>实时预警</strong><button type="button">查看全部</button></header>
           <div className="fleet-alert-tabs"><button type="button" className="is-active">全部 <b>{statusCounts.BROKEN + statusCounts.MAINTENANCE}</b></button><button type="button">异常停车</button><button type="button">路线偏离</button></div>
-          <button type="button" className="fleet-alert-row is-critical" onClick={() => setSelectedVehicleId(selectedVehicle.id)}><AlertTriangle size={16}/><span><b>{selectedVehicle.id} · {fleetStatusMeta[selectedVehicle.status].label}</b><small>{selectedVehicle.locationLabel} · {selectedVehicle.speedKph} km/h</small></span><time>刚刚</time></button>
+          <button type="button" className="fleet-alert-row is-critical" onClick={() => selectVehicle(selectedVehicle.id)}><AlertTriangle size={16}/><span><b>{selectedVehicle.id} · {fleetStatusMeta[selectedVehicle.status].label}</b><small>{selectedVehicle.locationLabel} · {selectedVehicle.speedKph} km/h</small></span><time>刚刚</time></button>
           <div className="fleet-alert-row"><Wrench size={16}/><span><b>{statusCounts.MAINTENANCE} 辆车正在维修</b><small>维修完成后自动质检并复岗</small></span><time>自动</time></div>
           <div className="fleet-alert-row"><MapPinned size={16}/><span><b>路线状态已同步</b><small>{blockedEdgeIds.size ? `${blockedEdgeIds.size} 个道路风险点` : "全县路网运行正常"}</small></span><time>实时</time></div>
         </section>
@@ -526,7 +544,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
         <div className="fleet-roster">{visibleVehicles.map((vehicle) => {
           const route = routeById.get(vehicle.routeId) ?? fleetRoutes[0];
           const node = nodeById.get(vehicle.nodeId) ?? fleetNodes[0];
-          return <button type="button" key={vehicle.id} data-fleet-roster-id={vehicle.id} className={selectedVehicle.id === vehicle.id ? "is-selected" : ""} onClick={() => setSelectedVehicleId(vehicle.id)}>
+          return <button type="button" key={vehicle.id} data-fleet-roster-id={vehicle.id} className={selectedVehicle.id === vehicle.id ? "is-selected" : ""} onClick={() => selectVehicle(vehicle.id)}>
             <i style={{ background: fleetStatusMeta[vehicle.status].color }}/><span><b>{vehicle.id}</b><small>{route.displayId} · {node.name}</small></span><em>{fleetStatusMeta[vehicle.status].label}</em>
           </button>;
         })}</div>
