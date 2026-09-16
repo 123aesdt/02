@@ -206,6 +206,11 @@ describe("report issue page", () => {
       location_text: location?.value,
       incident_node_id: expect.stringMatching(/^N\d{2}$/),
     }));
+    const syncState = container.querySelector('[data-driver-sync-state="ACCEPTED"]');
+    expect(syncState).not.toBeNull();
+    expect(syncState?.textContent).toContain("后端已接收");
+    expect(syncState?.textContent).toContain("AI 调度已启动");
+    expect(syncState?.textContent).toContain("管理端将在 1 秒内同步");
   });
 
   it("applies the fixed vehicle-breakdown scenario and submits its node id", async () => {

@@ -87,6 +87,23 @@
 .report-feedback--success { color: var(--success); border-color: #a6e3c3; background: var(--success-subtle); }
 .report-feedback button { width: fit-content; min-height: 36px; padding: 0 12px; color: var(--danger); border: 1px solid currentColor; border-radius: var(--radius-md); background: var(--surface-primary); cursor: pointer; }
 .report-result-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
+.report-sync-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 2px; padding: 0; color: var(--text-primary); list-style: none; }
+.report-sync-steps li { display: flex; align-items: flex-start; gap: 8px; min-width: 0; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--success) 24%, var(--border)); border-radius: var(--radius-md); background: color-mix(in srgb, var(--surface-primary) 78%, transparent); }
+.report-sync-steps li > svg { flex: 0 0 auto; margin-top: 2px; color: var(--text-tertiary); }
+.report-sync-steps li.is-complete > svg { color: var(--success); }
+.report-sync-steps li.is-active > svg { color: var(--brand); animation: report-sync-pulse 1.5s ease-in-out infinite; }
+.report-sync-steps li span { display: grid; gap: 2px; min-width: 0; }
+.report-sync-steps li strong { color: var(--text-primary); font-size: 12px; }
+.report-sync-steps li small { color: var(--text-secondary); font-size: 10px; line-height: 15px; }
+@keyframes report-sync-pulse { 50% { opacity: .45; transform: scale(.9); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .report-sync-steps li.is-active > svg { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .report-sync-steps { grid-template-columns: 1fr; }
+}
 
 .driver-route-card { overflow: hidden; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-primary); box-shadow: var(--shadow-sm); }
 .driver-route-card > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: linear-gradient(120deg, var(--brand-subtle), var(--surface-primary)); }

@@ -10,6 +10,37 @@
   grid-column: 1;
 }
 
+.fleet-live-report-alert {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  overflow: hidden;
+  color: #eafffb;
+  border: 1px solid rgba(62, 231, 201, .58);
+  border-radius: 10px;
+  background: linear-gradient(105deg, #072c33 0%, #0b3d40 56%, #10293c 100%);
+  box-shadow: 0 12px 30px rgba(2, 24, 31, .2), inset 0 1px rgba(255, 255, 255, .08);
+}
+.fleet-live-report-alert::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: #30e7c1; box-shadow: 0 0 18px #30e7c1; }
+.fleet-live-report-alert__icon { display: grid; place-items: center; width: 40px; height: 40px; color: #062c31; border-radius: 50%; background: #5af0d0; box-shadow: 0 0 0 6px rgba(90, 240, 208, .1); }
+.fleet-live-report-alert__copy { display: grid; min-width: 0; gap: 2px; }
+.fleet-live-report-alert__copy small { color: #7ff7de; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.fleet-live-report-alert__copy strong { font-size: 16px; }
+.fleet-live-report-alert__copy p { margin: 0; overflow: hidden; color: rgba(234, 255, 251, .76); font-size: 12px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-live-report-alert__located { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; color: #7ff7de; border: 1px solid rgba(127, 247, 222, .25); border-radius: 999px; background: rgba(9, 73, 72, .55); font-size: 11px; font-weight: 750; white-space: nowrap; }
+.fleet-live-report-alert > button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; color: rgba(234, 255, 251, .72); border: 0; border-radius: 50%; background: rgba(255, 255, 255, .06); cursor: pointer; }
+.fleet-live-report-alert > button:hover { color: #fff; background: rgba(255, 255, 255, .14); }
+
+@media (max-width: 760px) {
+  .fleet-live-report-alert { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .fleet-live-report-alert__located { grid-column: 2; justify-self: start; }
+  .fleet-live-report-alert > button { grid-column: 3; grid-row: 1; }
+}
+
 .fleet-map-headbar .fleet-map-toolbar {
   height: 48px;
   margin: 0;

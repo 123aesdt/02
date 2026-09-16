@@ -32,6 +32,7 @@ interface FleetSandboxMapProps {
   taskStatus?: string | null;
   events?: TaskEvent[];
   operationSnapshot?: VehicleOperationSnapshot | null;
+  autoRevealVehicleId?: string | null;
 }
 
 function taskVehicleId(value: string | null | undefined): string | null {
@@ -53,16 +54,17 @@ function zoomViewBox(value: string, zoom: number, offset: { x: number; y: number
 }
 
 
-export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchImpact = null, connection, reportedVehicleId, taskStatus, events = [], operationSnapshot = null }: FleetSandboxMapProps) {
+export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchImpact = null, connection, reportedVehicleId, taskStatus, events = [], operationSnapshot = null, autoRevealVehicleId = null }: FleetSandboxMapProps) {
   const normalizedAnomaly = anomalyType?.trim().toUpperCase();
   const originalVehicleId = taskVehicleId(allocation?.original_vehicle_id) ?? taskVehicleId(reportedVehicleId);
   const targetVehicleId = taskVehicleId(allocation?.target_vehicle_id);
+  const initiallyRevealedVehicleId = taskVehicleId(autoRevealVehicleId);
   const [tick, setTick] = useState(() => fleetSimulationTick());
   const [playing, setPlaying] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"ALL" | FleetVehicleStatus>("ALL");
   const [selectedRouteId, setSelectedRouteId] = useState("ALL");
-  const [selectedVehicleId, setSelectedVehicleId] = useState(() => originalVehicleId ?? "V-001");
-  const [detailVehicleId, setDetailVehicleId] = useState<string | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState(() => initiallyRevealedVehicleId ?? originalVehicleId ?? "V-001");
+  const [detailVehicleId, setDetailVehicleId] = useState<string | null>(() => initiallyRevealedVehicleId);
   const [mapMode, setMapMode] = useState<"STANDARD" | "SATELLITE">("STANDARD");
   const [zoom, setZoom] = useState(1);
   const [showLabels, setShowLabels] = useState(true);
@@ -77,7 +79,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   const [viewportOffset, setViewportOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [followVehicle, setFollowVehicle] = useState(false);
+  const [followVehicle, setFollowVehicle] = useState(() => Boolean(initiallyRevealedVehicleId));
   const [amapState, setAmapState] = useState<AmapLoadState>(runtimeConfig.amap?.enabled ? "LOADING" : "FALLBACK");
   const dragOrigin = useRef<{ clientX: number; clientY: number; offsetX: number; offsetY: number } | null>(null);
 

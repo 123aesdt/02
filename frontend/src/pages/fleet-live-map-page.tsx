@@ -1,5 +1,5 @@
-import { ExternalLink, Radio, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { BellRing, ExternalLink, LocateFixed, Radio, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { FleetSandboxMap } from "../components/fleet-sandbox-map";
@@ -17,7 +17,41 @@ import { useVehicleOperationSnapshot } from "../hooks/use-vehicle-operation-snap
 import { useAnomaliesRead } from "../hooks/use-workspace-reads";
 import type { AnomalyListItem } from "../types/workspace-read-models";
 
-function FleetLiveTaskMap({ taskId, anomaly }: { taskId: string; anomaly: AnomalyListItem }) {
+function playDriverReportAlertTone() {
+  type AudioWindow = Window & typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+  };
+  const AudioContextConstructor = window.AudioContext ?? (window as AudioWindow).webkitAudioContext;
+  if (!AudioContextConstructor) return;
+
+  try {
+    const audioContext = new AudioContextConstructor();
+    const playTone = () => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(660, audioContext.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, audioContext.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.26);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.27);
+      oscillator.addEventListener("ended", () => { void audioContext.close(); }, { once: true });
+    };
+    if (audioContext.state === "suspended") {
+      void audioContext.resume().then(playTone).catch(() => { void audioContext.close(); });
+    } else {
+      playTone();
+    }
+  } catch {
+    // Browsers may block audio before the first interaction; the visual alert remains authoritative.
+  }
+}
+
+function FleetLiveTaskMap({ taskId, anomaly, autoRevealVehicleId }: { taskId: string; anomaly: AnomalyListItem; autoRevealVehicleId?: string | null }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = useCallback(() => setRefreshKey((current) => current + 1), []);
   const task = useTaskApi(taskId, refreshKey);
@@ -54,6 +88,7 @@ function FleetLiveTaskMap({ taskId, anomaly }: { taskId: string; anomaly: Anomal
       taskStatus={task.status.status}
       events={realtime.events}
       operationSnapshot={operation.snapshot}
+      autoRevealVehicleId={autoRevealVehicleId}
     />
   </>;
 }
@@ -61,14 +96,55 @@ function FleetLiveTaskMap({ taskId, anomaly }: { taskId: string; anomaly: Anomal
 export function FleetLiveMapPage() {
   const anomalies = useAnomaliesRead({ limit: 50 });
   const [selectedTaskId, setSelectedTaskId] = useState("");
-  const candidates = anomalies.state === "READY"
+  const [incomingAnomalies, setIncomingAnomalies] = useState<AnomalyListItem[]>([]);
+  const [focusedAnomaly, setFocusedAnomaly] = useState<AnomalyListItem | null>(null);
+  const knownTaskIdsRef = useRef<Set<string> | null>(null);
+  const candidates = useMemo(() => anomalies.state === "READY"
     ? anomalies.data.items.filter((item): item is AnomalyListItem & { latest_task_id: string } => Boolean(item.latest_task_id))
-    : [];
+    : [], [anomalies.data, anomalies.state]);
+  const candidateTaskKey = candidates.map((item) => item.latest_task_id).join("|");
 
   useEffect(() => {
-    const timer = window.setInterval(anomalies.refresh, 3000);
+    const timer = window.setInterval(anomalies.refresh, 1000);
     return () => window.clearInterval(timer);
   }, [anomalies.refresh]);
+
+  useEffect(() => {
+    if (anomalies.state === "EMPTY") {
+      if (knownTaskIdsRef.current === null) knownTaskIdsRef.current = new Set();
+      return;
+    }
+    if (anomalies.state !== "READY") return;
+    const knownTaskIds = knownTaskIdsRef.current;
+    if (knownTaskIds === null) {
+      knownTaskIdsRef.current = new Set(candidates.map((item) => item.latest_task_id));
+      return;
+    }
+
+    const newAnomalies = candidates.filter((item) => !knownTaskIds.has(item.latest_task_id));
+    newAnomalies.forEach((item) => knownTaskIds.add(item.latest_task_id));
+    if (!newAnomalies.length) return;
+    const queuedTaskIds = new Set(incomingAnomalies.map((item) => item.latest_task_id));
+    const additions = newAnomalies.filter((item) => !queuedTaskIds.has(item.latest_task_id));
+    if (!additions.length) return;
+    setIncomingAnomalies([...incomingAnomalies, ...additions]);
+    if (!incomingAnomalies.length) {
+      setSelectedTaskId(additions[0].latest_task_id);
+      setFocusedAnomaly(additions[0]);
+      playDriverReportAlertTone();
+    }
+  }, [anomalies.state, candidateTaskKey, candidates, incomingAnomalies]);
+
+  const incomingAnomaly = incomingAnomalies[0] ?? null;
+  const dismissIncomingAnomaly = () => {
+    const remaining = incomingAnomalies.slice(1);
+    setIncomingAnomalies(remaining);
+    const nextAnomaly = remaining[0];
+    if (!nextAnomaly) return;
+    setSelectedTaskId(nextAnomaly.latest_task_id ?? "");
+    setFocusedAnomaly(nextAnomaly);
+    playDriverReportAlertTone();
+  };
 
   if (runtimeConfig.dataMode !== "api") {
     return <RoleWorkspaceFrame title="车辆态势地图" description="查看员工上报后的车辆异常、AI 派车与虚拟路线运行状态。"><EmptyState kind="not-exposed" title="实时地图仅在 API 模式开放" /></RoleWorkspaceFrame>;
@@ -89,18 +165,29 @@ export function FleetLiveMapPage() {
     ? selectedTaskId
     : candidates[0].latest_task_id;
   const activeAnomaly = candidates.find((item) => item.latest_task_id === activeTaskId) ?? candidates[0];
+  const autoRevealVehicleId = focusedAnomaly?.latest_task_id === activeTaskId ? focusedAnomaly.vehicle_id : null;
 
   return <RoleWorkspaceFrame
     title="车辆态势地图"
     description="员工上报后自动联动车辆状态、AI 替代车辆和重新规划路线。"
-    actions={<div className="workspace-action-cluster"><DataSourceBadge provenance={anomalies.data.provenance} detail="后端异常任务与车辆处置快照"/><StatusBadge status="LIVE" label="每3秒自动同步上报" /></div>}
+    actions={<div className="workspace-action-cluster"><DataSourceBadge provenance={anomalies.data.provenance} detail="后端异常任务与车辆处置快照"/><StatusBadge status="LIVE" label="每1秒自动同步上报" /></div>}
   >
+    {incomingAnomaly ? <aside className="fleet-live-report-alert" role="alert" data-live-driver-report>
+      <span className="fleet-live-report-alert__icon"><BellRing size={21}/></span>
+      <div className="fleet-live-report-alert__copy">
+        <small>实时司机上报</small>
+        <strong>司机问题已同步</strong>
+        <p>{incomingAnomaly.driver_id} · {incomingAnomaly.vehicle_id} · {problemTypeLabel(incomingAnomaly.anomaly_type)} · {incomingAnomaly.description}</p>
+      </div>
+      <span className="fleet-live-report-alert__located"><LocateFixed size={15}/>已自动定位车辆 · 待处理 {incomingAnomalies.length} 条</span>
+      <button type="button" aria-label="关闭司机上报提醒" onClick={dismissIncomingAnomaly}><X size={17}/></button>
+    </aside> : null}
     <WorkspaceSection id="fleet-live-sandbox" title="县域车辆实时沙盘" description="选择最近异常任务；车辆沿高德规划道路连续移动，运行状态定时校准。">
       <div className="fleet-map-headbar"><div className="fleet-map-toolbar">
-        <label><span><Radio size={14}/>异常调度任务</span><select aria-label="选择地图任务" value={activeTaskId} onChange={(event) => setSelectedTaskId(event.target.value)}>{candidates.map((item) => <option key={item.latest_task_id} value={item.latest_task_id}>{anomalyDisplayLabel(item)}</option>)}</select></label>
+        <label><span><Radio size={14}/>异常调度任务</span><select aria-label="选择地图任务" value={activeTaskId} onChange={(event) => setSelectedTaskId(event.target.value)}>{candidates.map((item) => <option key={item.latest_task_id} value={item.latest_task_id}>{incomingAnomaly?.latest_task_id === item.latest_task_id ? "【新上报】" : incomingAnomalies.some((queued) => queued.latest_task_id === item.latest_task_id) ? "【待查看】" : ""}{anomalyDisplayLabel(item)}</option>)}</select></label>
         <button type="button" className="secondary-action" onClick={anomalies.refresh}><RefreshCw size={14}/>刷新</button>
       </div></div>
-      <FleetLiveTaskMap key={activeTaskId} taskId={activeTaskId} anomaly={activeAnomaly}/>
+      <FleetLiveTaskMap key={`${activeTaskId}:${autoRevealVehicleId ?? ""}`} taskId={activeTaskId} anomaly={activeAnomaly} autoRevealVehicleId={autoRevealVehicleId}/>
     </WorkspaceSection>
   </RoleWorkspaceFrame>;
 }

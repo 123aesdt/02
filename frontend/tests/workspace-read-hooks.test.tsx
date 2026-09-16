@@ -147,6 +147,46 @@ describe("workspace read hooks", () => {
     await result.unmount();
   });
 
+  it("does not cancel an in-flight read and runs one queued refresh after it completes", async () => {
+    const pending = deferred<{ items: []; total: 0; next_cursor: null; provenance: "LIVE" }>();
+    workspaceReadApi.getAnomalies.mockReturnValueOnce(pending.promise).mockResolvedValue({
+      items: [], total: 0, next_cursor: null, provenance: "LIVE",
+    });
+    const result = await renderHook(() => useAnomaliesRead());
+
+    await act(async () => {
+      result.current.refresh();
+      result.current.refresh();
+    });
+    expect(workspaceReadApi.getAnomalies).toHaveBeenCalledTimes(1);
+
+    await act(async () => { pending.resolve({ items: [], total: 0, next_cursor: null, provenance: "LIVE" }); });
+    await flush();
+    await flush();
+    expect(workspaceReadApi.getAnomalies).toHaveBeenCalledTimes(2);
+    await result.unmount();
+  });
+
+  it("times out a hung read and resumes a queued refresh", async () => {
+    vi.useFakeTimers();
+    const hung = deferred<{ items: []; total: 0; next_cursor: null; provenance: "LIVE" }>();
+    workspaceReadApi.getAnomalies.mockReturnValueOnce(hung.promise).mockResolvedValue({
+      items: [], total: 0, next_cursor: null, provenance: "LIVE",
+    });
+    const result = await renderHook(() => useAnomaliesRead());
+    await act(async () => { result.current.refresh(); });
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(4_999); });
+    expect(workspaceReadApi.getAnomalies).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    await flush();
+
+    expect(workspaceReadApi.getAnomalies).toHaveBeenCalledTimes(2);
+    expect(result.current.state).toBe("EMPTY");
+    await result.unmount();
+    vi.useRealTimers();
+  });
+
   it("does not let a stale filter request replace newer data", async () => {
     const first = deferred<typeof orderPage>();
     const second = deferred<typeof orderPage>();

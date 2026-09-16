@@ -24,6 +24,7 @@ export type WorkspaceReadHookState<T> = ReadState<T> & { refresh: () => void };
 
 type RequestFactory<T> = (signal: AbortSignal) => Promise<T>;
 type PrimitiveDependency = string | number | boolean | null | undefined;
+const WORKSPACE_READ_TIMEOUT_MS = 5_000;
 
 function apiErrorState<T>(error: unknown): ReadState<T> {
   if (error instanceof ApiError && error.status === 403) return { state: "FORBIDDEN", data: null };
@@ -43,7 +44,13 @@ function useWorkspaceRead<T>(
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [result, setResult] = useState<ReadState<T>>({ state: "LOADING", data: null });
   const backgroundRefreshRef = useRef(false);
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const refreshQueuedRef = useRef(false);
   const refresh = useCallback(() => {
+    if (activeRequestRef.current) {
+      refreshQueuedRef.current = true;
+      return;
+    }
     backgroundRefreshRef.current = true;
     setRefreshVersion((current) => current + 1);
   }, []);
@@ -53,6 +60,15 @@ function useWorkspaceRead<T>(
       return undefined;
     }
     const controller = new AbortController();
+    activeRequestRef.current = controller;
+    const finishRequest = (runQueuedRefresh: boolean) => {
+      if (activeRequestRef.current !== controller) return;
+      activeRequestRef.current = null;
+      if (!runQueuedRefresh || !refreshQueuedRef.current) return;
+      refreshQueuedRef.current = false;
+      backgroundRefreshRef.current = true;
+      setRefreshVersion((current) => current + 1);
+    };
     const isBackgroundRefresh = backgroundRefreshRef.current;
     backgroundRefreshRef.current = false;
     if (!isBackgroundRefresh) {
@@ -60,14 +76,28 @@ function useWorkspaceRead<T>(
         if (!controller.signal.aborted) setResult({ state: "LOADING", data: null });
       });
     }
+    const timeout = window.setTimeout(() => {
+      if (activeRequestRef.current !== controller) return;
+      controller.abort();
+      if (!isBackgroundRefresh) setResult({ state: "ERROR", data: null });
+      finishRequest(true);
+    }, WORKSPACE_READ_TIMEOUT_MS);
     void request(controller.signal).then((data) => {
+      window.clearTimeout(timeout);
       if (controller.signal.aborted) return;
       setResult(isEmpty(data) ? { state: "EMPTY", data: null } : { state: "READY", data });
+      finishRequest(true);
     }, (error: unknown) => {
+      window.clearTimeout(timeout);
       if (controller.signal.aborted) return;
       setResult(apiErrorState(error));
+      finishRequest(true);
     });
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+      finishRequest(false);
+    };
   // The caller supplies only primitive dependencies, avoiding unstable filter object identity.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request, refreshVersion, ...dependencies]);

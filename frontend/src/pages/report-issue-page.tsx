@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Bot, CheckCircle2, RadioTower } from "lucide-react";
 
 import { DriverRouteMap } from "../components/driver-route-map";
 import { DriverOperationStatus } from "../components/driver-operation-status";
@@ -315,6 +316,11 @@ export function ReportIssuePage() {
       {result ? <div className="report-feedback report-feedback--success" role="status">
         <strong>{result.message}</strong>
         <p>{anomalyReferenceLabel(result.anomaly_id, result.anomaly_no)} · {dispatchTaskReferenceLabel(result.task_id, result.anomaly_id)}</p>
+        <ol className="report-sync-steps" data-driver-sync-state="ACCEPTED" aria-label="问题同步状态">
+          <li className="is-complete"><CheckCircle2 size={17}/><span><strong>后端已接收</strong><small>异常与任务编号已保存</small></span></li>
+          <li className="is-active"><Bot size={17}/><span><strong>AI 调度已启动</strong><small>正在生成处置与路线方案</small></span></li>
+          <li><RadioTower size={17}/><span><strong>管理端将在 1 秒内同步</strong><small>调度中心会自动定位当前车辆</small></span></li>
+        </ol>
         <div className="report-result-actions">
           <Link className="primary-action" to={`/dispatch/${result.task_id}`}>查看 AI 调度进度</Link>
           <Link className="secondary-action" to="/my-tasks">返回我的任务</Link>

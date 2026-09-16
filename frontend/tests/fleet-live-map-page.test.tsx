@@ -22,6 +22,8 @@ import { demoVehicleOperationSnapshot } from "../src/features/fleet-sandbox/vehi
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const now = "2026-09-16T10:00:00Z";
+
 class FakeWebSocket {
   onopen: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
@@ -166,6 +168,119 @@ describe("administrator fleet live map page", () => {
     await flush();
 
     expect(view.container.querySelector<HTMLSelectElement>('select[aria-label="选择地图任务"]')?.value).toBe("TASK-FAULT");
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("announces a newly reported driver issue, selects its task, and opens the incident vehicle", async () => {
+    const view = await renderPage();
+    await flush();
+
+    expect(view.container.querySelector("[data-live-driver-report]")).toBeNull();
+    workspaceReadApi.getAnomalies.mockResolvedValue({
+      items: [
+        { row_id: 13, anomaly_no: "ANOM-LIVE", order_no: "ORD-13", driver_id: "D-013", vehicle_id: "V-013", route_id: "ROUTE-07", latest_task_id: "TASK-LIVE", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "司机上报制动系统故障", status: "PENDING", reported_at: "2026-09-16T10:00:00Z" },
+        { row_id: 2, anomaly_no: "ANOM-ROAD", order_no: "ORD-15", driver_id: "D-008", vehicle_id: "V-008", route_id: "R-1", latest_task_id: "TASK-ROAD", anomaly_type: "ROAD_BLOCKED", risk: "HIGH", description: "东河桥段堵塞", status: "COMPLETED", reported_at: "2026-09-09T09:28:45Z" },
+        { row_id: 1, anomaly_no: "ANOM-FAULT", order_no: "ORD-16", driver_id: "D-001", vehicle_id: "V-001", route_id: "R-2", latest_task_id: "TASK-FAULT", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "车辆无法行驶", status: "COMPLETED", reported_at: "2026-09-09T09:20:00Z" },
+      ], total: 3, next_cursor: null, provenance: "LIVE",
+    });
+    taskApi.getTaskStatus.mockImplementation(async (taskId: string) => ({ task_id: taskId, order_id: 13, status: taskId === "TASK-LIVE" ? "RUNNING" : "COMPLETED", started_at: "2026-09-16T10:00:01Z", completed_at: taskId === "TASK-LIVE" ? null : "2026-09-09T09:29:00Z", created_at: "2026-09-16T10:00:00Z", ready: true, requires_manual_review: false }));
+    taskApi.getTaskResult.mockImplementation(async (taskId: string) => taskId === "TASK-LIVE" ? {
+      ...resultByTask["TASK-FAULT"],
+      task_id: "TASK-LIVE",
+      status: "RUNNING",
+      vehicle_allocation: { ...resultByTask["TASK-FAULT"].vehicle_allocation, original_vehicle_id: "V-013", target_vehicle_id: "V-015" },
+      dispatch_impact: { ...resultByTask["TASK-FAULT"].dispatch_impact, incident_vehicle_id: "V-013", replacement_vehicle_id: "V-015" },
+    } : resultByTask[taskId as keyof typeof resultByTask]);
+
+    const refresh = Array.from(view.container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.includes("刷新"));
+    await act(async () => { refresh?.click(); });
+    await flush();
+    await flush();
+
+    const alert = view.container.querySelector("[data-live-driver-report]");
+    expect(alert).not.toBeNull();
+    expect(alert?.textContent).toContain("司机问题已同步");
+    expect(alert?.textContent).toContain("D-013");
+    expect(alert?.textContent).toContain("V-013");
+    expect(view.container.querySelector<HTMLSelectElement>('select[aria-label="选择地图任务"]')?.value).toBe("TASK-LIVE");
+    expect(view.container.querySelector('[data-fleet-vehicle-detail="V-013"]')).not.toBeNull();
+
+    const dismiss = view.container.querySelector<HTMLButtonElement>('button[aria-label="关闭司机上报提醒"]');
+    await act(async () => { dismiss?.click(); });
+    expect(view.container.querySelector("[data-live-driver-report]")).toBeNull();
+    expect(view.container.querySelector('[data-fleet-vehicle-detail="V-013"]')).not.toBeNull();
+    expect(view.container.querySelector<HTMLButtonElement>('button[aria-label="停止跟随车辆"]')?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("treats the first task after an empty baseline as a new driver report on the first one-second poll", async () => {
+    vi.useFakeTimers();
+    workspaceReadApi.getAnomalies
+      .mockResolvedValueOnce({ items: [], total: 0, next_cursor: null, provenance: "LIVE" })
+      .mockResolvedValue({
+        items: [
+          { row_id: 13, anomaly_no: "ANOM-FIRST", order_no: "ORD-13", driver_id: "D-013", vehicle_id: "V-013", route_id: "ROUTE-07", latest_task_id: "TASK-FIRST", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "首辆司机上报车辆故障", status: "PENDING", reported_at: "2026-09-16T10:00:00Z" },
+        ], total: 1, next_cursor: null, provenance: "LIVE",
+      });
+    taskApi.getTaskStatus.mockResolvedValue({ task_id: "TASK-FIRST", order_id: 13, status: "RUNNING", started_at: now, completed_at: null, created_at: now, ready: true, requires_manual_review: false });
+    taskApi.getTaskResult.mockResolvedValue({
+      ...resultByTask["TASK-FAULT"],
+      task_id: "TASK-FIRST",
+      status: "RUNNING",
+      vehicle_allocation: { ...resultByTask["TASK-FAULT"].vehicle_allocation, original_vehicle_id: "V-013", target_vehicle_id: "V-015" },
+      dispatch_impact: { ...resultByTask["TASK-FAULT"].dispatch_impact, incident_vehicle_id: "V-013", replacement_vehicle_id: "V-015" },
+    });
+
+    const view = await renderPage();
+    await flush();
+    expect(view.container.querySelector("[data-live-driver-report]")).toBeNull();
+    expect(workspaceReadApi.getAnomalies).toHaveBeenCalledTimes(1);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(999); });
+    expect(workspaceReadApi.getAnomalies).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    await flush();
+    await flush();
+
+    expect(view.container.querySelector("[data-live-driver-report]")?.textContent).toContain("首辆司机上报车辆故障");
+    expect(view.container.querySelector<HTMLSelectElement>('select[aria-label="选择地图任务"]')?.value).toBe("TASK-FIRST");
+    expect(view.container.querySelector('[data-fleet-vehicle-detail="V-013"]')).not.toBeNull();
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("queues every task when several driver reports arrive in the same poll", async () => {
+    const view = await renderPage();
+    await flush();
+    workspaceReadApi.getAnomalies.mockResolvedValue({
+      items: [
+        { row_id: 14, anomaly_no: "ANOM-LIVE-14", order_no: "ORD-14", driver_id: "D-014", vehicle_id: "V-014", route_id: "ROUTE-08", latest_task_id: "TASK-LIVE-14", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "司机十四上报车辆故障", status: "PENDING", reported_at: "2026-09-16T10:00:01Z" },
+        { row_id: 13, anomaly_no: "ANOM-LIVE-13", order_no: "ORD-13", driver_id: "D-013", vehicle_id: "V-013", route_id: "ROUTE-07", latest_task_id: "TASK-LIVE-13", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "司机十三上报车辆故障", status: "PENDING", reported_at: "2026-09-16T10:00:00Z" },
+        { row_id: 2, anomaly_no: "ANOM-ROAD", order_no: "ORD-15", driver_id: "D-008", vehicle_id: "V-008", route_id: "R-1", latest_task_id: "TASK-ROAD", anomaly_type: "ROAD_BLOCKED", risk: "HIGH", description: "东河桥段堵塞", status: "COMPLETED", reported_at: "2026-09-09T09:28:45Z" },
+        { row_id: 1, anomaly_no: "ANOM-FAULT", order_no: "ORD-16", driver_id: "D-001", vehicle_id: "V-001", route_id: "R-2", latest_task_id: "TASK-FAULT", anomaly_type: "VEHICLE_BREAKDOWN", risk: "HIGH", description: "车辆无法行驶", status: "COMPLETED", reported_at: "2026-09-09T09:20:00Z" },
+      ], total: 4, next_cursor: null, provenance: "LIVE",
+    });
+    taskApi.getTaskStatus.mockImplementation(async (taskId: string) => ({ task_id: taskId, order_id: 14, status: "RUNNING", started_at: now, completed_at: null, created_at: now, ready: true, requires_manual_review: false }));
+    taskApi.getTaskResult.mockImplementation(async (taskId: string) => ({
+      ...resultByTask["TASK-FAULT"],
+      task_id: taskId,
+      status: "RUNNING",
+      vehicle_allocation: { ...resultByTask["TASK-FAULT"].vehicle_allocation, original_vehicle_id: taskId === "TASK-LIVE-14" ? "V-014" : "V-013", target_vehicle_id: "V-015" },
+      dispatch_impact: { ...resultByTask["TASK-FAULT"].dispatch_impact, incident_vehicle_id: taskId === "TASK-LIVE-14" ? "V-014" : "V-013", replacement_vehicle_id: "V-015" },
+    }));
+
+    const refresh = Array.from(view.container.querySelectorAll<HTMLButtonElement>("button")).find((button) => button.textContent?.includes("刷新"));
+    await act(async () => { refresh?.click(); });
+    await flush();
+    await flush();
+    expect(view.container.querySelector("[data-live-driver-report]")?.textContent).toContain("D-014");
+    expect(view.container.querySelector<HTMLSelectElement>('select[aria-label="选择地图任务"]')?.value).toBe("TASK-LIVE-14");
+
+    await act(async () => { view.container.querySelector<HTMLButtonElement>('button[aria-label="关闭司机上报提醒"]')?.click(); });
+    await flush();
+    await flush();
+    expect(view.container.querySelector("[data-live-driver-report]")?.textContent).toContain("D-013");
+    expect(view.container.querySelector<HTMLSelectElement>('select[aria-label="选择地图任务"]')?.value).toBe("TASK-LIVE-13");
+    expect(view.container.querySelector('[data-fleet-vehicle-detail="V-013"]')).not.toBeNull();
     await act(async () => { view.root.unmount(); });
   });
 
