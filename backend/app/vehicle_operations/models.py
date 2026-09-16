@@ -42,7 +42,9 @@ class MaintenanceStatus(StrEnum):
 
 
 _VEHICLE_TRANSITIONS = {
-    VehicleOperationalStatus.AVAILABLE: frozenset({VehicleOperationalStatus.RESERVED, VehicleOperationalStatus.DISPATCHING}),
+    VehicleOperationalStatus.AVAILABLE: frozenset(
+        {VehicleOperationalStatus.RESERVED, VehicleOperationalStatus.DISPATCHING, VehicleOperationalStatus.BROKEN}
+    ),
     VehicleOperationalStatus.RESERVED: frozenset({VehicleOperationalStatus.DISPATCHING}),
     VehicleOperationalStatus.DISPATCHING: frozenset({VehicleOperationalStatus.IN_TRANSIT}),
     VehicleOperationalStatus.IN_TRANSIT: frozenset({VehicleOperationalStatus.BROKEN}),

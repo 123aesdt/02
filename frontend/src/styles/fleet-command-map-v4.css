@@ -192,6 +192,21 @@
   box-shadow: inset 0 0 32px rgba(19, 113, 231, .1), 0 0 16px rgba(25, 119, 238, .12);
 }
 
+.app-shell[data-current-page="/fleet-live-map"] :is(
+  .fleet-map-terrain-satellite,
+  .fleet-road-casings,
+  .fleet-base-roads,
+  .fleet-road-names,
+  .fleet-route-labels,
+  .fleet-map-nodes
+) {
+  pointer-events: none;
+}
+
+.app-shell[data-current-page="/fleet-live-map"] .fleet-vehicle-marker {
+  pointer-events: bounding-box;
+}
+
 .app-shell[data-current-page="/fleet-live-map"] .fleet-amap-canvas,
 .app-shell[data-current-page="/fleet-live-map"] .fleet-sandbox-canvas {
   min-height: 590px;

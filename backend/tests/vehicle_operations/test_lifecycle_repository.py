@@ -78,6 +78,21 @@ def test_breakdown_case_is_atomic_idempotent_and_records_outbox(sqlite_factory):
         assert {"VEHICLE_STOPPED", "REPLACEMENT_DISPATCHED", "RESCUE_DISPATCHED", "MAINTENANCE_SCHEDULED"} <= event_types
 
 
+def test_available_vehicle_can_be_reported_broken_before_departure(sqlite_factory):
+    _seed(sqlite_factory)
+    with sqlite_factory() as session:
+        vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-001"))
+        assert vehicle is not None
+        vehicle.status = "AVAILABLE"
+        session.commit()
+
+    created = SqlAlchemyVehicleOperationsRepository(sqlite_factory).create_breakdown_case(_request())
+
+    assert created.vehicle_status == "WAITING_RESCUE"
+    with sqlite_factory() as session:
+        assert session.scalar(select(FleetVehicle.status).where(FleetVehicle.vehicle_id == "V-001")) == "WAITING_RESCUE"
+
+
 def test_repair_eta_starts_when_repairing_begins_and_uses_estimated_minutes(sqlite_factory):
     _seed(sqlite_factory)
     repository = SqlAlchemyVehicleOperationsRepository(sqlite_factory)

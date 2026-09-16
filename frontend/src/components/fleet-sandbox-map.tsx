@@ -12,6 +12,7 @@ import {
   type FleetVehicleStatus,
 } from "../features/fleet-sandbox/fleet-sandbox-data";
 import { fleetEdgePath, fleetRouteGeometry, fleetRoutePath, fullFleetMapViewBox } from "../features/fleet-sandbox/fleet-map-geometry";
+import { fleetVehicleMapPointOffsets } from "../features/fleet-sandbox/fleet-motion-geometry";
 import { fleetOperationRouteSpecs, fleetVehicleTripDetails } from "../features/fleet-sandbox/fleet-operation-presentation";
 import { canonicalFleetVehicleId, fleetNodeById as nodeById, fleetPositionForVehicle, fleetRouteById as routeById, fleetSimulationTick, type FleetPositionSnapshot } from "../features/fleet-sandbox/fleet-simulation";
 import type { DispatchImpactResponse, RoutePlanResponse, VehicleAllocationResponse } from "../services/api/dispatch-adapter";
@@ -149,6 +150,11 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   const visibleVehicles = runtimeVehicles.filter((vehicle) =>
     (statusFilter === "ALL" || vehicle.status === statusFilter)
     && (selectedRouteId === "ALL" || vehicle.routeId === selectedRouteId));
+  const legacyVehicleOffsets = useMemo(() => fleetVehicleMapPointOffsets(runtimeVehicles.map((vehicle) => ({
+    id: vehicle.id,
+    x: vehicle.x,
+    y: vehicle.y,
+  })), 72, { minX: 230, maxX: 1110, minY: 92, maxY: 600 }), [runtimeVehicles]);
   const mileageRanking = runtimeVehicles.slice().sort((left, right) => right.progress - left.progress).slice(0, 5);
   const activeVehicleCount = statusCounts.IN_TRANSIT + statusCounts.DISPATCHING;
   const blockedEdgeIds = new Set(
@@ -216,6 +222,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
 
   const startMapDrag = (event: React.PointerEvent<SVGSVGElement>) => {
     if (event.button !== 0) return;
+    if ((event.target as Element).closest('[role="button"]')) return;
     setFollowVehicle(false);
     event.currentTarget.setPointerCapture?.(event.pointerId);
     dragOrigin.current = { clientX: event.clientX, clientY: event.clientY, offsetX: viewportOffset.x, offsetY: viewportOffset.y };
@@ -483,6 +490,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
           </g>)}</g>
           <g className="fleet-vehicle-markers">{visibleVehicles.map((vehicle, index) => {
             const color = fleetStatusMeta[vehicle.status].color;
+            const overlapOffset = legacyVehicleOffsets.get(vehicle.id) ?? { x: 0, y: 0 };
             const isPriorityVehicle = selectedVehicle.id === vehicle.id
               || vehicle.id === originalVehicleId
               || vehicle.id === targetVehicleId
@@ -502,9 +510,10 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
               data-fleet-status={vehicle.status}
               data-fleet-node-id={vehicle.nodeId}
               data-route-offset="0"
+              data-overlap-offset={`${overlapOffset.x},${overlapOffset.y}`}
               data-map-priority={isPriorityVehicle ? "critical" : "background"}
               className={`fleet-vehicle-marker ${selectedVehicle.id === vehicle.id ? "is-selected" : ""}`}
-              transform={`translate(${vehicle.x.toFixed(2)} ${vehicle.y.toFixed(2)})`}
+              transform={`translate(${(vehicle.x + overlapOffset.x).toFixed(2)} ${(vehicle.y + overlapOffset.y).toFixed(2)})`}
               onClick={() => selectVehicle(vehicle.id)}
               onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") selectVehicle(vehicle.id); }}
             >
