@@ -18,7 +18,7 @@ import type { DispatchImpactResponse, RoutePlanResponse, VehicleAllocationRespon
 import type { TaskEvent } from "../types/task-events";
 import type { VehicleOperationSnapshot } from "../types/vehicle-operations";
 import { AmapFleetMap, type AmapLoadState } from "./amap-fleet-map";
-import { FleetDispatchImpactCard } from "./fleet-dispatch-impact-card";
+import { FleetVehicleDetailCard } from "./fleet-vehicle-detail-card";
 import { MapErrorBoundary } from "./map-error-boundary";
 import { VehicleOperationTimeline } from "./vehicle-operation-timeline";
 
@@ -62,7 +62,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   const [statusFilter, setStatusFilter] = useState<"ALL" | FleetVehicleStatus>("ALL");
   const [selectedRouteId, setSelectedRouteId] = useState("ALL");
   const [selectedVehicleId, setSelectedVehicleId] = useState(() => originalVehicleId ?? "V-001");
-  const [impactVehicleId, setImpactVehicleId] = useState<string | null>(null);
+  const [detailVehicleId, setDetailVehicleId] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<"STANDARD" | "SATELLITE">("STANDARD");
   const [zoom, setZoom] = useState(1);
   const [showLabels, setShowLabels] = useState(true);
@@ -175,23 +175,27 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   const shouldRenderLegacyMap = !runtimeConfig.amap?.enabled || amapState === "FALLBACK";
   const impactIncidentVehicleId = taskVehicleId(dispatchImpact?.incident_vehicle_id);
   const impactReplacementVehicleId = taskVehicleId(dispatchImpact?.replacement_vehicle_id);
+  const detailVehicle = detailVehicleId
+    ? runtimeVehicles.find((vehicle) => vehicle.id === detailVehicleId) ?? null
+    : null;
+  const detailRoute = detailVehicle ? routeById.get(detailVehicle.routeId) ?? fleetRoutes[0] : null;
+  const detailTrip = detailVehicle && detailRoute ? fleetVehicleTripDetails(detailVehicle, detailRoute) : null;
+  const detailOperationVehicle = detailVehicle
+    ? operationSnapshot?.vehicles.find((vehicle) => vehicle.vehicle_id === detailVehicle.id)
+    : null;
   const visibleDispatchImpact = dispatchImpact && (
-    impactVehicleId === impactIncidentVehicleId
-    || impactVehicleId === impactReplacementVehicleId
+    detailVehicleId === impactIncidentVehicleId
+    || detailVehicleId === impactReplacementVehicleId
   ) ? dispatchImpact : null;
 
   const selectVehicle = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
-    setImpactVehicleId(
-      vehicleId === impactIncidentVehicleId || vehicleId === impactReplacementVehicleId
-        ? vehicleId
-        : null,
-    );
+    setDetailVehicleId(vehicleId);
   };
 
   const resetMapView = () => {
     setFollowVehicle(false);
-    setImpactVehicleId(null);
+    setDetailVehicleId(null);
     setSelectedRouteId("ALL");
     setZoom(1);
     setViewportOffset({ x: 0, y: 0 });
@@ -199,7 +203,7 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
   };
 
   const selectRoute = (routeId: string) => {
-    setImpactVehicleId(null);
+    setDetailVehicleId(null);
     setSelectedRouteId(routeId);
     setZoom(1);
     if (routeId === "ALL") return;
@@ -334,7 +338,17 @@ export function FleetSandboxMap({ anomalyType, allocation, routePlan, dispatchIm
         <span className="fleet-map-coordinate">嵩明县杨林物流走廊 · {Math.round(zoom * 100)}%</span>
         <span className={`fleet-map-provider is-${amapState.toLowerCase()}`}><i/>{amapState === "READY" ? "高德实时路网" : amapState === "LOADING" ? "正在连接高德地图" : "本地地图保障模式"}</span>
         <span className="fleet-map-attribution">{amapState === "READY" ? "地图服务 © 高德地图 · CountyFlow 调度覆盖物" : "遥感影像 © Esri · 业务路网为演示叠加"}</span>
-        {visibleDispatchImpact ? <FleetDispatchImpactCard impact={visibleDispatchImpact} onClose={() => setImpactVehicleId(null)}/> : null}
+        {detailVehicle && detailRoute && detailTrip ? <FleetVehicleDetailCard
+          vehicle={detailVehicle}
+          route={detailRoute}
+          trip={detailTrip}
+          statusLabel={fleetStatusMeta[detailVehicle.status].label}
+          statusColor={fleetStatusMeta[detailVehicle.status].color}
+          driverId={detailOperationVehicle?.assigned_driver_id}
+          statusReason={detailOperationVehicle?.status_reason}
+          impact={visibleDispatchImpact}
+          onClose={() => setDetailVehicleId(null)}
+        /> : null}
         {runtimeConfig.amap?.enabled ? <MapErrorBoundary onFallback={() => setAmapState("FALLBACK")}><AmapFleetMap
           apiKey={runtimeConfig.amap.key}
           securityCode={runtimeConfig.amap.securityCode}

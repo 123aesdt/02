@@ -302,13 +302,22 @@ describe("administrator fleet live map page", () => {
     expect(dispatchImpact?.querySelector('[data-impact-metric="total"]')?.textContent).toContain("预计晚到 10 分钟");
     const routineVehicle = view.container.querySelector<SVGGElement>('[data-fleet-vehicle-id="V-002"]');
     await act(async () => { routineVehicle?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    const routineVehicleDetail = view.container.querySelector('[data-fleet-vehicle-detail="V-002"]');
+    expect(routineVehicleDetail).not.toBeNull();
+    expect(routineVehicleDetail?.textContent).toContain("车辆运行详情");
+    expect(routineVehicleDetail?.textContent).toContain("V-002");
+    expect(routineVehicleDetail?.textContent).toContain("路线-01 · 调度中心—快递集散线");
+    expect(routineVehicleDetail?.textContent).toContain("行驶中");
+    expect(routineVehicleDetail?.querySelector('[data-impact-metric="total"]')).toBeNull();
     expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).toBeNull();
     const replacementVehicle = view.container.querySelector<SVGGElement>('[data-fleet-vehicle-id="V-005"]');
     await act(async () => { replacementVehicle?.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(view.container.querySelector('[data-fleet-vehicle-detail="V-005"]')).not.toBeNull();
     expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).not.toBeNull();
-    const closeImpact = view.container.querySelector<HTMLButtonElement>('button[aria-label="关闭调度影响分析"]');
+    const closeImpact = view.container.querySelector<HTMLButtonElement>('button[aria-label="关闭车辆运行详情"]');
     await act(async () => { closeImpact?.click(); });
     expect(view.container.querySelector('[data-dispatch-impact="CALCULATED"]')).toBeNull();
+    expect(view.container.querySelector("[data-fleet-vehicle-detail]")).toBeNull();
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-dispatch-state="RESCUE"]')).not.toBeNull();
     expect(view.container.querySelector('[data-fleet-route-id="ROUTE-10"][data-map-priority="critical"]')).not.toBeNull();
     expect(view.container.querySelectorAll('[data-fleet-route-id][data-map-priority="background"].is-visible').length).toBeGreaterThanOrEqual(8);
@@ -337,6 +346,23 @@ describe("administrator fleet live map page", () => {
     expect(after).not.toBe(before);
     expect(distance).toBeGreaterThan(0);
     expect(distance).toBeLessThan(20);
+    await act(async () => { view.root.unmount(); });
+  });
+
+  it("opens a matching vehicle detail card from every fleet roster item", async () => {
+    const view = await renderPage();
+    await flush();
+
+    expect(view.container.querySelector("[data-fleet-vehicle-detail]")).toBeNull();
+    const rosterItems = Array.from(view.container.querySelectorAll<HTMLButtonElement>("[data-fleet-roster-id]"));
+    expect(rosterItems).toHaveLength(20);
+
+    for (const item of rosterItems) {
+      const vehicleId = item.dataset.fleetRosterId;
+      await act(async () => { item.click(); });
+      expect(view.container.querySelector(`[data-fleet-vehicle-detail="${vehicleId}"]`)).not.toBeNull();
+    }
+
     await act(async () => { view.root.unmount(); });
   });
 
