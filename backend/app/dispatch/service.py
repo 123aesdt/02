@@ -300,16 +300,7 @@ class DispatchService:
             "vehicle_reassigned": selected_vehicle_id is not None and selected_vehicle_id != original_vehicle_id,
             "pickup_route": cls._compact_path(None if selected is None else selected.get("pickup_route")),
             "selected_candidate": (cls._compact_selected_candidate(selected) if selected is not None else None),
-            "candidates": [
-                cls._compact_vehicle_candidate(candidate)
-                if cls._text(candidate, "vehicle_id") == selected_vehicle_id
-                else {
-                    "vehicle_id": cls._text(candidate, "vehicle_id"),
-                    "score": cls._number_text(candidate.get("score")),
-                    "exclusion_reasons": cls._string_list(candidate.get("exclusion_reasons")),
-                }
-                for candidate in candidates
-            ],
+            "candidates": [cls._compact_vehicle_candidate(candidate) for candidate in candidates],
         }
 
     @classmethod

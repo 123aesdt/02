@@ -102,6 +102,24 @@ def test_cold_chain_breakdown_selects_v005_with_explainable_score() -> None:
     assert rejected_v011.exclusion_reasons == ("DRIVER_UNAVAILABLE", "INSUFFICIENT_CAPACITY")
 
 
+def test_rejected_but_reachable_vehicle_keeps_comparison_route_and_score() -> None:
+    vehicle = _vehicle("V-003", vehicle_type="VAN", cargo_capability="GENERAL", driver=_driver("D-011"))
+    service, estimator = _service((vehicle,), {"N15": _path()})
+
+    candidate = service.allocate(_request()).candidates[0]
+
+    assert candidate.eligible is False
+    assert candidate.exclusion_reasons == ("CARGO_CAPABILITY_MISMATCH",)
+    assert candidate.pickup_route is not None
+    assert (candidate.pickup_distance_km, candidate.pickup_eta_minutes) == (Decimal("2.80"), 6)
+    assert candidate.score == Decimal("83.4")
+    assert candidate.score_components is not None
+    assert candidate.score_components.eta_penalty == Decimal("9.0")
+    assert candidate.score_components.distance_penalty == Decimal("5.60")
+    assert candidate.score_components.cargo_exact_match_bonus == Decimal("0")
+    assert estimator.calls == ["N15"]
+
+
 @pytest.mark.parametrize(
     ("vehicle", "expected_reason"),
     [
@@ -115,7 +133,9 @@ def test_hard_filters_report_state_and_driver_exclusions(vehicle: FleetVehicleSn
     service, estimator = _service((vehicle,), {vehicle.current_node_id: _path()})
     candidate = service.allocate(_request()).candidates[0]
     assert expected_reason in candidate.exclusion_reasons
-    assert estimator.calls == []
+    assert candidate.pickup_route is not None
+    assert candidate.score is not None
+    assert estimator.calls == [vehicle.current_node_id]
 
 
 def test_unreachable_and_weight_restricted_pickups_are_distinguished() -> None:
@@ -196,8 +216,11 @@ def test_collects_every_applicable_cheap_exclusion_in_design_order() -> None:
         "LICENSE_MISMATCH",
         "INSUFFICIENT_CAPACITY",
         "CARGO_CAPABILITY_MISMATCH",
+        "PICKUP_UNREACHABLE",
     )
-    assert estimator.calls == []
+    assert candidate.pickup_route is None
+    assert candidate.score is None
+    assert estimator.calls == [vehicle.current_node_id]
 
 
 def test_b2_driver_satisfies_light_vehicle_license_requirement() -> None:

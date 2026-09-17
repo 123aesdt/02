@@ -755,7 +755,34 @@ def _persist_task_7_evidence(service: DispatchTaskApiService) -> None:
                                 "scoring_formula": "FLEET_SCORE_V1",
                                 "eligible": True,
                                 "exclusion_reasons": [],
-                            }
+                            },
+                            {
+                                "vehicle_id": "V-011",
+                                "driver_id": "D-012",
+                                "vehicle_status": "MAINTENANCE",
+                                "driver_status": "OFF_DUTY",
+                                "remaining_capacity_kg": "350.00",
+                                "gross_weight_tons": "3.20",
+                                "cargo_capability": "GENERAL",
+                                "pickup_distance_km": "4.20",
+                                "pickup_eta_minutes": 9,
+                                "score": "70.0",
+                                "score_components": {
+                                    "eta_penalty": "13.5",
+                                    "distance_penalty": "8.4",
+                                    "load_penalty": "8.0",
+                                    "road_risk_penalty": "6.0",
+                                    "same_station_bonus": "0.0",
+                                    "cargo_exact_match_bonus": "0.0",
+                                },
+                                "scoring_formula": "FLEET_SCORE_V1",
+                                "eligible": False,
+                                "exclusion_reasons": [
+                                    "VEHICLE_UNAVAILABLE",
+                                    "DRIVER_UNAVAILABLE",
+                                    "CARGO_CAPABILITY_MISMATCH",
+                                ],
+                            },
                         ],
                     },
                 ),
@@ -867,6 +894,13 @@ def test_supervisor_reads_persisted_fleet_and_route_evidence_snapshot() -> None:
         assert body["vehicle_allocation"]["target_driver_id"] == "D-003"
         assert body["vehicle_allocation"]["pickup_route"]["edge_ids"] == ["E20"]
         assert body["vehicle_allocation"]["scoring_formula"] == "FLEET_SCORE_V1"
+        rejected = body["vehicle_allocation"]["candidate_vehicles"][1]
+        assert rejected["driver_id"] == "D-012"
+        assert rejected["vehicle_status"] == "MAINTENANCE"
+        assert rejected["remaining_capacity_kg"] == "350.00"
+        assert rejected["gross_weight_tons"] == "3.20"
+        assert (rejected["pickup_distance_km"], rejected["pickup_eta_minutes"], rejected["score"]) == ("4.20", 9, "70.0")
+        assert rejected["score_components"]["road_risk_penalty"] == "6.0"
         assert body["route_plan"]["distance_delta_km"] == "3.20"
         assert body["route_plan"]["algorithm"] == "DIJKSTRA_V1"
         assert body["route_plan"]["road_network_version"] == 7

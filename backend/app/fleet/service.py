@@ -105,8 +105,6 @@ class FleetAllocationService:
 
     def _evaluate(self, vehicle: FleetVehicleSnapshot, request: FleetAllocationRequest, estimator: TravelTimeEstimator) -> VehicleCandidate:
         reasons = self._cheap_reasons(vehicle, request)
-        if reasons:
-            return self._rejected(vehicle, reasons)
         pickup = estimator.estimate(vehicle.current_node_id, request.incident_node_id, vehicle.gross_weight_tons)
         if pickup is None:
             if self._weight_restricted(estimator, vehicle, vehicle.current_node_id, request.incident_node_id):
@@ -119,7 +117,6 @@ class FleetAllocationService:
                 if self._weight_restricted(estimator, vehicle, request.incident_node_id, request.destination_node_id):
                     reasons.append("ROAD_WEIGHT_RESTRICTION")
                 reasons.append("DELIVERY_UNREACHABLE")
-                return self._rejected(vehicle, reasons, pickup)
         components = self._score_components(vehicle, request, pickup)
         score = (
             Decimal("100")
@@ -140,8 +137,8 @@ class FleetAllocationService:
             pickup.estimated_minutes,
             components,
             score,
-            True,
-            (),
+            not reasons,
+            tuple(reasons),
             vehicle.gross_weight_tons,
             vehicle.cargo_capability,
             driver_status=vehicle.driver.status if vehicle.driver else None,

@@ -16,8 +16,8 @@ const allocation: VehicleAllocationResponse = {
   scoring_formula: "FLEET_SCORE_V1",
   pickup_route: { objective: "FASTEST", node_ids: ["N15", "N04"], edge_ids: ["E20"], distance_km: "2.80", estimated_minutes: 6, risk_cost: "0.10", visited_node_count: 2, scoring_formula: null },
   candidate_vehicles: [
-    { vehicle_id: "V-001", driver_id: "D-001", vehicle_status: "BROKEN", driver_status: "ON_DUTY", remaining_capacity_kg: "800.00", gross_weight_tons: "2.80", cargo_capability: "COLD_CHAIN", pickup_route: null, pickup_distance_km: null, pickup_eta_minutes: null, score: null, score_components: null, scoring_formula: null, eligible: false, exclusion_reasons: ["ORIGINAL_VEHICLE_EXCLUDED", "VEHICLE_UNAVAILABLE"] },
-    { vehicle_id: "V-002", driver_id: "D-002", vehicle_status: "AVAILABLE", driver_status: "ON_DUTY", remaining_capacity_kg: "1000.00", gross_weight_tons: "2.20", cargo_capability: "GENERAL", pickup_route: null, pickup_distance_km: null, pickup_eta_minutes: null, score: null, score_components: null, scoring_formula: null, eligible: false, exclusion_reasons: ["CARGO_CAPABILITY_MISMATCH"] },
+    { vehicle_id: "V-001", driver_id: "D-001", vehicle_status: "BROKEN", driver_status: "ON_DUTY", remaining_capacity_kg: "800.00", gross_weight_tons: "2.80", cargo_capability: "COLD_CHAIN", pickup_route: null, pickup_distance_km: null, pickup_eta_minutes: null, score: null, score_components: null, scoring_formula: null, eligible: false, exclusion_reasons: ["ORIGINAL_VEHICLE_EXCLUDED", "VEHICLE_UNAVAILABLE", "PICKUP_UNREACHABLE"] },
+    { vehicle_id: "V-002", driver_id: "D-002", vehicle_status: "AVAILABLE", driver_status: "ON_DUTY", remaining_capacity_kg: "1000.00", gross_weight_tons: "2.20", cargo_capability: "GENERAL", pickup_route: { objective: "FASTEST", node_ids: ["N12", "N04"], edge_ids: ["E19"], distance_km: "3.60", estimated_minutes: 8, risk_cost: "0.20", visited_node_count: 3, scoring_formula: null }, pickup_distance_km: "3.60", pickup_eta_minutes: 8, score: "75.0", score_components: { eta_penalty: "12.0", distance_penalty: "7.2", load_penalty: "5.8", road_risk_penalty: "3.0", same_station_bonus: "0.0", cargo_exact_match_bonus: "3.0" }, scoring_formula: "FLEET_SCORE_V1", eligible: false, exclusion_reasons: ["CARGO_CAPABILITY_MISMATCH"] },
     { vehicle_id: "V-005", driver_id: "D-003", vehicle_status: "AVAILABLE", driver_status: "ON_DUTY", remaining_capacity_kg: "900.00", gross_weight_tons: "2.40", cargo_capability: "COLD_CHAIN", pickup_route: { objective: "FASTEST", node_ids: ["N15", "N04"], edge_ids: ["E20"], distance_km: "2.80", estimated_minutes: 6, risk_cost: "0.10", visited_node_count: 2, scoring_formula: null }, pickup_distance_km: "2.80", pickup_eta_minutes: 6, score: "93.4", score_components: { eta_penalty: "3.0", distance_penalty: "1.4", load_penalty: "2.0", road_risk_penalty: "0.2", same_station_bonus: "0.0", cargo_exact_match_bonus: "3.0" }, scoring_formula: "FLEET_SCORE_V1", eligible: true, exclusion_reasons: [] },
     { vehicle_id: "县配测试车-X9", driver_id: "D-009", vehicle_status: "AVAILABLE", driver_status: "ON_DUTY", remaining_capacity_kg: "850.00", gross_weight_tons: "2.50", cargo_capability: "COLD_CHAIN", pickup_route: { objective: "FASTEST", node_ids: ["N12", "N04"], edge_ids: ["E19"], distance_km: "3.10", estimated_minutes: 7, risk_cost: "0.20", visited_node_count: 3, scoring_formula: null }, pickup_distance_km: "3.10", pickup_eta_minutes: 7, score: "93.4", score_components: { eta_penalty: "4.0", distance_penalty: "1.6", load_penalty: "2.1", road_risk_penalty: "0.4", same_station_bonus: "1.0", cargo_exact_match_bonus: "3.0" }, scoring_formula: "FLEET_SCORE_V1", eligible: true, exclusion_reasons: [] },
   ],
@@ -66,6 +66,7 @@ it("renders a semantic candidate table with complete evidence for every vehicle"
   const selectedRow = container.querySelector('[data-vehicle-id="V-005"]');
   const peerRow = container.querySelector('[data-vehicle-id="县配测试车-X9"]');
   const excludedRow = container.querySelector('[data-vehicle-id="V-001"]');
+  const comparisonRow = container.querySelector('[data-vehicle-id="V-002"]');
 
   expect(table?.querySelector("caption")?.textContent).toContain("车辆候选证据表");
   expect(table?.querySelector("thead")).not.toBeNull();
@@ -82,8 +83,16 @@ it("renders a semantic candidate table with complete evidence for every vehicle"
   expect(peerRow?.querySelector('[data-field="pickup-distance"]')?.textContent).toBe("3.10 公里");
   expect(peerRow?.querySelector('[data-field="pickup-eta"]')?.textContent).toBe("7 分钟");
   expect(peerRow?.querySelector('[data-field="score-components"]')?.textContent).toContain("道路风险扣分0.4");
-  expect(excludedRow?.querySelector('[data-field="pickup-distance"]')?.textContent).toBe("未提供");
-  expect(excludedRow?.querySelector('[data-field="score-components"]')?.textContent).toBe("未提供");
+  expect(comparisonRow?.querySelector('[data-field="pickup-distance"]')?.textContent).toBe("3.60 公里");
+  expect(comparisonRow?.querySelector('[data-field="pickup-eta"]')?.textContent).toBe("8 分钟");
+  expect(comparisonRow?.querySelector('[data-field="score"]')?.textContent).toBe("75.0");
+  expect(comparisonRow?.querySelector('[data-field="score-components"]')?.textContent).toContain("道路风险扣分3.0");
+  expect(excludedRow?.querySelector('[data-field="rank"]')?.textContent).toBe("不参与排名");
+  expect(excludedRow?.querySelector('[data-field="pickup-distance"]')?.textContent).toBe("无法到达");
+  expect(excludedRow?.querySelector('[data-field="pickup-eta"]')?.textContent).toBe("无法到达");
+  expect(excludedRow?.querySelector('[data-field="score"]')?.textContent).toBe("不计分");
+  expect(excludedRow?.querySelector('[data-field="score-components"]')?.textContent).toBe("不计分");
+  expect(container.textContent).not.toContain("未提供");
   await act(async () => { root.unmount(); });
 });
 
@@ -99,7 +108,38 @@ it("shows candidate totals and a deterministic ranking for dispatchable replacem
   expect(tableRows.slice(0, 2).map((row) => row.dataset.vehicleId)).toEqual(["V-005", "县配测试车-X9"]);
   expect(selectedRow?.querySelector('[data-field="rank"]')?.textContent).toBe("第 1 名");
   expect(peerRow?.querySelector('[data-field="rank"]')?.textContent).toBe("第 2 名");
-  expect(container.querySelector('[data-vehicle-id="V-001"] [data-field="rank"]')?.textContent).toBe("—");
+  expect(container.querySelector('[data-vehicle-id="V-001"] [data-field="rank"]')?.textContent).toBe("不参与排名");
+  await act(async () => { root.unmount(); });
+});
+
+it("matches the backend vehicle-id tie-break when score and ETA are equal", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const selected = allocation.candidate_vehicles.find((candidate) => candidate.vehicle_id === "V-005")!;
+  const peer = allocation.candidate_vehicles.find((candidate) => candidate.vehicle_id === "县配测试车-X9")!;
+  await act(async () => { root.render(<FleetAllocationPanel allocation={{
+    ...allocation,
+    candidate_vehicles: [
+      {
+        ...peer,
+        vehicle_id: "V-006",
+        pickup_route: peer.pickup_route ? {
+          ...peer.pickup_route,
+          distance_km: "1.00",
+          estimated_minutes: 6,
+        } : null,
+        pickup_distance_km: "1.00",
+        pickup_eta_minutes: 6,
+      },
+      selected,
+    ],
+  }}/>); });
+
+  const tableRows = [...container.querySelectorAll<HTMLTableRowElement>(".fleet-candidate-table tbody tr")];
+  expect(tableRows.map((row) => row.dataset.vehicleId)).toEqual(["V-005", "V-006"]);
+  expect(container.querySelector('[data-vehicle-id="V-005"] [data-field="rank"]')?.textContent).toBe("第 1 名");
+  expect(container.querySelector('[data-vehicle-id="V-006"] [data-field="rank"]')?.textContent).toBe("第 2 名");
   await act(async () => { root.unmount(); });
 });
 it("states clearly when no replacement vehicle or pickup route is available", async () => {

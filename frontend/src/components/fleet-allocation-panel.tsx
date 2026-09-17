@@ -3,7 +3,7 @@ import { ArrowRight, Truck, UserRound } from "lucide-react";
 import type { FleetScoreComponentsResponse, VehicleAllocationResponse, VehicleCandidateResponse } from "../services/api/dispatch-adapter";
 import { localizeStatus } from "../utils/presentation-labels";
 
-const EMPTY_EVIDENCE = "未提供";
+const EMPTY_EVIDENCE = "未记录";
 
 const EXCLUSION_LABELS: Readonly<Record<string, string>> = {
   ORIGINAL_VEHICLE_EXCLUDED: "原故障车辆不参与候选",
@@ -37,8 +37,24 @@ function evidenceWithUnit(value: string | number | null | undefined, unit: strin
   return displayValue === EMPTY_EVIDENCE ? displayValue : `${displayValue} ${unit}`;
 }
 
-function localizedEvidenceStatus(value: string | null): string {
-  return value ? localizeStatus(value) : EMPTY_EVIDENCE;
+function localizedEvidenceStatus(value: string | null, fallback = "状态未记录"): string {
+  return value ? localizeStatus(value) : fallback;
+}
+
+function pickupEvidence(candidate: VehicleCandidateResponse, value: string | number | null, unit: string): string {
+  if (value !== null) return `${value} ${unit}`;
+  if (candidate.exclusion_reasons.includes("PICKUP_UNREACHABLE")) return "无法到达";
+  return candidate.eligible === false ? "不适用" : "待计算";
+}
+
+function scoreEvidence(candidate: VehicleCandidateResponse): string {
+  if (candidate.score !== null) return candidate.score;
+  return candidate.eligible === false ? "不计分" : "待计算";
+}
+
+function rankEvidence(candidate: VehicleCandidateResponse, rank: number | undefined): string {
+  if (rank !== undefined) return `第 ${rank} 名`;
+  return candidate.eligible === false ? "不参与排名" : "待排名";
 }
 
 function candidateDecision(candidate: VehicleCandidateResponse, selectedId: string | null): string[] {
@@ -47,15 +63,15 @@ function candidateDecision(candidate: VehicleCandidateResponse, selectedId: stri
   }
   if (candidate.vehicle_id === selectedId) return ["接口结果标记为入选车辆"];
   if (candidate.eligible === true) return ["满足硬约束"];
-  if (candidate.eligible === false) return ["未提供排除原因"];
-  return ["资格结论未提供"];
+  if (candidate.eligible === false) return ["排除原因待核验"];
+  return ["资格结论待核验"];
 }
 
 function eligibilityLabel(candidate: VehicleCandidateResponse, selectedId: string | null): string {
   if (candidate.vehicle_id === selectedId) return "已入选";
   if (candidate.eligible === true) return "满足硬约束";
   if (candidate.eligible === false) return "已排除";
-  return "资格未提供";
+  return "资格待核验";
 }
 
 function finiteNumber(value: string | number | null | undefined, fallback: number): number {
@@ -69,14 +85,15 @@ function rankedCandidates(candidates: VehicleCandidateResponse[]) {
     if (scoreDifference !== 0) return scoreDifference;
     const etaDifference = finiteNumber(left.pickup_eta_minutes, Number.POSITIVE_INFINITY) - finiteNumber(right.pickup_eta_minutes, Number.POSITIVE_INFINITY);
     if (etaDifference !== 0) return etaDifference;
-    const distanceDifference = finiteNumber(left.pickup_distance_km, Number.POSITIVE_INFINITY) - finiteNumber(right.pickup_distance_km, Number.POSITIVE_INFINITY);
-    return distanceDifference !== 0 ? distanceDifference : left.vehicle_id.localeCompare(right.vehicle_id, "zh-CN");
+    if (left.vehicle_id < right.vehicle_id) return -1;
+    if (left.vehicle_id > right.vehicle_id) return 1;
+    return 0;
   });
   const rankByVehicleId = new Map(eligible.map((candidate, index) => [candidate.vehicle_id, index + 1]));
   return { eligible, rankByVehicleId, displayCandidates: [...eligible, ...candidates.filter((candidate) => candidate.eligible !== true)] };
 }
 function ScoreComponents({ components, className = "fleet-score-components" }: { components: FleetScoreComponentsResponse | null; className?: string }) {
-  if (!components) return <span className="fleet-evidence-empty">{EMPTY_EVIDENCE}</span>;
+  if (!components) return <span className="fleet-evidence-empty">不计分</span>;
   return <dl className={className}>{SCORE_KEYS.map((key) => <div key={key}><dt>{SCORE_LABELS[key]}</dt><dd>{evidence(components[key])}</dd></div>)}</dl>;
 }
 
@@ -113,15 +130,15 @@ export function FleetAllocationPanel({ allocation }: { allocation: VehicleAlloca
             data-vehicle-id={candidate.vehicle_id}
             aria-label={`${candidate.vehicle_id} 候选车辆`}
           >
-            <th scope="row">{candidate.vehicle_id}</th><td data-field="rank">{ranking.rankByVehicleId.has(candidate.vehicle_id) ? `第 ${ranking.rankByVehicleId.get(candidate.vehicle_id)} 名` : "—"}</td>
+            <th scope="row">{candidate.vehicle_id}</th><td data-field="rank">{rankEvidence(candidate, ranking.rankByVehicleId.get(candidate.vehicle_id))}</td>
             <td data-field="eligibility"><strong>{eligibilityLabel(candidate, allocation.target_vehicle_id)}</strong><ul>{candidateDecision(candidate, allocation.target_vehicle_id).map((reason) => <li key={reason}>{reason}</li>)}</ul></td>
-            <td data-field="driver"><strong>{candidate.driver_id ?? "未分配"}</strong><small>{localizedEvidenceStatus(candidate.driver_status)}</small></td>
+            <td data-field="driver"><strong>{candidate.driver_id ?? "未分配"}</strong><small>{localizedEvidenceStatus(candidate.driver_status, candidate.driver_id ? "状态未记录" : "无可用司机")}</small></td>
             <td data-field="vehicle-status">{localizedEvidenceStatus(candidate.vehicle_status)}</td>
             <td data-field="remaining-capacity">{evidenceWithUnit(candidate.remaining_capacity_kg, "千克")}</td>
             <td data-field="vehicle-evidence"><span>总重 {evidenceWithUnit(candidate.gross_weight_tons, "吨")}</span><span>能力 {evidence(candidate.cargo_capability)}</span></td>
-            <td data-field="pickup-distance">{evidenceWithUnit(candidate.pickup_distance_km, "公里")}</td>
-            <td data-field="pickup-eta">{evidenceWithUnit(candidate.pickup_eta_minutes, "分钟")}</td>
-            <td data-field="score">{evidence(candidate.score)}</td>
+            <td data-field="pickup-distance">{pickupEvidence(candidate, candidate.pickup_distance_km, "公里")}</td>
+            <td data-field="pickup-eta">{pickupEvidence(candidate, candidate.pickup_eta_minutes, "分钟")}</td>
+            <td data-field="score">{scoreEvidence(candidate)}</td>
             <td data-field="score-components"><ScoreComponents components={candidate.score_components} className="fleet-candidate-score-components"/></td>
           </tr>;
         })}</tbody>
