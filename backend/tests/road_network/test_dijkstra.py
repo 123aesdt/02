@@ -74,6 +74,18 @@ def test_dijkstra_excludes_requested_edge_and_calculates_fixed_detour() -> None:
     assert "E04" not in result.edge_ids
 
 
+def test_route_03_blocks_e10_and_produces_an_executable_detour() -> None:
+    finder = DijkstraPathFinder()
+    original = finder.find(_snapshot(), "N01", "N11", RouteObjective.FASTEST, Decimal("2.40"))
+    rerouted = finder.find(_snapshot(), "N01", "N11", RouteObjective.FASTEST, Decimal("2.40"), frozenset({"E10"}))
+
+    assert original is not None and rerouted is not None
+    assert original.edge_ids == ("E10", "E11")
+    assert rerouted.edge_ids == ("E14", "E13", "E12", "E11")
+    assert rerouted.distance_km - original.distance_km == Decimal("6.50")
+    assert rerouted.estimated_minutes - original.estimated_minutes == 13
+
+
 def test_dijkstra_uses_congestion_multiplier_for_fastest_and_display_minutes() -> None:
     snapshot = _small_snapshot(_edge("E01", "A", "B", minutes=2, factor="2.50"), _edge("E02", "A", "C", minutes=4), _edge("E03", "C", "B", minutes=4))
     result = DijkstraPathFinder().find(snapshot, "A", "B", RouteObjective.FASTEST, Decimal("1.00"))

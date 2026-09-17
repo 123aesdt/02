@@ -123,7 +123,7 @@ def test_edge_status_only_increments_version_when_value_changes(sqlite_factory) 
         assert repository.set_edge_status("E04", "BLOCKED") == initial + 1
 
 
-def test_service_resolves_only_approved_aliases_and_blocks_e04(sqlite_factory) -> None:
+def test_service_resolves_only_approved_aliases_and_blocks_named_edges(sqlite_factory) -> None:
     with sqlite_factory() as session:
         seed_new_county_sandtable(session)
         session.commit()
@@ -136,6 +136,9 @@ def test_service_resolves_only_approved_aliases_and_blocks_e04(sqlite_factory) -
         road_context = service.resolve(order_id, "ROAD_BLOCKED", "新平路东河桥段发生塌方", None)
         assert road_context.affected_edge_ids == ("E04",)
         assert session.scalar(select(RoadEdge.status).where(RoadEdge.edge_id == "E04")) == "BLOCKED"
+        route_03_context = service.resolve(order_id, "ROAD_BLOCKED", "中心仓至 308 线发生塌方，车辆需要绕行。", None)
+        assert route_03_context.affected_edge_ids == ("E10",)
+        assert session.scalar(select(RoadEdge.status).where(RoadEdge.edge_id == "E10")) == "BLOCKED"
         with pytest.raises(RoadLocationUnresolved):
             service.resolve(order_id, "ROAD_BLOCKED", "新平路有道路问题", None)
 

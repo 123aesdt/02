@@ -95,6 +95,17 @@ const demoScenarios: readonly DemoScenario[] = [
   },
 ];
 
+function scenarioForRoute(scenario: DemoScenario, routeId: string | null | undefined): DemoScenario {
+  if (scenario.id !== "ROAD_BLOCKED_E04" || routeId?.trim().toUpperCase() !== "ROUTE-03") return scenario;
+  return {
+    ...scenario,
+    label: "道路堵塞：中心仓至 308 线 · E10",
+    description: "中心仓至 308 线发生塌方，车辆需要绕行。",
+    locationText: "中心仓至 308 线",
+    affectedEdgeId: "E10",
+  };
+}
+
 function retryableDetails(error: ApiError): RetryableAnomalyReportError | null {
   if (error.code !== "REPORT_QUEUE_UNAVAILABLE" || typeof error.details !== "object" || error.details === null) return null;
   const details = error.details as Partial<RetryableAnomalyReportError>;
@@ -144,8 +155,10 @@ export function ReportIssuePage() {
     task.task_id === requestedTaskId
     && canonicalFleetVehicleId(task.vehicle_id) === selectedVehicleId
   )) ?? fixedVehicleTask;
-  const activeDemoScenario = demoScenarios.find((scenario) => scenario.id === demoScenarioId) ?? null;
   const selectedVehicleSnapshot = fleetSnapshotByVehicleId(selectedVehicleId, simulationTick);
+  const selectedRouteId = selectedTask?.original_route_id ?? selectedVehicleSnapshot?.routeId;
+  const contextualDemoScenarios = demoScenarios.map((scenario) => scenarioForRoute(scenario, selectedRouteId));
+  const activeDemoScenario = contextualDemoScenarios.find((scenario) => scenario.id === demoScenarioId) ?? null;
   const effectiveLocationText = activeDemoScenario?.locationText ?? selectedVehicleSnapshot?.locationLabel ?? locationText;
   const selectedTaskDisplay = selectedVehicleId
     ? reportSourceDisplayLabel(selectedVehicleId, selectedTask?.order_no)
@@ -159,7 +172,7 @@ export function ReportIssuePage() {
 
   const selectDemoScenario = (nextId: DemoScenarioId | "") => {
     setDemoScenarioId(nextId);
-    const scenario = demoScenarios.find((item) => item.id === nextId);
+    const scenario = contextualDemoScenarios.find((item) => item.id === nextId);
     if (!scenario) return;
     setAnomalyType(scenario.anomalyType);
     setDescription(scenario.id === "VEHICLE_BREAKDOWN_N04" && selectedVehicleId
@@ -262,12 +275,12 @@ export function ReportIssuePage() {
 
     <WorkspaceSection id="driver-anomaly-report" title="问题信息" description="请填写现场真实情况。首版不采集照片和 GPS。">
       <form className="anomaly-report-form" onSubmit={onSubmit}>
-        <fieldset disabled={submitting || Boolean(savedFailure) || Boolean(result)}>
+        <fieldset disabled={read.state !== "READY" || !selectedTask || submitting || Boolean(savedFailure) || Boolean(result)}>
           <div className="report-form-grid">
             <label className="report-scenario-field" htmlFor="report-demo-scenario">演示异常场景
               <select id="report-demo-scenario" value={demoScenarioId} onChange={(event) => selectDemoScenario(event.target.value as DemoScenarioId | "")}>
                 <option value="">手动填写现场问题</option>
-                {demoScenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.label}</option>)}
+                {contextualDemoScenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.label}</option>)}
               </select>
             </label>
             <label htmlFor="report-anomaly-type">问题类型

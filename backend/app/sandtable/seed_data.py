@@ -615,6 +615,12 @@ DRIVERS = (
     MappingProxyType(
         {"driver_id": "D-010", "name": "杨师傅", "license_class": "C1", "status": "ON_DUTY", "current_vehicle_id": "V-012", "current_node_id": "N06"}
     ),
+    MappingProxyType(
+        {"driver_id": "D-011", "name": "赵师傅", "license_class": "C1", "status": "ON_DUTY", "current_vehicle_id": "V-003", "current_node_id": "N15"}
+    ),
+    MappingProxyType(
+        {"driver_id": "D-012", "name": "孙师傅", "license_class": "C1", "status": "ON_DUTY", "current_vehicle_id": "V-011", "current_node_id": "N14"}
+    ),
 )
 
 VEHICLES = (
@@ -657,7 +663,7 @@ VEHICLES = (
             "cargo_capability": "GENERAL",
             "status": "AVAILABLE",
             "current_node_id": "N15",
-            "assigned_driver_id": None,
+            "assigned_driver_id": "D-011",
         }
     ),
     MappingProxyType(
@@ -769,7 +775,7 @@ VEHICLES = (
             "cargo_capability": "COLD_CHAIN",
             "status": "AVAILABLE",
             "current_node_id": "N14",
-            "assigned_driver_id": None,
+            "assigned_driver_id": "D-012",
         }
     ),
     MappingProxyType(

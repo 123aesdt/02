@@ -18,6 +18,12 @@ _LIVE_MAP_EDGE_MINUTE_UPGRADES = {
     "E33": (5, 9),
     "E34": (4, 7),
 }
+_STANDBY_DRIVER_ASSIGNMENTS = {
+    "V-003": "D-011",
+    "V-011": "D-012",
+}
+_STANDBY_DRIVER_IDS = frozenset(_STANDBY_DRIVER_ASSIGNMENTS.values())
+
 
 
 def _row_with_decimals(row: dict[str, Any], *fields: str) -> dict[str, Any]:
@@ -85,10 +91,26 @@ def seed_new_county_sandtable(session: Session) -> None:
                 new_driver_ids.add(row["driver_id"])
         session.flush()
         for row in VEHICLES:
-            _add_if_missing(session, FleetVehicle, "vehicle_id", _row_with_decimals(row, "max_load_kg", "current_load_kg", "gross_weight_tons"))
+            vehicle_row = _row_with_decimals(row, "max_load_kg", "current_load_kg", "gross_weight_tons")
+            if row["vehicle_id"] in _STANDBY_DRIVER_ASSIGNMENTS:
+                vehicle_row["assigned_driver_id"] = None
+            _add_if_missing(session, FleetVehicle, "vehicle_id", vehicle_row)
         session.flush()
+        for vehicle_id, driver_id in _STANDBY_DRIVER_ASSIGNMENTS.items():
+            vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == vehicle_id))
+            driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == driver_id))
+            if (
+                vehicle is not None
+                and driver is not None
+                and vehicle.status == "AVAILABLE"
+                and driver.status == "ON_DUTY"
+                and vehicle.assigned_driver_id in (None, driver.driver_id)
+                and driver.current_vehicle_id in (None, vehicle.vehicle_id)
+            ):
+                vehicle.assigned_driver_id = driver.driver_id
+                driver.current_vehicle_id = vehicle.vehicle_id
         for row in DRIVERS:
-            if row["driver_id"] in new_driver_ids:
+            if row["driver_id"] in new_driver_ids and row["driver_id"] not in _STANDBY_DRIVER_IDS:
                 driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == row["driver_id"]))
                 if driver is not None:
                     driver.current_vehicle_id = row["current_vehicle_id"]

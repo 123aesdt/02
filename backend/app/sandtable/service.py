@@ -6,7 +6,7 @@ from app.sandtable.protocols import SandtableContextProvider
 
 VEHICLE_ALIASES = MappingProxyType({"新物冷链-01": "V-001"})
 NODE_ALIASES = MappingProxyType({"新平路 K3.2": "N04"})
-EDGE_ALIASES = MappingProxyType({"新平路东河桥段": "E04"})
+EDGE_ALIASES = MappingProxyType({"新平路东河桥段": "E04", "中心仓至 308 线": "E10"})
 
 
 class RoadLocationUnresolved(ValueError):

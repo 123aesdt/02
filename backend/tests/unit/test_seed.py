@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.models.anomaly import Anomaly
 from app.models.audit import AuditRecord
 from app.models.dispatch import Dispatch
+from app.models.fleet_driver import FleetDriver
 from app.models.fleet_vehicle import FleetVehicle
 from app.models.order import Order
 from app.models.runtime_thread import RuntimeThread
@@ -118,6 +119,75 @@ def test_development_seed_keeps_visible_fault_and_dispatch_pairs(sqlite_factory)
         "V-016": ("BROKEN", "电池高压系统异常，已停止运营"),
         "V-019": ("DISPATCHING", "冷链订单跨仓接驳调度中"),
     }
+
+
+def test_development_seed_provides_staffed_standby_vehicles(sqlite_factory):
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        vehicles = {
+            row.vehicle_id: row.assigned_driver_id
+            for row in session.scalars(
+                select(FleetVehicle).where(FleetVehicle.vehicle_id.in_(("V-003", "V-011")))
+            )
+        }
+        drivers = {
+            row.driver_id: (row.status, row.current_vehicle_id)
+            for row in session.scalars(
+                select(FleetDriver).where(FleetDriver.driver_id.in_(("D-011", "D-012")))
+            )
+        }
+
+    assert vehicles == {"V-003": "D-011", "V-011": "D-012"}
+    assert drivers == {
+        "D-011": ("ON_DUTY", "V-003"),
+        "D-012": ("ON_DUTY", "V-011"),
+    }
+
+
+def test_development_seed_does_not_move_busy_driver_to_standby_vehicle(sqlite_factory):
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        standby = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-003"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-011"))
+        assert standby is not None and driver is not None
+        standby.assigned_driver_id = None
+        driver.current_vehicle_id = "V-001"
+        session.commit()
+
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        standby = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-003"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-011"))
+        assert standby is not None and driver is not None
+        assert standby.assigned_driver_id is None
+        assert driver.current_vehicle_id == "V-001"
+
+
+def test_development_seed_does_not_link_new_driver_to_occupied_standby_vehicle(sqlite_factory):
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        standby = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-003"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-011"))
+        assert standby is not None and driver is not None
+        standby.status = "IN_TRANSIT"
+        standby.assigned_driver_id = "D-002"
+        driver.current_vehicle_id = None
+        session.flush()
+        session.delete(driver)
+        session.commit()
+
+    seed_database(session_factory=sqlite_factory, runtime_profile="docker-dev")
+
+    with sqlite_factory() as session:
+        standby = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-003"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-011"))
+        assert standby is not None and driver is not None
+        assert (standby.status, standby.assigned_driver_id) == ("IN_TRANSIT", "D-002")
+        assert driver.current_vehicle_id is None
 
 
 def test_development_seed_creates_stable_docker_e2e_case(sqlite_factory):

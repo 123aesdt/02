@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError } from "../src/services/api/client";
+import { fleetEdges, fleetRoutes } from "../src/features/fleet-sandbox/fleet-sandbox-data";
 
 const workspaceApi = vi.hoisted(() => ({ getMyTasks: vi.fn() }));
 const reportApi = vi.hoisted(() => ({ report: vi.fn() }));
@@ -252,6 +253,57 @@ describe("report issue page", () => {
       severity: "HIGH",
       incident_node_id: null,
       affected_edge_id: "E04",
+    }));
+  });
+
+  it("keeps scenario controls disabled until the fixed task and route are ready", async () => {
+    let resolveTasks!: (value: typeof taskPage) => void;
+    workspaceApi.getMyTasks.mockReturnValue(new Promise((resolve) => {
+      resolveTasks = resolve;
+    }));
+    const { container } = await renderPage();
+
+    expect((container.querySelector(".anomaly-report-form fieldset") as HTMLFieldSetElement).disabled).toBe(true);
+
+    await act(async () => {
+      resolveTasks(taskPage);
+    });
+    await flush();
+
+    expect((container.querySelector(".anomaly-report-form fieldset") as HTMLFieldSetElement).disabled).toBe(false);
+  });
+
+  it("blocks an edge on route 03 so recalculation produces a real detour", async () => {
+    workspaceApi.getMyTasks.mockResolvedValue({
+      ...taskPage,
+      items: [{
+        ...fleetSourceTasks[4],
+        original_route_id: null,
+      }],
+      summary: { total: 1, ready: 0, waiting: 0, active: 1, ended: 0 },
+      total: 1,
+    });
+    const { container } = await renderPage();
+
+    await setField(container, "演示异常场景", "ROAD_BLOCKED_E04");
+
+    expect((container.querySelector("#report-location") as HTMLSelectElement).value).toBe("中心仓至 308 线");
+    expect((container.querySelector("#report-description") as HTMLTextAreaElement).value).toBe("中心仓至 308 线发生塌方，车辆需要绕行。");
+    const route = fleetRoutes.find((item) => item.id === "ROUTE-03");
+    const edge = fleetEdges.find((item) => item.id === "E10");
+    expect(route).toBeDefined();
+    expect(edge).toBeDefined();
+    expect(route?.nodeIds.slice(0, -1).some((nodeId, index) => {
+      const nextNodeId = route.nodeIds[index + 1];
+      return (edge?.from === nodeId && edge.to === nextNodeId) || (edge?.to === nodeId && edge.from === nextNodeId);
+    })).toBe(true);
+
+    await submit(container);
+
+    expect(reportApi.report).toHaveBeenCalledWith(expect.objectContaining({
+      source_task_id: "DEMO-TASK-REPORT-005",
+      anomaly_type: "ROAD_BLOCKED",
+      affected_edge_id: "E10",
     }));
   });
 
