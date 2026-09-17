@@ -9,6 +9,7 @@ import { fleetEdges, fleetRoutes } from "../src/features/fleet-sandbox/fleet-san
 const workspaceApi = vi.hoisted(() => ({ getMyTasks: vi.fn() }));
 const reportApi = vi.hoisted(() => ({ report: vi.fn() }));
 const vehicleOperationsApi = vi.hoisted(() => ({ getDriverOperationSnapshot: vi.fn() }));
+const demoScenarioApi = vi.hoisted(() => ({ reset: vi.fn() }));
 
 vi.mock("../src/config/runtime", () => ({
   runtimeConfig: {
@@ -20,6 +21,7 @@ vi.mock("../src/config/runtime", () => ({
 vi.mock("../src/services/api/workspace-read-client", () => ({ workspaceReadClient: workspaceApi }));
 vi.mock("../src/services/api/anomaly-report-client", () => ({ anomalyReportClient: reportApi }));
 vi.mock("../src/services/api/vehicle-operations-client", () => ({ vehicleOperationsClient: vehicleOperationsApi }));
+vi.mock("../src/services/api/demo-scenario-client", () => ({ demoScenarioClient: demoScenarioApi }));
 
 import { ReportIssuePage } from "../src/pages/report-issue-page";
 
@@ -132,12 +134,18 @@ beforeEach(() => {
   workspaceApi.getMyTasks.mockResolvedValue(taskPage);
   reportApi.report.mockResolvedValue(accepted);
   vehicleOperationsApi.getDriverOperationSnapshot.mockRejectedValue(new Error("not found"));
+  demoScenarioApi.reset.mockResolvedValue({
+    scenario_id: "VEHICLE_BREAKDOWN_N04",
+    status: "READY",
+    message: "演示场景已恢复，可以再次提交。",
+  });
 });
 
 afterEach(() => {
   workspaceApi.getMyTasks.mockReset();
   reportApi.report.mockReset();
   vehicleOperationsApi.getDriverOperationSnapshot.mockReset();
+  demoScenarioApi.reset.mockReset();
   document.body.replaceChildren();
 });
 
@@ -233,6 +241,50 @@ describe("report issue page", () => {
       incident_node_id: "N04",
       affected_edge_id: null,
     }));
+  });
+
+  it("resets a completed demo and submits the next run as a new task", async () => {
+    const { container } = await renderPage();
+    await setField(container, "演示异常场景", "VEHICLE_BREAKDOWN_N04");
+    await submit(container);
+
+    const firstKey = reportApi.report.mock.calls[0][0].idempotency_key;
+    const resetButton = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "重新演示");
+    expect(resetButton).toBeDefined();
+
+    await act(async () => { resetButton?.click(); });
+    await flush();
+
+    expect(demoScenarioApi.reset).toHaveBeenCalledWith("VEHICLE_BREAKDOWN_N04");
+    expect(container.textContent).toContain("演示场景已恢复，可以再次提交。");
+    expect(container.textContent).not.toContain("查看 AI 调度进度");
+    expect((container.querySelector(".anomaly-report-form fieldset") as HTMLFieldSetElement).disabled).toBe(false);
+
+    await submit(container);
+
+    expect(reportApi.report).toHaveBeenCalledTimes(2);
+    const secondKey = reportApi.report.mock.calls[1][0].idempotency_key;
+    expect(secondKey).not.toBe(firstKey);
+  });
+
+  it("keeps the completed result visible when demo reset fails", async () => {
+    demoScenarioApi.reset.mockRejectedValue(new ApiError(
+      409,
+      "DEMO_SCENARIO_STATE_INCOMPLETE",
+      "复位失败",
+    ));
+    const { container } = await renderPage();
+    await setField(container, "演示异常场景", "VEHICLE_BREAKDOWN_N04");
+    await submit(container);
+
+    const resetButton = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "重新演示");
+    await act(async () => { resetButton?.click(); });
+    await flush();
+
+    expect(container.textContent).toContain("复位失败");
+    expect(container.textContent).toContain("查看 AI 调度进度");
   });
 
   it("applies the fixed road-blocked scenario and submits its edge id", async () => {

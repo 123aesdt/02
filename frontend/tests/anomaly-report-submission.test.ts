@@ -65,6 +65,25 @@ describe("anomaly report submission", () => {
     expect(calls).toEqual(["report-key-1", "report-key-1"]);
   });
 
+  it("rotates the idempotency key only after a demo reset", async () => {
+    const report = vi.fn().mockResolvedValue(accepted);
+    const createRequestId = vi.fn()
+      .mockReturnValueOnce("report-key-1")
+      .mockReturnValueOnce("report-key-2");
+    const submission = createAnomalyReportSubmission({ report }, createRequestId);
+
+    await submission.submit(form);
+    submission.reset();
+    await submission.submit(form);
+
+    expect(report).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      idempotency_key: "report-key-1",
+    }));
+    expect(report).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      idempotency_key: "report-key-2",
+    }));
+  });
+
   it("grants report permission to employees but not dispatchers", () => {
     expect(ROLE_PERMISSION_MATRIX.EMPLOYEE).toContain(PERMISSIONS.ANOMALIES_REPORT);
     expect(ROLE_PERMISSION_MATRIX.EMPLOYEE).not.toContain(PERMISSIONS.DISPATCH_CREATE);

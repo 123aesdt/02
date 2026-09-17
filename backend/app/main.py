@@ -11,6 +11,7 @@ from app.anomaly_reports.service import AnomalyReportService
 from app.anomaly_reports.sqlalchemy_repository import SqlAlchemyAnomalyReportRepository
 from app.api.v1.anomaly_reports import router as anomaly_reports_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.demo_scenarios import router as demo_scenarios_router
 from app.api.v1.dispatch_tasks import router as dispatch_tasks_router
 from app.api.v1.memory_mutations import router as memory_mutations_router
 from app.api.v1.observability import router as observability_router
@@ -25,6 +26,7 @@ from app.api.v1.ws_tickets import router as ws_tickets_router
 from app.core.config import get_settings
 from app.core.database import build_session_factory
 from app.core.errors import OptimisticLockConflict
+from app.demo_reset import DemoScenarioResetService
 from app.events.factory import create_task_event_broker
 from app.graph_memory.driver import build_neo4j_driver
 from app.observability.bootstrap import build_backend_observability_runtime
@@ -97,6 +99,7 @@ def create_app(
     review_decision_service: ReviewDecisionService | None = None,
     dispatch_publication_service: DispatchPublicationService | None = None,
     vehicle_operations_api_service: object | None = None,
+    demo_scenario_reset_service: DemoScenarioResetService | None = None,
 ) -> FastAPI:
     settings = get_settings()
     production = settings.runtime_profile == "production"
@@ -291,9 +294,13 @@ def create_app(
         SqlAlchemyAnomalyReportRepository(dispatch_session_factory),
         app.state.dispatch_task_api_service,
     )
+    app.state.demo_scenario_reset_service = demo_scenario_reset_service or DemoScenarioResetService(
+        dispatch_session_factory
+    )
     app.state.dispatch_publication_service = dispatch_publication_service or DispatchPublicationService(build_session_factory(settings.database_url))
     app.include_router(dispatch_tasks_router)
     app.include_router(anomaly_reports_router)
+    app.include_router(demo_scenarios_router)
     app.include_router(task_events_router)
     if settings.observability_api_enabled or observability_service is not None:
         app.state.observability_service = observability_service or ObservabilityReadService(

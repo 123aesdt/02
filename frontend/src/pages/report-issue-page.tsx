@@ -22,6 +22,7 @@ import { canonicalFleetVehicleId, fleetSimulationTick, fleetSnapshotByVehicleId 
 import { useMyTasksRead } from "../hooks/use-workspace-reads";
 import { anomalyReportClient } from "../services/api/anomaly-report-client";
 import { ApiError } from "../services/api/client";
+import { demoScenarioClient, type DemoScenarioId } from "../services/api/demo-scenario-client";
 import type {
   AnomalyReportFormInput,
   AnomalyReportResponse,
@@ -55,8 +56,6 @@ const severityOptions: readonly [AnomalyReportSeverity, string][] = [
   ["MEDIUM", "中"],
   ["HIGH", "高"],
 ];
-
-type DemoScenarioId = "VEHICLE_BREAKDOWN_N04" | "ROAD_BLOCKED_E04";
 
 interface DemoScenario {
   id: DemoScenarioId;
@@ -141,10 +140,13 @@ export function ReportIssuePage() {
   const [severity, setSeverity] = useState<AnomalyReportSeverity>("MEDIUM");
   const [simulationTick, setSimulationTick] = useState(() => fleetSimulationTick());
   const [submitting, setSubmitting] = useState(false);
+  const [resettingDemo, setResettingDemo] = useState(false);
   const [result, setResult] = useState<AnomalyReportResponse | null>(null);
   const [savedFailure, setSavedFailure] = useState<RetryableAnomalyReportError | null>(null);
   const [retryInput, setRetryInput] = useState<AnomalyReportFormInput | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [demoResetMessage, setDemoResetMessage] = useState<string | null>(null);
+  const [demoResetError, setDemoResetError] = useState<string | null>(null);
   const [submission] = useState(() => createAnomalyReportSubmission(anomalyReportClient));
   const read = useMyTasksRead({ limit: 100 });
   const reportableTasks = read.data?.items.filter((item) => item.can_report_anomaly && isTaskReportable(item.status)) ?? [];
@@ -192,6 +194,8 @@ export function ReportIssuePage() {
   const submitInput = async (input: AnomalyReportFormInput) => {
     setSubmitting(true);
     setErrorMessage(null);
+    setDemoResetMessage(null);
+    setDemoResetError(null);
     try {
       const accepted = await submission.submit(input);
       setResult(accepted);
@@ -209,6 +213,29 @@ export function ReportIssuePage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const resetDemo = async () => {
+    if (!activeDemoScenario || !result || resettingDemo) return;
+    setResettingDemo(true);
+    setDemoResetMessage(null);
+    setDemoResetError(null);
+    try {
+      const reset = await demoScenarioClient.reset(activeDemoScenario.id);
+      submission.reset();
+      setResult(null);
+      setSavedFailure(null);
+      setRetryInput(null);
+      setErrorMessage(null);
+      setDemoResetMessage(reset.message);
+      read.refresh();
+    } catch (error) {
+      setDemoResetError(error instanceof ApiError
+        ? error.message
+        : "演示场景暂时无法恢复，请稍后重试。");
+    } finally {
+      setResettingDemo(false);
     }
   };
 
@@ -275,7 +302,7 @@ export function ReportIssuePage() {
 
     <WorkspaceSection id="driver-anomaly-report" title="问题信息" description="请填写现场真实情况。首版不采集照片和 GPS。">
       <form className="anomaly-report-form" onSubmit={onSubmit}>
-        <fieldset disabled={read.state !== "READY" || !selectedTask || submitting || Boolean(savedFailure) || Boolean(result)}>
+        <fieldset disabled={read.state !== "READY" || !selectedTask || submitting || resettingDemo || Boolean(savedFailure) || Boolean(result)}>
           <div className="report-form-grid">
             <label className="report-scenario-field" htmlFor="report-demo-scenario">演示异常场景
               <select id="report-demo-scenario" value={demoScenarioId} onChange={(event) => selectDemoScenario(event.target.value as DemoScenarioId | "")}>
@@ -326,6 +353,16 @@ export function ReportIssuePage() {
         </> : null}
       </div> : null}
 
+      {demoResetError ? <div className="report-feedback report-feedback--error" role="alert">
+        <strong>演示复位未完成</strong>
+        <p>{demoResetError}</p>
+      </div> : null}
+
+      {demoResetMessage ? <div className="report-feedback report-feedback--success" role="status">
+        <strong>{demoResetMessage}</strong>
+        <p>车辆、司机、道路、救援与维修资源已恢复到演示前状态。</p>
+      </div> : null}
+
       {result ? <div className="report-feedback report-feedback--success" role="status">
         <strong>{result.message}</strong>
         <p>{anomalyReferenceLabel(result.anomaly_id, result.anomaly_no)} · {dispatchTaskReferenceLabel(result.task_id, result.anomaly_id)}</p>
@@ -336,6 +373,9 @@ export function ReportIssuePage() {
         </ol>
         <div className="report-result-actions">
           <Link className="primary-action" to={`/dispatch/${result.task_id}`}>查看 AI 调度进度</Link>
+          {activeDemoScenario ? <button className="secondary-action" type="button" disabled={resettingDemo} onClick={() => { void resetDemo(); }}>
+            {resettingDemo ? "正在恢复演示…" : "重新演示"}
+          </button> : null}
           <Link className="secondary-action" to="/my-tasks">返回我的任务</Link>
         </div>
       </div> : null}

@@ -6,6 +6,7 @@ import type {
 
 export interface AnomalyReportSubmission {
   submit(input: AnomalyReportFormInput): Promise<AnomalyReportResponse>;
+  reset(): void;
 }
 
 const REPORTABLE_TASK_STATUSES = new Set([
@@ -27,10 +28,13 @@ export function createAnomalyReportSubmission(
   client: AnomalyReportClient,
   createRequestId: () => string = () => crypto.randomUUID(),
 ): AnomalyReportSubmission {
-  const idempotencyKey = createRequestId();
+  let idempotencyKey = createRequestId();
   return {
     submit(input) {
       return client.report({ ...input, idempotency_key: idempotencyKey });
+    },
+    reset() {
+      idempotencyKey = createRequestId();
     },
   };
 }
