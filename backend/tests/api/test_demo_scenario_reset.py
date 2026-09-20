@@ -138,6 +138,42 @@ def test_demo_reset_rejects_non_whitelisted_employee(monkeypatch, sqlite_factory
     assert response.status_code == 403
 
 
+def test_second_demo_employee_resets_own_breakdown_vehicle(monkeypatch, sqlite_factory) -> None:
+    _dirty_vehicle_demo(sqlite_factory)
+    with sqlite_factory() as session, session.begin():
+        vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-005"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-003"))
+        assert vehicle is not None and driver is not None
+        vehicle.status = "MAINTENANCE"
+        vehicle.current_node_id = "N04"
+        vehicle.fault_code = "POWERTRAIN_FAILURE"
+        vehicle.status_reason = "等待维修质检"
+        vehicle.maintenance_order_no = "WX-CHEN-DEMO"
+        driver.status = "BUSY"
+        driver.current_node_id = "N04"
+
+    response = _client(monkeypatch, sqlite_factory, subject_id="CF-DEMO-006").post(
+        "/api/v1/demo-scenarios/VEHICLE_BREAKDOWN_N04/reset",
+        headers=headers(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "READY"
+    with sqlite_factory() as session:
+        vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-005"))
+        driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-003"))
+        assert vehicle is not None and driver is not None
+        assert (
+            vehicle.status,
+            vehicle.current_node_id,
+            vehicle.assigned_driver_id,
+            vehicle.fault_code,
+            vehicle.status_reason,
+            vehicle.maintenance_order_no,
+        ) == ("IN_TRANSIT", "N15", "D-003", None, None, None)
+        assert (driver.status, driver.current_vehicle_id, driver.current_node_id) == ("ON_DUTY", "V-005", "N15")
+
+
 def test_second_demo_employee_can_reset_the_road_scenario(monkeypatch, sqlite_factory) -> None:
     _dirty_vehicle_demo(sqlite_factory)
 

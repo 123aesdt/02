@@ -31,7 +31,7 @@ class DemoScenarioResetResult:
 
 class DemoScenarioResetService:
     _ALLOWED_SUBJECTS = {
-        "VEHICLE_BREAKDOWN_N04": frozenset({"CF-DEMO-001"}),
+        "VEHICLE_BREAKDOWN_N04": frozenset({"CF-DEMO-001", "CF-DEMO-006"}),
         "ROAD_BLOCKED_E04": frozenset({"CF-DEMO-001", "CF-DEMO-006"}),
     }
     _ACTIVE_RESCUE_STATUSES = ("CREATED", "DISPATCHED", "ARRIVED", "LOADED")
@@ -73,6 +73,7 @@ class DemoScenarioResetService:
         vehicle_specs = {
             "V-002": ("IN_TRANSIT", "N01", "D-002"),
             "V-003": ("AVAILABLE", "N15", "D-011"),
+            "V-005": ("IN_TRANSIT", "N15", "D-003"),
             "V-011": ("AVAILABLE", "N14", "D-012"),
         }
         vehicles = {
@@ -98,6 +99,7 @@ class DemoScenarioResetService:
         driver_specs = {
             "D-002": ("V-002", "N01"),
             "D-011": ("V-003", "N15"),
+            "D-003": ("V-005", "N15"),
             "D-012": ("V-011", "N14"),
         }
         drivers = {
