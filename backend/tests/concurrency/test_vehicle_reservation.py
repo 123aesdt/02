@@ -80,6 +80,20 @@ def _seed(factory: sessionmaker[Session], *, vehicle_count: int = 2) -> tuple[in
             ]
         )
         session.flush()
+        session.add(
+            FleetVehicle(
+                vehicle_id="V-001",
+                plate_no="故障车辆-01",
+                vehicle_type="REFRIGERATED_VAN",
+                max_load_kg=1000,
+                current_load_kg=700,
+                cargo_capability="COLD_CHAIN",
+                gross_weight_tons="2.80",
+                status="BROKEN",
+                current_node_id="N04",
+                assigned_driver_id=None,
+            )
+        )
         drivers = [
             FleetDriver(
                 driver_id=f"D-{suffix - 2:03d}",
@@ -241,6 +255,7 @@ def test_two_sessions_reserve_distinct_ranked_vehicles_and_persist_two_evidence_
                 "D-004",
             }
             assert [(vehicle.vehicle_id, vehicle.status) for vehicle in vehicles] == [
+                ("V-001", "BROKEN"),
                 ("V-005", "RESERVED"),
                 ("V-006", "RESERVED"),
             ]
@@ -431,7 +446,11 @@ def test_same_task_concurrent_replay_persists_one_dispatch_and_rolls_back_loser_
             observed = (len(dispatches), evidence_count, reserved_count)
             assert observed == (1, 2, 1), observed
             assert results[0].dispatch_id == results[1].dispatch_id == dispatches[0].id
-            assert set(vehicles.values()) == {"AVAILABLE", "RESERVED"}
+            assert vehicles["V-001"] == "BROKEN"
+            assert {vehicles["V-005"], vehicles["V-006"]} == {
+                "AVAILABLE",
+                "RESERVED",
+            }
         finally:
             engine.dispose()
 

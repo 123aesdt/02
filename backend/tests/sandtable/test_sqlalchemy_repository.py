@@ -14,13 +14,19 @@ from app.models.order import Order
 from app.models.road import RoadEdge, RoadNode
 from app.models.station import LogisticsStation
 from app.road_network.sqlalchemy_repository import SqlAlchemyRoadNetworkRepository
+from app.sandtable.seed_data import ORDERS
 from app.sandtable.service import RoadLocationUnresolved, SandtableContextService
 from app.sandtable.sqlalchemy_repository import (
     SandtableOrderConflictError,
     SqlAlchemySandtableRepository,
     seed_new_county_sandtable,
 )
-from app.seed import DEMO_BUSINESS_CASES, LegacyDemoOrderConflictError, seed_database
+from app.seed import (
+    DEMO_BUSINESS_CASES,
+    DEMO_REPORT_SOURCE_TASKS,
+    LegacyDemoOrderConflictError,
+    seed_database,
+)
 
 
 def test_seed_is_idempotent_preserves_user_rows_and_loads_demo_context(sqlite_factory) -> None:
@@ -277,7 +283,13 @@ def test_mysql_opt_in_seed_upgrade_foreign_keys_and_versions() -> None:
         seed_database(session_factory=factory, runtime_profile="test")
         seed_database(session_factory=factory, runtime_profile="test")
         with factory() as session:
-            assert session.scalar(select(func.count()).select_from(Order)) == 22
+            expected_order_count = (
+                len(ORDERS)
+                + len(DEMO_BUSINESS_CASES)
+                + len(DEMO_REPORT_SOURCE_TASKS)
+                + 1  # ORDER-E2E-RAIN-001
+            )
+            assert session.scalar(select(func.count()).select_from(Order)) == expected_order_count
             driver = session.scalar(select(FleetDriver).where(FleetDriver.driver_id == "D-001"))
             vehicle = session.scalar(select(FleetVehicle).where(FleetVehicle.vehicle_id == "V-001"))
             assert (driver.current_vehicle_id, vehicle.assigned_driver_id) == ("V-001", "D-001")
